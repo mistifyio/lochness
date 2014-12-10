@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net"
 	"reflect"
@@ -11,6 +12,10 @@ import (
 
 func print(i interface{}) {
 	log.Printf("%s: %+v\n", reflect.TypeOf(i).String(), i)
+	if data, err := json.Marshal(i); err == nil {
+		log.Printf("%s: %s\n", reflect.TypeOf(i).String(), data)
+	}
+
 }
 
 func main() {
@@ -32,6 +37,14 @@ func main() {
 		log.Fatal(err)
 	}
 	print(n)
+
+	fw := c.NewFWGroup()
+	fw.Rules = append(fw.Rules, &lochness.FWRule{})
+
+	if err := fw.Save(); err != nil {
+		log.Fatal(err)
+	}
+	print(fw)
 
 	s := c.NewSubnet()
 	_, s.CIDR, _ = net.ParseCIDR("10.10.10.0/24")

@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"net"
 	"path/filepath"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -9,23 +10,34 @@ import (
 )
 
 var (
-	NetworkPath = "lochness/networks/"
+	FWGroupPath = "lochness/fwgroups/"
 )
 
 type (
-	// Network is a logical collection of subnets
-	Network struct {
+	FWRule struct {
+		Source    *net.IPNet `json:"source,omitempty"`
+		Group     string     `json:"group"`
+		PortStart uint       `json:"portStart"`
+		PortEnd   uint       `json:"portEnd"`
+		Protocol  string     `json:"protocol"`
+		Action    string     `json:"action"`
+	}
+
+	FWRules []*FWRule
+
+	FWGroup struct {
 		context       *Context
 		modifiedIndex uint64
 		ID            string            `json:"id"`
 		Metadata      map[string]string `json:"metadata"`
+		Rules         FWRules           `json:"rules"`
 	}
 
-	Networks []*Network
+	FWGroups []*FWGroup
 )
 
-func (c *Context) NewNetwork() *Network {
-	t := &Network{
+func (c *Context) NewFWGroup() *FWGroup {
+	t := &FWGroup{
 		context:  c,
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
@@ -34,8 +46,8 @@ func (c *Context) NewNetwork() *Network {
 	return t
 }
 
-func (c *Context) Network(id string) (*Network, error) {
-	t := &Network{
+func (c *Context) FWGroup(id string) (*FWGroup, error) {
+	t := &FWGroup{
 		context: c,
 		ID:      id,
 	}
@@ -47,17 +59,17 @@ func (c *Context) Network(id string) (*Network, error) {
 	return t, nil
 }
 
-func (t *Network) key() string {
-	return filepath.Join(NetworkPath, t.ID, "metadata")
+func (t *FWGroup) key() string {
+	return filepath.Join(FWGroupPath, t.ID, "metadata")
 }
 
-func (t *Network) fromResponse(resp *etcd.Response) error {
+func (t *FWGroup) fromResponse(resp *etcd.Response) error {
 	t.modifiedIndex = resp.Node.ModifiedIndex
 	return json.Unmarshal([]byte(resp.Node.Value), &t)
 }
 
 // Refresh reloads from the data store
-func (t *Network) Refresh() error {
+func (t *FWGroup) Refresh() error {
 	resp, err := t.context.etcd.Get(t.key(), false, false)
 
 	if err != nil {
@@ -72,12 +84,12 @@ func (t *Network) Refresh() error {
 	return t.fromResponse(resp)
 }
 
-func (t *Network) Validate() error {
+func (t *FWGroup) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
-func (t *Network) Save() error {
+func (t *FWGroup) Save() error {
 
 	if err := t.Validate(); err != nil {
 		return err
@@ -102,39 +114,4 @@ func (t *Network) Save() error {
 
 	t.modifiedIndex = resp.EtcdIndex
 	return nil
-}
-
-func (t *Network) subnetKey(s *Subnet) string {
-	var key string
-	if s != nil {
-		key = s.ID
-	}
-	return filepath.Join(NetworkPath, t.ID, "subnets", key)
-}
-
-// when we load one, should we make sure the networkid actually matches us?
-
-func (t *Network) AddSubnet(s *Subnet) error {
-	_, err := t.context.etcd.Set(filepath.Join(t.subnetKey(s)), "", 0)
-	if err != nil {
-		return err
-	}
-
-	// an instance where transactions would be cool...
-	s.NetworkID = t.ID
-	return s.Save()
-}
-
-func (t *Network) Subnets() ([]string, error) {
-	resp, err := t.context.etcd.Get(t.subnetKey(nil), true, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var subnets []string
-	for _, n := range resp.Node.Nodes {
-		subnets = append(subnets, filepath.Base(n.Key))
-	}
-
-	return subnets, nil
 }
