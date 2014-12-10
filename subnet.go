@@ -22,7 +22,7 @@ type (
 		Metadata      map[string]string `json:"metadata"`
 		NetworkID     string            `json:"network"`
 		Gateway       net.IP            `json:"gateway"`
-		CIDR          net.IPNet         `json:"cidr"`
+		CIDR          *net.IPNet        `json:"cidr"`
 		StartRange    net.IP            `json:"start"` // first usable IP in range
 		EndRange      net.IP            `json:"end"`   // last usable IP in range
 	}

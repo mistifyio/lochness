@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
@@ -22,6 +23,16 @@ func main() {
 		log.Fatal(err)
 	}
 	print(f)
+
+	s := c.NewSubnet()
+	_, s.CIDR, _ = net.ParseCIDR("10.10.10.0/24")
+	s.Gateway = net.IPv4(10, 10, 10, 1)
+	s.StartRange = net.IPv4(10, 10, 10, 10)
+	s.EndRange = net.IPv4(10, 10, 10, 250)
+	if err := s.Save(); err != nil {
+		log.Fatal(err)
+	}
+	print(s)
 
 	h := c.NewHypervisor()
 	if err := h.Save(); err != nil {
