@@ -30,6 +30,62 @@ type (
 	Subnets []*Subnet
 )
 
+// issues with (un)marshal of net.IPnet
+
+func (t *Subnet) MarshalJSON() ([]byte, error) {
+	data := struct {
+		ID         string            `json:"id"`
+		Metadata   map[string]string `json:"metadata"`
+		NetworkID  string            `json:"network"`
+		Gateway    net.IP            `json:"gateway"`
+		CIDR       string            `json:"cidr"`
+		StartRange net.IP            `json:"start"`
+		EndRange   net.IP            `json:"end"`
+	}{
+		ID:         t.ID,
+		Metadata:   t.Metadata,
+		NetworkID:  t.NetworkID,
+		Gateway:    t.Gateway,
+		CIDR:       t.CIDR.String(),
+		StartRange: t.StartRange,
+		EndRange:   t.EndRange,
+	}
+
+	return json.Marshal(data)
+}
+
+func (t *Subnet) UnmarshalJSON(input []byte) error {
+	data := struct {
+		ID         string            `json:"id"`
+		Metadata   map[string]string `json:"metadata"`
+		NetworkID  string            `json:"network"`
+		Gateway    net.IP            `json:"gateway"`
+		CIDR       string            `json:"cidr"`
+		StartRange net.IP            `json:"start"`
+		EndRange   net.IP            `json:"end"`
+	}{}
+
+	if err := json.Unmarshal(input, &data); err != nil {
+		return err
+	}
+
+	t.ID = data.ID
+	t.Metadata = data.Metadata
+	t.NetworkID = data.NetworkID
+	t.Gateway = data.Gateway
+	t.StartRange = data.StartRange
+	t.EndRange = data.EndRange
+
+	_, n, err := net.ParseCIDR(data.CIDR)
+	if err != nil {
+		return err
+	}
+
+	t.CIDR = n
+	return nil
+
+}
+
 func (c *Context) NewSubnet() *Subnet {
 	t := &Subnet{
 		context:  c,

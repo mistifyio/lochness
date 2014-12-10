@@ -3,15 +3,18 @@ package main
 import (
 	"log"
 	"net"
+	"reflect"
 
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 )
 
 func print(i interface{}) {
-	log.Printf("%+v\n", i)
+	log.Printf("%s: %+v\n", reflect.TypeOf(i).String(), i)
 }
+
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
 	c := lochness.NewContext(e)
 
@@ -24,6 +27,12 @@ func main() {
 	}
 	print(f)
 
+	n := c.NewNetwork()
+	if err := n.Save(); err != nil {
+		log.Fatal(err)
+	}
+	print(n)
+
 	s := c.NewSubnet()
 	_, s.CIDR, _ = net.ParseCIDR("10.10.10.0/24")
 	s.Gateway = net.IPv4(10, 10, 10, 1)
@@ -34,10 +43,25 @@ func main() {
 	}
 	print(s)
 
+	if err := n.AddSubnet(s); err != nil {
+		log.Fatal(err)
+	}
+
+	print(n)
+
 	h := c.NewHypervisor()
 	if err := h.Save(); err != nil {
 		log.Fatal(err)
 	}
+	h.AddSubnet(s, "br0")
 	print(h)
+
+	for k, _ := range h.Subnets {
+		s, err := c.Subnet(k)
+		if err != nil {
+			log.Fatal(err)
+		}
+		print(s)
+	}
 
 }

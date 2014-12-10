@@ -112,3 +112,8 @@ func (t *Hypervisor) Save() error {
 	t.modifiedIndex = resp.EtcdIndex
 	return nil
 }
+
+func (t *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
+	t.Subnets[s.ID] = bridge
+	return t.Save()
+}

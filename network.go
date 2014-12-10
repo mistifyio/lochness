@@ -104,3 +104,16 @@ func (t *Network) Save() error {
 	t.modifiedIndex = resp.EtcdIndex
 	return nil
 }
+
+func (t *Network) AddSubnet(s *Subnet) error {
+	//TODO: this should be a set
+	t.SubnetIDs = append(t.SubnetIDs, s.ID)
+	s.NetworkID = t.ID
+
+	// an instance where transactions would be cool...
+	if err := s.Save(); err != nil {
+		return err
+	}
+
+	return t.Save()
+}
