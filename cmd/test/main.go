@@ -75,6 +75,7 @@ func main() {
 	print(n)
 
 	h := c.NewHypervisor()
+	h.IP = net.IPv4(10, 100, 101, 34)
 	if err := h.Save(); err != nil {
 		log.Fatal(err)
 	}

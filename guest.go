@@ -24,6 +24,7 @@ type (
 		HypervisorID  string            `json:"hypervisor"` // hypervisor. may be blank if not assigned yet
 		NetworkID     string            `json:"network"`
 		SubnetID      string            `json:"subnet"`
+		FWGroupID     string            `json:"fwgroup"`
 	}
 
 	Guests []*Guest

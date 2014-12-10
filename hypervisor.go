@@ -112,6 +112,7 @@ func (t *Hypervisor) Save() error {
 	}
 
 	t.modifiedIndex = resp.EtcdIndex
+
 	return nil
 }
 
