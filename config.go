@@ -1,6 +1,9 @@
 package lochness
 
-import "strconv"
+import (
+	"path/filepath"
+	"strconv"
+)
 
 //Used to get set arbitrary config variables
 
@@ -9,17 +12,17 @@ var (
 )
 
 func (c *Context) GetConfig(key string) (string, error) {
-	resp, err := c.etcd.Get(filepath.join(ConfigPath, key), false, false)
+	resp, err := c.etcd.Get(filepath.Join(ConfigPath, key), false, false)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return resp.Node.Value
+	return resp.Node.Value, nil
 
 }
 
 func (c *Context) SetConfig(key, val string) error {
-	_, err := c.etcd.Set(filepath.join(ConfigPath, key), val, 0)
+	_, err := c.etcd.Set(filepath.Join(ConfigPath, key), val, 0)
 	return err
 }
 

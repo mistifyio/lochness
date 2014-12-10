@@ -40,6 +40,19 @@ func (c *Context) NewSubnet() *Subnet {
 	return t
 }
 
+func (c *Context) Subnet(id string) (*Subnet, error) {
+	t := &Subnet{
+		context: c,
+		ID:      id,
+	}
+
+	err := t.Refresh()
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (t *Subnet) key() string {
 	return filepath.Join(SubnetPath, t.ID, "metadata")
 }

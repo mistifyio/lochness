@@ -37,6 +37,19 @@ func (c *Context) NewFlavor() *Flavor {
 	return t
 }
 
+func (c *Context) Flavor(id string) (*Flavor, error) {
+	t := &Flavor{
+		context: c,
+		ID:      id,
+	}
+
+	err := t.Refresh()
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (t *Flavor) key() string {
 	return filepath.Join(FlavorPath, t.ID, "metadata")
 }

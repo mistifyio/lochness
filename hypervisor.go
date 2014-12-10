@@ -43,6 +43,19 @@ func (c *Context) NewHypervisor() *Hypervisor {
 	return t
 }
 
+func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
+	t := &Hypervisor{
+		context: c,
+		ID:      id,
+	}
+
+	err := t.Refresh()
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (t *Hypervisor) key() string {
 	return filepath.Join(HypervisorPath, t.ID, "metadata")
 }

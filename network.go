@@ -35,6 +35,19 @@ func (c *Context) NewNetwork() *Network {
 	return t
 }
 
+func (c *Context) Network(id string) (*Network, error) {
+	t := &Network{
+		context: c,
+		ID:      id,
+	}
+
+	err := t.Refresh()
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (t *Network) key() string {
 	return filepath.Join(NetworkPath, t.ID, "metadata")
 }

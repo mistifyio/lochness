@@ -39,6 +39,19 @@ func (c *Context) NewGuest() *Guest {
 	return t
 }
 
+func (c *Context) Guest(id string) (*Guest, error) {
+	t := &Guest{
+		context: c,
+		ID:      id,
+	}
+
+	err := t.Refresh()
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (t *Guest) key() string {
 	return filepath.Join(GuestPath, t.ID, "metadata")
 }
