@@ -56,7 +56,12 @@ func main() {
 	h.AddSubnet(s, "br0")
 	print(h)
 
-	for k, _ := range h.Subnets {
+	subnets, err := h.Subnets()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for k, _ := range subnets {
 		s, err := c.Subnet(k)
 		if err != nil {
 			log.Fatal(err)
