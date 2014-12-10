@@ -47,6 +47,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	network_subnets, err := n.Subnets()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, k := range network_subnets {
+		s, err := c.Subnet(k)
+		if err != nil {
+			log.Fatal(err)
+		}
+		print(s)
+	}
+
 	print(n)
 
 	h := c.NewHypervisor()
@@ -54,6 +66,7 @@ func main() {
 		log.Fatal(err)
 	}
 	h.AddSubnet(s, "br0")
+
 	print(h)
 
 	subnets, err := h.Subnets()

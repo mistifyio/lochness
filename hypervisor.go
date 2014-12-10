@@ -2,7 +2,6 @@ package lochness
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"path/filepath"
 
@@ -136,7 +135,6 @@ func (t *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 		return err
 	}
 
-	fmt.Println(filepath.Join(t.subnetKey(s)))
 	_, err = t.context.etcd.Set(filepath.Join(t.subnetKey(s)), string(v), 0)
 	return err
 }

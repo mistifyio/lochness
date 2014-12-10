@@ -105,15 +105,37 @@ func (t *Network) Save() error {
 	return nil
 }
 
-func (t *Network) AddSubnet(s *Subnet) error {
-	//TODO: this should be a set
-	t.SubnetIDs = append(t.SubnetIDs, s.ID)
-	s.NetworkID = t.ID
+func (t *Network) subnetKey(s *Subnet) string {
+	var key string
+	if s != nil {
+		key = s.ID
+	}
+	return filepath.Join(NetworkPath, t.ID, "subnets", key)
+}
 
-	// an instance where transactions would be cool...
-	if err := s.Save(); err != nil {
+// when we load one, should we make sure the networkid actually matches us?
+
+func (t *Network) AddSubnet(s *Subnet) error {
+	_, err := t.context.etcd.Set(filepath.Join(t.subnetKey(s)), "", 0)
+	if err != nil {
 		return err
 	}
 
-	return t.Save()
+	// an instance where transactions would be cool...
+	s.NetworkID = t.ID
+	return s.Save()
+}
+
+func (t *Network) Subnets() ([]string, error) {
+	resp, err := t.context.etcd.Get(t.subnetKey(nil), true, true)
+	if err != nil {
+		return nil, err
+	}
+
+	var subnets []string
+	for _, n := range resp.Node.Nodes {
+		subnets = append(subnets, filepath.Base(n.Key))
+	}
+
+	return subnets, nil
 }
