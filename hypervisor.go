@@ -104,7 +104,7 @@ func (c *Context) NewHypervisor() *Hypervisor {
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
-	t.resources()
+	t.UpdateResources()
 
 	return t
 }
@@ -189,7 +189,8 @@ func cpu() (uint32, error) {
 	}
 	return uint32(count - 1), scanner.Err()
 }
-func (t *Hypervisor) resources() error {
+
+func (t *Hypervisor) UpdateResources() error {
 	m, err := memory()
 	if err != nil {
 		return err
