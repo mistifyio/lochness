@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/go-etcd/etcd"
@@ -212,4 +214,34 @@ func (t *Hypervisor) Subnets() (map[string]string, error) {
 	}
 
 	return subnets, nil
+}
+
+func (t *Hypervisor) heartbeatKey() string {
+	return filepath.Join(HypervisorPath, t.ID, "heartbeat")
+}
+
+// Heartbeat announces the avilibility of a hypervisor.  In general, this is useful for
+// service announcement/discovery. Should be ran from the hypervisor, or something monitoring it.
+func (t *Hypervisor) Heartbeat(ttl time.Duration) error {
+	v := time.Now().String()
+	_, err := t.context.etcd.Set(t.heartbeatKey(), v, uint64(ttl.Seconds()))
+	return err
+}
+
+// IsAlive checks if the Heartbeat is availible
+func (t *Hypervisor) IsAlive() (bool, error) {
+	resp, err := t.context.etcd.Get(t.heartbeatKey(), false, false)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "Key not found") {
+			return false, nil
+		}
+		return false, err
+	}
+
+	if resp == nil || resp.Node == nil {
+		return false, nil
+	}
+
+	return true, nil
 }
