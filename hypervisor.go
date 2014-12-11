@@ -23,6 +23,7 @@ type (
 		IP            net.IP            `json:"ip"`
 		Netmask       net.IP            `json:"netmask"`
 		Gateway       net.IP            `json:"gateway"`
+		MAC           net.HardwareAddr  `json:"mac"`
 		Memory        uint64            `json:"memory"` // memory in MB that we can use for guests
 		Disk          uint64            `json:"disk"`   // disk in MB that we can use for guests
 		CPU           uint32            `json:"cpu"`    // maximum number of virtual cpu's
@@ -34,7 +35,61 @@ type (
 	}
 
 	Hypervisors []*Hypervisor
+
+	hypervisorJSON struct {
+		ID       string            `json:"id"`
+		Metadata map[string]string `json:"metadata"`
+		IP       net.IP            `json:"ip"`
+		Netmask  net.IP            `json:"netmask"`
+		Gateway  net.IP            `json:"gateway"`
+		MAC      string            `json:"mac"`
+		Memory   uint64            `json:"memory"` // memory in MB that we can use for guests
+		Disk     uint64            `json:"disk"`   // disk in MB that we can use for guests
+		CPU      uint32            `json:"cpu"`    // maximum number of virtual cpu's
+	}
 )
+
+func (t *Hypervisor) MarshalJSON() ([]byte, error) {
+	data := hypervisorJSON{
+		ID:       t.ID,
+		Metadata: t.Metadata,
+		IP:       t.IP,
+		Netmask:  t.Netmask,
+		Gateway:  t.Gateway,
+		MAC:      t.MAC.String(),
+		Memory:   t.Memory,
+		Disk:     t.Disk,
+		CPU:      t.CPU,
+	}
+
+	return json.Marshal(data)
+}
+
+func (t *Hypervisor) UnmarshalJSON(input []byte) error {
+	data := hypervisorJSON{}
+
+	if err := json.Unmarshal(input, &data); err != nil {
+		return err
+	}
+
+	t.ID = data.ID
+	t.Metadata = data.Metadata
+	t.IP = data.IP
+	t.Netmask = data.Netmask
+	t.Gateway = data.Gateway
+	t.Memory = data.Memory
+	t.Disk = data.Disk
+	t.CPU = data.CPU
+
+	a, err := net.ParseMAC(data.MAC)
+	if err != nil {
+		return err
+	}
+
+	t.MAC = a
+	return nil
+
+}
 
 func (c *Context) NewHypervisor() *Hypervisor {
 	t := &Hypervisor{

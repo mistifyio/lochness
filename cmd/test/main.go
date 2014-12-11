@@ -76,6 +76,10 @@ func main() {
 
 	h := c.NewHypervisor()
 	h.IP = net.IPv4(10, 100, 101, 34)
+	h.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := h.Save(); err != nil {
 		log.Fatal(err)
 	}
