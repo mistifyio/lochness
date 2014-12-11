@@ -1,3 +1,4 @@
+![Image](lochness.png?raw=true)
 Loch Ness is a simple virtual machine manager ("cloud controller").  It is a proof-of-concept, straight forward implementation for testing various ideas.  It is targeted at clusters of up to around 100 physical machines.
 
 # Data Model #
