@@ -28,12 +28,9 @@ type (
 	}
 
 	Subnets []*Subnet
-)
 
-// issues with (un)marshal of net.IPnet
-
-func (t *Subnet) MarshalJSON() ([]byte, error) {
-	data := struct {
+	//helper struct for json
+	subnetJSON struct {
 		ID         string            `json:"id"`
 		Metadata   map[string]string `json:"metadata"`
 		NetworkID  string            `json:"network"`
@@ -41,7 +38,13 @@ func (t *Subnet) MarshalJSON() ([]byte, error) {
 		CIDR       string            `json:"cidr"`
 		StartRange net.IP            `json:"start"`
 		EndRange   net.IP            `json:"end"`
-	}{
+	}
+)
+
+// issues with (un)marshal of net.IPnet
+
+func (t *Subnet) MarshalJSON() ([]byte, error) {
+	data := subnetJSON{
 		ID:         t.ID,
 		Metadata:   t.Metadata,
 		NetworkID:  t.NetworkID,
@@ -55,15 +58,7 @@ func (t *Subnet) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Subnet) UnmarshalJSON(input []byte) error {
-	data := struct {
-		ID         string            `json:"id"`
-		Metadata   map[string]string `json:"metadata"`
-		NetworkID  string            `json:"network"`
-		Gateway    net.IP            `json:"gateway"`
-		CIDR       string            `json:"cidr"`
-		StartRange net.IP            `json:"start"`
-		EndRange   net.IP            `json:"end"`
-	}{}
+	data := subnetJSON{}
 
 	if err := json.Unmarshal(input, &data); err != nil {
 		return err

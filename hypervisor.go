@@ -28,6 +28,7 @@ type (
 		CPU           uint32            `json:"cpu"`    // maximum number of virtual cpu's
 	}
 
+	// helper struct for bridge-to-subnet mapping
 	subnetInfo struct {
 		Bridge string `json:"bridge"`
 	}
