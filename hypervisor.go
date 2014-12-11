@@ -1,11 +1,15 @@
 package lochness
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -100,6 +104,7 @@ func (c *Context) NewHypervisor() *Hypervisor {
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
+	t.resources()
 
 	return t
 }
@@ -140,6 +145,68 @@ func (t *Hypervisor) Refresh() error {
 	}
 
 	return t.fromResponse(resp)
+}
+
+// TODO: figure out safe amount of memory to report and how to limit it (etcd?)
+func memory() (uint64, error) {
+	f, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return 0, err
+	}
+	scanner := bufio.NewScanner(f)
+	mem := 0
+	for scanner.Scan() {
+		if !strings.HasPrefix(scanner.Text(), "MemTotal:") {
+			continue
+		}
+		vals := strings.Split(scanner.Text(), " ")
+		mem, err = strconv.Atoi(vals[len(vals)-2])
+		if err != nil {
+			return 0, err
+		}
+	}
+	return uint64(mem) * 80 / 100 / 1024, scanner.Err()
+}
+
+// TODO: figure out real zfs disk size
+func disk() (uint64, error) {
+	stat := &syscall.Statfs_t{}
+	err := syscall.Statfs("/", stat)
+	return uint64(stat.Bsize) * stat.Bavail * 80 / 100 / 1024 / 1024, err
+}
+
+func cpu() (uint32, error) {
+	f, err := os.Open("/proc/cpuinfo")
+	if err != nil {
+		return 0, err
+	}
+	scanner := bufio.NewScanner(f)
+	count := 0
+	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "processor") {
+			count++
+		}
+	}
+	return uint32(count - 1), scanner.Err()
+}
+func (t *Hypervisor) resources() error {
+	m, err := memory()
+	if err != nil {
+		return err
+	}
+	d, err := disk()
+	if err != nil {
+		return err
+	}
+	c, err := cpu()
+	if err != nil {
+		return err
+	}
+
+	t.Memory = m
+	t.Disk = d
+	t.CPU = c
+	return nil
 }
 
 func (t *Hypervisor) Validate() error {
