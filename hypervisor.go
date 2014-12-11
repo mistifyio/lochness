@@ -309,6 +309,10 @@ func (t *Hypervisor) heartbeatKey() string {
 // Heartbeat announces the avilibility of a hypervisor.  In general, this is useful for
 // service announcement/discovery. Should be ran from the hypervisor, or something monitoring it.
 func (t *Hypervisor) Heartbeat(ttl time.Duration) error {
+	if err := t.verifyOnHV(); err != nil {
+		return err
+	}
+
 	v := time.Now().String()
 	_, err := t.context.etcd.Set(t.heartbeatKey(), v, uint64(ttl.Seconds()))
 	return err
