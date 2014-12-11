@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"path/filepath"
 	"strings"
@@ -244,4 +245,41 @@ func (t *Hypervisor) IsAlive() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (t *Hypervisor) guestKey(g *Guest) string {
+	var key string
+	if g != nil {
+		key = g.ID
+	}
+	return filepath.Join(HypervisorPath, t.ID, "guests", key)
+}
+
+func (t *Hypervisor) AddGuest(g *Guest) error {
+	_, err := t.context.etcd.Set(filepath.Join(t.guestKey(g)), "", 0)
+
+	if err != nil {
+		return err
+	}
+
+	// an instance where transactions would be cool...
+	g.HypervisorID = t.ID
+
+	fmt.Println(t.ID)
+	return g.Save()
+}
+
+func (t *Hypervisor) Guests() ([]string, error) {
+	resp, err := t.context.etcd.Get(t.guestKey(nil), true, true)
+	if err != nil {
+		return nil, err
+	}
+
+	var guests []string
+
+	for _, n := range resp.Node.Nodes {
+		guests = append(guests, filepath.Base(n.Key))
+	}
+
+	return guests, nil
 }
