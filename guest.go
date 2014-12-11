@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"net"
 	"path/filepath"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -25,10 +26,67 @@ type (
 		NetworkID     string            `json:"network"`
 		SubnetID      string            `json:"subnet"`
 		FWGroupID     string            `json:"fwgroup"`
+		MAC           net.HardwareAddr  `json:"mac"`
+		IP            net.IP            `json:"ip"`
 	}
 
 	Guests []*Guest
+
+	guestJSON struct {
+		ID           string            `json:"id"`
+		Metadata     map[string]string `json:"metadata"`
+		Type         string            `json:"type"`       // type of guest. currently just kvm
+		FlavorID     string            `json:"flavor"`     // resource flavor
+		HypervisorID string            `json:"hypervisor"` // hypervisor. may be blank if not assigned yet
+		NetworkID    string            `json:"network"`
+		SubnetID     string            `json:"subnet"`
+		FWGroupID    string            `json:"fwgroup"`
+		MAC          string            `json:"mac"`
+		IP           net.IP            `json:"ip"`
+	}
 )
+
+func (t *Guest) MarshalJSON() ([]byte, error) {
+	data := guestJSON{
+		ID:        t.ID,
+		Metadata:  t.Metadata,
+		Type:      t.Type,
+		FlavorID:  t.FlavorID,
+		NetworkID: t.NetworkID,
+		SubnetID:  t.SubnetID,
+		FWGroupID: t.FWGroupID,
+		IP:        t.IP,
+		MAC:       t.MAC.String(),
+	}
+
+	return json.Marshal(data)
+}
+
+func (t *Guest) UnmarshalJSON(input []byte) error {
+	data := guestJSON{}
+
+	if err := json.Unmarshal(input, &data); err != nil {
+		return err
+	}
+
+	t.ID = data.ID
+	t.Metadata = data.Metadata
+	t.Type = data.Type
+	t.FlavorID = data.FlavorID
+	t.NetworkID = data.NetworkID
+	t.SubnetID = data.SubnetID
+	t.FWGroupID = data.FWGroupID
+	t.IP = data.IP
+
+	a, err := net.ParseMAC(data.MAC)
+	if err != nil {
+		return err
+	}
+
+	t.MAC = a
+	return nil
+
+}
 
 func (c *Context) NewGuest() *Guest {
 	t := &Guest{

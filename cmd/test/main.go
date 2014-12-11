@@ -100,4 +100,15 @@ func main() {
 		print(s)
 	}
 
+	g := c.NewGuest()
+	g.SubnetID = s.ID
+	g.NetworkID = n.ID
+	g.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
+
+	if err := g.Save(); err != nil {
+		log.Fatal(err)
+	}
+
+	print(g)
+
 }
