@@ -109,6 +109,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := h.AddGuest(g); err != nil {
+		log.Fatal(err)
+	}
+
 	print(g)
 
 }

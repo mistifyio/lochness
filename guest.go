@@ -48,15 +48,16 @@ type (
 
 func (t *Guest) MarshalJSON() ([]byte, error) {
 	data := guestJSON{
-		ID:        t.ID,
-		Metadata:  t.Metadata,
-		Type:      t.Type,
-		FlavorID:  t.FlavorID,
-		NetworkID: t.NetworkID,
-		SubnetID:  t.SubnetID,
-		FWGroupID: t.FWGroupID,
-		IP:        t.IP,
-		MAC:       t.MAC.String(),
+		ID:           t.ID,
+		Metadata:     t.Metadata,
+		Type:         t.Type,
+		FlavorID:     t.FlavorID,
+		NetworkID:    t.NetworkID,
+		SubnetID:     t.SubnetID,
+		FWGroupID:    t.FWGroupID,
+		HypervisorID: t.HypervisorID,
+		IP:           t.IP,
+		MAC:          t.MAC.String(),
 	}
 
 	return json.Marshal(data)
@@ -76,6 +77,7 @@ func (t *Guest) UnmarshalJSON(input []byte) error {
 	t.NetworkID = data.NetworkID
 	t.SubnetID = data.SubnetID
 	t.FWGroupID = data.FWGroupID
+	t.HypervisorID = data.HypervisorID
 	t.IP = data.IP
 
 	a, err := net.ParseMAC(data.MAC)
