@@ -3,6 +3,7 @@ package lochness
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -188,6 +189,17 @@ func cpu() (uint32, error) {
 		}
 	}
 	return uint32(count - 1), scanner.Err()
+}
+
+func (t *Hypervisor) verifyOnHV() error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	if hostname != t.ID {
+		return errors.New("Hypervisor ID does not match hostname")
+	}
+	return nil
 }
 
 func (t *Hypervisor) UpdateResources() error {
