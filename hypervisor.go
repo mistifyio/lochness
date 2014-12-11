@@ -175,7 +175,7 @@ func (t *Hypervisor) Save() error {
 	return nil
 }
 
-// the many side of many:one relations shiops is done with nested keys
+// the many side of many:one relationships is done with nested keys
 
 func (t *Hypervisor) subnetKey(s *Subnet) string {
 	var key string
