@@ -223,7 +223,8 @@ func (t *Hypervisor) UpdateResources() error {
 	t.Memory = m
 	t.Disk = d
 	t.CPU = c
-	return nil
+
+	return t.Save()
 }
 
 func (t *Hypervisor) Validate() error {
