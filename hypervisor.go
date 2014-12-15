@@ -203,6 +203,10 @@ func (t *Hypervisor) verifyOnHV() error {
 }
 
 func (t *Hypervisor) UpdateResources() error {
+	if err := t.verifyOnHV(); err != nil {
+		return err
+	}
+
 	m, err := memory()
 	if err != nil {
 		return err
