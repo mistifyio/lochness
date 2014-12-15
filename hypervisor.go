@@ -104,7 +104,6 @@ func (c *Context) NewHypervisor() *Hypervisor {
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
-	t.UpdateResources()
 
 	return t
 }
@@ -119,6 +118,7 @@ func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return t, nil
 }
 
