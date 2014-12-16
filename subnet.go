@@ -194,13 +194,13 @@ func (t *Subnet) Addresses() (map[string]string, error) {
 	return addresses, nil
 }
 
-// https://github.com/ziutek/utils/
-func ipToI32(ip net.IP) int32 {
+// based on https://github.com/ziutek/utils/
+func ipToI32(ip net.IP) uint32 {
 	ip = ip.To4()
-	return int32(ip[0])<<24 | int32(ip[1])<<16 | int32(ip[2])<<8 | int32(ip[3])
+	return uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
 }
 
-func i32ToIP(a int32) net.IP {
+func i32ToIP(a uint32) net.IP {
 	return net.IPv4(byte(a>>24), byte(a>>16), byte(a>>8), byte(a))
 }
 
