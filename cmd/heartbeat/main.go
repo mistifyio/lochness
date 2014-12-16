@@ -13,9 +13,10 @@ import (
 func main() {
 	interval := flag.Int("interval", 60, "update interval in seconds")
 	ttl := flag.Int("ttl", 2*(*interval), "heartbeat ttl in seconds")
+	eaddr := flag.String("etcd", "http://localhost:4001", "address of etcd machine")
 	flag.Parse()
 
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
+	e := etcd.NewClient([]string{*eaddr})
 	c := lochness.NewContext(e)
 
 	hn := os.Getenv("TEST_HOSTNAME")
