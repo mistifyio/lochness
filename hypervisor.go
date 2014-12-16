@@ -3,6 +3,7 @@ package lochness
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -104,7 +105,6 @@ func (c *Context) NewHypervisor() *Hypervisor {
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
-	t.resources()
 
 	return t
 }
@@ -119,6 +119,7 @@ func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return t, nil
 }
 
@@ -189,7 +190,27 @@ func cpu() (uint32, error) {
 	}
 	return uint32(count - 1), scanner.Err()
 }
-func (t *Hypervisor) resources() error {
+
+func (t *Hypervisor) verifyOnHV() error {
+	hostname := os.Getenv("TEST_HOSTNAME")
+	if hostname == "" {
+		var err error
+		hostname, err = os.Hostname()
+		if err != err {
+			return err
+		}
+	}
+	if hostname != t.ID {
+		return errors.New("Hypervisor ID does not match hostname")
+	}
+	return nil
+}
+
+func (t *Hypervisor) UpdateResources() error {
+	if err := t.verifyOnHV(); err != nil {
+		return err
+	}
+
 	m, err := memory()
 	if err != nil {
 		return err
@@ -206,7 +227,8 @@ func (t *Hypervisor) resources() error {
 	t.Memory = m
 	t.Disk = d
 	t.CPU = c
-	return nil
+
+	return t.Save()
 }
 
 func (t *Hypervisor) Validate() error {
@@ -291,6 +313,10 @@ func (t *Hypervisor) heartbeatKey() string {
 // Heartbeat announces the avilibility of a hypervisor.  In general, this is useful for
 // service announcement/discovery. Should be ran from the hypervisor, or something monitoring it.
 func (t *Hypervisor) Heartbeat(ttl time.Duration) error {
+	if err := t.verifyOnHV(); err != nil {
+		return err
+	}
+
 	v := time.Now().String()
 	_, err := t.context.etcd.Set(t.heartbeatKey(), v, uint64(ttl.Seconds()))
 	return err
