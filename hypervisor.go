@@ -62,7 +62,8 @@ func (t *Hypervisor) MarshalJSON() ([]byte, error) {
 		Gateway:  t.Gateway,
 		MAC:      t.MAC.String(),
 		Resources: map[string]Resources{
-			"total": t.Resources["total"],
+			"available": t.Resources["available"],
+			"total":     t.Resources["total"],
 		},
 	}
 
@@ -82,7 +83,8 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 	t.Netmask = data.Netmask
 	t.Gateway = data.Gateway
 	t.Resources = map[string]Resources{
-		"total": data.Resources["total"],
+		"available": data.Resources["available"],
+		"total":     data.Resources["total"],
 	}
 
 	a, err := net.ParseMAC(data.MAC)
