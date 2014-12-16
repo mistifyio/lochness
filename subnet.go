@@ -160,3 +160,85 @@ func (t *Subnet) Save() error {
 	t.modifiedIndex = resp.EtcdIndex
 	return nil
 }
+
+func (t *Subnet) addressKey(address string) string {
+	return filepath.Join(SubnetPath, t.ID, "addresses", address)
+}
+
+// Addresses returns used IP addresses
+func (t *Subnet) Addresses() (map[string]string, error) {
+
+	addresses := make(map[string]string)
+
+	resp, err := t.context.etcd.Get(t.addressKey(""), true, true)
+	if err != nil {
+		if IsKeyNotFound(err) {
+			return addresses, nil
+		}
+
+		return nil, err
+	}
+
+	for _, n := range resp.Node.Nodes {
+		addresses[filepath.Base(n.Key)] = n.Value
+	}
+
+	return addresses, nil
+}
+
+func inc(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
+// https://github.com/ziutek/utils/
+func ipToI32(ip net.IP) int32 {
+	ip = ip.To4()
+	return int32(ip[0])<<24 | int32(ip[1])<<16 | int32(ip[2])<<8 | int32(ip[3])
+}
+
+func i32ToIP(a int32) net.IP {
+	return net.IPv4(byte(a>>24), byte(a>>16), byte(a>>8), byte(a))
+}
+
+// ReserveAddress reserves an ip address. The id is guest id
+func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
+
+	// hacky...
+
+	//should this lock?? or do we assume lock is held?
+	addresses, err := t.Addresses()
+	if err != nil {
+		return nil, err
+	}
+
+	var chosen net.IP
+	start := ipToI32(t.StartRange)
+	end := ipToI32(t.EndRange)
+
+	// this assumes start and end are actually in the ipnet
+	for i := start; i <= end; i++ {
+		ip := i32ToIP(i)
+		v := ip.String()
+		if _, ok := addresses[v]; !ok {
+
+			_, err = t.context.etcd.Create(t.addressKey(v), id, 0)
+			if err == nil {
+				chosen = ip
+				break
+			}
+
+		}
+	}
+
+	return chosen, nil
+}
+
+func (t *Subnet) ReleaseAddress(ip net.IP) error {
+	_, err := t.context.etcd.Delete(t.addressKey(ip.String()), false)
+	return err
+}
