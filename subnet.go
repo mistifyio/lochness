@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// SubnetPath is the key prefix for subnets
 	SubnetPath = "lochness/subnets/"
 )
 
@@ -27,6 +28,7 @@ type (
 		EndRange      net.IP            `json:"end"`   // last usable IP in range
 	}
 
+	// Subnets is a helper for slices of subnets
 	Subnets []*Subnet
 
 	//helper struct for json
@@ -43,6 +45,7 @@ type (
 
 // issues with (un)marshal of net.IPnet
 
+// MarshalJSON is used by the json package
 func (t *Subnet) MarshalJSON() ([]byte, error) {
 	data := subnetJSON{
 		ID:         t.ID,
@@ -57,6 +60,7 @@ func (t *Subnet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
+// UnmarshalJSON is used by the json package
 func (t *Subnet) UnmarshalJSON(input []byte) error {
 	data := subnetJSON{}
 
@@ -81,6 +85,7 @@ func (t *Subnet) UnmarshalJSON(input []byte) error {
 
 }
 
+// NewSubnet creates a new "blank" subnet.  Fill in the needed values and then call Save
 func (c *Context) NewSubnet() *Subnet {
 	t := &Subnet{
 		context:  c,
@@ -91,6 +96,7 @@ func (c *Context) NewSubnet() *Subnet {
 	return t
 }
 
+// Subnet fetches a single subnet by ID
 func (c *Context) Subnet(id string) (*Subnet, error) {
 	t := &Subnet{
 		context: c,
@@ -129,11 +135,13 @@ func (t *Subnet) Refresh() error {
 	return t.fromResponse(resp)
 }
 
+// Validate ensures the values are reasonable. It currently does nothing
 func (t *Subnet) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
+// Save persists the subnet to the datastore
 func (t *Subnet) Save() error {
 
 	if err := t.Validate(); err != nil {
@@ -238,6 +246,7 @@ func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
 	return chosen, nil
 }
 
+// ReleaseAddress releases an address
 func (t *Subnet) ReleaseAddress(ip net.IP) error {
 	_, err := t.context.etcd.Delete(t.addressKey(ip.String()), false)
 	return err
