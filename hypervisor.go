@@ -228,6 +228,7 @@ func (t *Hypervisor) calcGuestsUsage() (Resources, error) {
 	return usage, nil
 }
 
+// UpdateResources syncs resource usage to the data store
 func (t *Hypervisor) UpdateResources() error {
 	if err := t.verifyOnHV(); err != nil {
 		return err
@@ -248,6 +249,18 @@ func (t *Hypervisor) UpdateResources() error {
 
 	total := Resources{Memory: m, Disk: d, CPU: c}
 	t.Resources["total"] = total
+
+	usage, err := t.calcGuestsUsage()
+	if err != nil {
+		return err
+	}
+
+	available := Resources{
+		Memory: total.Memory - usage.Memory,
+		Disk:   total.Disk - usage.Disk,
+		CPU:    total.CPU - usage.CPU,
+	}
+	t.Resources["available"] = available
 
 	return t.Save()
 }
