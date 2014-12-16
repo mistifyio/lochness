@@ -194,15 +194,6 @@ func (t *Subnet) Addresses() (map[string]string, error) {
 	return addresses, nil
 }
 
-func inc(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
-	}
-}
-
 // https://github.com/ziutek/utils/
 func ipToI32(ip net.IP) int32 {
 	ip = ip.To4()
