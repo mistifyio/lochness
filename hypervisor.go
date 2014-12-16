@@ -204,6 +204,30 @@ func (t *Hypervisor) verifyOnHV() error {
 	return nil
 }
 
+func (t *Hypervisor) calcGuestsUsage() (Resources, error) {
+	guests, err := t.Guests()
+	if err != nil {
+		return Resources{}, err
+	}
+
+	usage := Resources{}
+	for _, guestID := range guests {
+		guest, err := t.context.Guest(guestID)
+		if err != nil {
+			return Resources{}, err
+		}
+
+		// cache?
+		flavor, err := t.context.Flavor(guest.FlavorID)
+		if err != nil {
+			return Resources{}, err
+		}
+		usage.Memory += flavor.Memory
+		usage.Disk += flavor.Disk
+	}
+	return usage, nil
+}
+
 func (t *Hypervisor) UpdateResources() error {
 	if err := t.verifyOnHV(); err != nil {
 		return err
