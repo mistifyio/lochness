@@ -26,13 +26,13 @@ type (
 	Hypervisor struct {
 		context       *Context
 		modifiedIndex uint64
-		ID            string            `json:"id"`
-		Metadata      map[string]string `json:"metadata"`
-		IP            net.IP            `json:"ip"`
-		Netmask       net.IP            `json:"netmask"`
-		Gateway       net.IP            `json:"gateway"`
-		MAC           net.HardwareAddr  `json:"mac"`
-		Resources
+		ID            string               `json:"id"`
+		Metadata      map[string]string    `json:"metadata"`
+		IP            net.IP               `json:"ip"`
+		Netmask       net.IP               `json:"netmask"`
+		Gateway       net.IP               `json:"gateway"`
+		MAC           net.HardwareAddr     `json:"mac"`
+		Resources     map[string]Resources `json:"resources"`
 	}
 
 	// helper struct for bridge-to-subnet mapping
@@ -43,13 +43,13 @@ type (
 	Hypervisors []*Hypervisor
 
 	hypervisorJSON struct {
-		ID       string            `json:"id"`
-		Metadata map[string]string `json:"metadata"`
-		IP       net.IP            `json:"ip"`
-		Netmask  net.IP            `json:"netmask"`
-		Gateway  net.IP            `json:"gateway"`
-		MAC      string            `json:"mac"`
-		Resources
+		ID        string               `json:"id"`
+		Metadata  map[string]string    `json:"metadata"`
+		IP        net.IP               `json:"ip"`
+		Netmask   net.IP               `json:"netmask"`
+		Gateway   net.IP               `json:"gateway"`
+		MAC       string               `json:"mac"`
+		Resources map[string]Resources `json:"resources"`
 	}
 )
 
@@ -61,10 +61,8 @@ func (t *Hypervisor) MarshalJSON() ([]byte, error) {
 		Netmask:  t.Netmask,
 		Gateway:  t.Gateway,
 		MAC:      t.MAC.String(),
-		Resources: Resources{
-			Memory: t.Memory,
-			Disk:   t.Disk,
-			CPU:    t.CPU,
+		Resources: map[string]Resources{
+			"total": t.Resources["total"],
 		},
 	}
 
@@ -83,9 +81,9 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 	t.IP = data.IP
 	t.Netmask = data.Netmask
 	t.Gateway = data.Gateway
-	t.Memory = data.Memory
-	t.Disk = data.Disk
-	t.CPU = data.CPU
+	t.Resources = map[string]Resources{
+		"total": data.Resources["total"],
+	}
 
 	a, err := net.ParseMAC(data.MAC)
 	if err != nil {
@@ -99,9 +97,10 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 
 func (c *Context) NewHypervisor() *Hypervisor {
 	t := &Hypervisor{
-		context:  c,
-		ID:       uuid.New(),
-		Metadata: make(map[string]string),
+		context:   c,
+		ID:        uuid.New(),
+		Metadata:  make(map[string]string),
+		Resources: make(map[string]Resources),
 	}
 
 	return t
@@ -109,8 +108,9 @@ func (c *Context) NewHypervisor() *Hypervisor {
 
 func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
 	t := &Hypervisor{
-		context: c,
-		ID:      id,
+		context:   c,
+		ID:        id,
+		Resources: make(map[string]Resources),
 	}
 
 	err := t.Refresh()
@@ -222,9 +222,8 @@ func (t *Hypervisor) UpdateResources() error {
 		return err
 	}
 
-	t.Memory = m
-	t.Disk = d
-	t.CPU = c
+	total := Resources{Memory: m, Disk: d, CPU: c}
+	t.Resources["total"] = total
 
 	return t.Save()
 }
