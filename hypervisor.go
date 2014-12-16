@@ -32,9 +32,7 @@ type (
 		Netmask       net.IP            `json:"netmask"`
 		Gateway       net.IP            `json:"gateway"`
 		MAC           net.HardwareAddr  `json:"mac"`
-		Memory        uint64            `json:"memory"` // memory in MB that we can use for guests
-		Disk          uint64            `json:"disk"`   // disk in MB that we can use for guests
-		CPU           uint32            `json:"cpu"`    // maximum number of virtual cpu's
+		Resources
 	}
 
 	// helper struct for bridge-to-subnet mapping
@@ -51,9 +49,7 @@ type (
 		Netmask  net.IP            `json:"netmask"`
 		Gateway  net.IP            `json:"gateway"`
 		MAC      string            `json:"mac"`
-		Memory   uint64            `json:"memory"` // memory in MB that we can use for guests
-		Disk     uint64            `json:"disk"`   // disk in MB that we can use for guests
-		CPU      uint32            `json:"cpu"`    // maximum number of virtual cpu's
+		Resources
 	}
 )
 
@@ -65,9 +61,11 @@ func (t *Hypervisor) MarshalJSON() ([]byte, error) {
 		Netmask:  t.Netmask,
 		Gateway:  t.Gateway,
 		MAC:      t.MAC.String(),
-		Memory:   t.Memory,
-		Disk:     t.Disk,
-		CPU:      t.CPU,
+		Resources: Resources{
+			Memory: t.Memory,
+			Disk:   t.Disk,
+			CPU:    t.CPU,
+		},
 	}
 
 	return json.Marshal(data)
