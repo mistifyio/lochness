@@ -17,9 +17,13 @@ func main() {
 	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
 	c := lochness.NewContext(e)
 
-	hn, err := os.Hostname()
-	if err != err {
-		log.Fatal(err)
+	hn := os.Getenv("TEST_HOSTNAME")
+	if hn == "" {
+		var err error
+		hn, err = os.Hostname()
+		if err != err {
+			log.Fatal(err)
+		}
 	}
 
 	hv, err := c.Hypervisor(hn)
