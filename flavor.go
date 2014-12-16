@@ -19,12 +19,16 @@ type (
 		modifiedIndex uint64
 		ID            string            `json:"id"`
 		Metadata      map[string]string `json:"metadata"`
-		Memory        uint64            `json:"memory"` // memory in MB
-		Disk          uint64            `json:"disk"`   // disk in MB
-		CPU           uint32            `json:"cpu"`    // Virtual CPUs
+		Resources
 	}
 
 	Flavors []*Flavor
+
+	Resources struct {
+		Memory uint64 `json:"memory"` // memory in MB
+		Disk   uint64 `json:"disk"`   // disk in MB
+		CPU    uint32 `json:"cpu"`    // virtual cpus
+	}
 )
 
 func (c *Context) NewFlavor() *Flavor {
