@@ -104,7 +104,7 @@ func main() {
 	g.SubnetID = s.ID
 	g.NetworkID = n.ID
 	g.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
-
+	g.FlavorID = f.ID
 	if err := g.Save(); err != nil {
 		log.Fatal(err)
 	}
