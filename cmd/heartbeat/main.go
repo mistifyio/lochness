@@ -11,7 +11,8 @@ import (
 )
 
 func main() {
-	var interval = flag.Int("interval", 60, "heartbeat/resource update interval in seconds")
+	interval := flag.Int("interval", 60, "update interval in seconds")
+	ttl := flag.Int("ttl", 2*(*interval), "heartbeat ttl in seconds")
 	flag.Parse()
 
 	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
@@ -35,7 +36,7 @@ func main() {
 		if err = hv.UpdateResources(); err != nil {
 			log.Println(err)
 		}
-		if err = hv.Heartbeat(time.Duration(*interval * 2)); err != nil {
+		if err = hv.Heartbeat(time.Duration(*ttl)); err != nil {
 			log.Println(err)
 		}
 		os.Stdout.WriteString("♥ ")
