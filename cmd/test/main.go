@@ -11,7 +11,7 @@ import (
 )
 
 func print(i interface{}) {
-	log.Printf("%s: %+v\n", reflect.TypeOf(i).String(), i)
+	log.Printf("%s: %#v\n", reflect.TypeOf(i).String(), i)
 	if data, err := json.Marshal(i); err == nil {
 		log.Printf("%s: %s\n", reflect.TypeOf(i).String(), data)
 	}
@@ -56,7 +56,11 @@ func main() {
 	print(fw)
 
 	s := c.NewSubnet()
-	_, s.CIDR, _ = net.ParseCIDR("10.10.10.0/24")
+	var err error
+	_, s.CIDR, err = net.ParseCIDR("10.10.10.0/24")
+	if err != nil {
+		log.Fatal(err)
+	}
 	s.Gateway = net.IPv4(10, 10, 10, 1)
 	s.StartRange = net.IPv4(10, 10, 10, 10)
 	s.EndRange = net.IPv4(10, 10, 10, 250)
