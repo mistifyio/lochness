@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// SubnetPath is the key prefix for subnets
 	SubnetPath = "lochness/subnets/"
 )
 
@@ -27,6 +28,7 @@ type (
 		EndRange      net.IP            `json:"end"`   // last usable IP in range
 	}
 
+	// Subnets is a helper for slices of subnets
 	Subnets []*Subnet
 
 	//helper struct for json
@@ -43,6 +45,7 @@ type (
 
 // issues with (un)marshal of net.IPnet
 
+// MarshalJSON is used by the json package
 func (t *Subnet) MarshalJSON() ([]byte, error) {
 	data := subnetJSON{
 		ID:         t.ID,
@@ -57,6 +60,7 @@ func (t *Subnet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
+// UnmarshalJSON is used by the json package
 func (t *Subnet) UnmarshalJSON(input []byte) error {
 	data := subnetJSON{}
 
@@ -81,6 +85,7 @@ func (t *Subnet) UnmarshalJSON(input []byte) error {
 
 }
 
+// NewSubnet creates a new "blank" subnet.  Fill in the needed values and then call Save
 func (c *Context) NewSubnet() *Subnet {
 	t := &Subnet{
 		context:  c,
@@ -91,6 +96,7 @@ func (c *Context) NewSubnet() *Subnet {
 	return t
 }
 
+// Subnet fetches a single subnet by ID
 func (c *Context) Subnet(id string) (*Subnet, error) {
 	t := &Subnet{
 		context: c,
@@ -129,11 +135,13 @@ func (t *Subnet) Refresh() error {
 	return t.fromResponse(resp)
 }
 
+// Validate ensures the values are reasonable. It currently does nothing
 func (t *Subnet) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
+// Save persists the subnet to the datastore
 func (t *Subnet) Save() error {
 
 	if err := t.Validate(); err != nil {
@@ -159,4 +167,78 @@ func (t *Subnet) Save() error {
 
 	t.modifiedIndex = resp.EtcdIndex
 	return nil
+}
+
+func (t *Subnet) addressKey(address string) string {
+	return filepath.Join(SubnetPath, t.ID, "addresses", address)
+}
+
+// Addresses returns used IP addresses
+func (t *Subnet) Addresses() (map[string]string, error) {
+
+	addresses := make(map[string]string)
+
+	resp, err := t.context.etcd.Get(t.addressKey(""), true, true)
+	if err != nil {
+		if IsKeyNotFound(err) {
+			return addresses, nil
+		}
+
+		return nil, err
+	}
+
+	for _, n := range resp.Node.Nodes {
+		addresses[filepath.Base(n.Key)] = n.Value
+	}
+
+	return addresses, nil
+}
+
+// based on https://github.com/ziutek/utils/
+func ipToI32(ip net.IP) uint32 {
+	ip = ip.To4()
+	return uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
+}
+
+func i32ToIP(a uint32) net.IP {
+	return net.IPv4(byte(a>>24), byte(a>>16), byte(a>>8), byte(a))
+}
+
+// ReserveAddress reserves an ip address. The id is guest id
+func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
+
+	// hacky...
+
+	//should this lock?? or do we assume lock is held?
+	addresses, err := t.Addresses()
+	if err != nil {
+		return nil, err
+	}
+
+	var chosen net.IP
+	start := ipToI32(t.StartRange)
+	end := ipToI32(t.EndRange)
+
+	// this assumes start and end are actually in the ipnet
+	for i := start; i <= end; i++ {
+		ip := i32ToIP(i)
+		v := ip.String()
+		if _, ok := addresses[v]; !ok {
+
+			_, err = t.context.etcd.Create(t.addressKey(v), id, 0)
+			if err == nil {
+				chosen = ip
+				break
+			}
+
+		}
+	}
+
+	return chosen, nil
+}
+
+// ReleaseAddress releases an address
+func (t *Subnet) ReleaseAddress(ip net.IP) error {
+	_, err := t.context.etcd.Delete(t.addressKey(ip.String()), false)
+	return err
 }
