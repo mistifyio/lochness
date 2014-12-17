@@ -33,11 +33,9 @@ type (
 		Gateway       net.IP               `json:"gateway"`
 		MAC           net.HardwareAddr     `json:"mac"`
 		Resources     map[string]Resources `json:"resources"`
-	}
-
-	// helper struct for bridge-to-subnet mapping
-	subnetInfo struct {
-		Bridge string `json:"bridge"`
+		subnets       map[string]string
+		guests        []string
+		alive         bool
 	}
 
 	Hypervisors []*Hypervisor
@@ -97,23 +95,28 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 
 }
 
-func (c *Context) NewHypervisor() *Hypervisor {
-	t := &Hypervisor{
-		context:   c,
-		ID:        uuid.New(),
-		Metadata:  make(map[string]string),
-		Resources: make(map[string]Resources),
-	}
-
-	return t
-}
-
-func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
-	t := &Hypervisor{
+func (c *Context) blankHypervisor(id string) *Hypervisor {
+	h := &Hypervisor{
 		context:   c,
 		ID:        id,
 		Resources: make(map[string]Resources),
+		subnets:   make(map[string]string),
+		guests:    make([]string, 0, 0),
 	}
+
+	if id == "" {
+		h.ID = uuid.New()
+	}
+
+	return h
+}
+
+func (c *Context) NewHypervisor() *Hypervisor {
+	return c.blankHypervisor("")
+}
+
+func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
+	t := c.blankHypervisor(id)
 
 	err := t.Refresh()
 	if err != nil {
@@ -127,25 +130,39 @@ func (t *Hypervisor) key() string {
 	return filepath.Join(HypervisorPath, t.ID, "metadata")
 }
 
-func (t *Hypervisor) fromResponse(resp *etcd.Response) error {
-	t.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &t)
-}
-
 // Refresh reloads from the data store
 func (t *Hypervisor) Refresh() error {
-	resp, err := t.context.etcd.Get(t.key(), false, false)
+	resp, err := t.context.etcd.Get(filepath.Join(HypervisorPath, t.ID), false, true)
 
 	if err != nil {
 		return err
 	}
 
-	if resp == nil || resp.Node == nil {
-		// should this be an error??
-		return nil
+	for _, n := range resp.Node.Nodes {
+		key := filepath.Base(n.Key)
+		switch key {
+
+		case "metadata":
+			if err := json.Unmarshal([]byte(n.Value), &t); err != nil {
+				return err
+			}
+
+		case "heartbeat":
+			//if exists, then its alive
+			t.alive = true
+
+		case "subnets":
+			for _, n := range n.Nodes {
+				t.subnets[filepath.Base(n.Key)] = n.Value
+			}
+		case "guests":
+			for _, n := range n.Nodes {
+				t.guests = append(t.guests, filepath.Base(n.Key))
+			}
+		}
 	}
 
-	return t.fromResponse(resp)
+	return nil
 }
 
 // TODO: figure out safe amount of memory to report and how to limit it (etcd?)
@@ -311,35 +328,12 @@ func (t *Hypervisor) subnetKey(s *Subnet) string {
 }
 
 func (t *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
-	i := subnetInfo{
-		Bridge: bridge,
-	}
-
-	v, err := json.Marshal(&i)
-	if err != nil {
-		return err
-	}
-
-	_, err = t.context.etcd.Set(filepath.Join(t.subnetKey(s)), string(v), 0)
+	_, err := t.context.etcd.Set(filepath.Join(t.subnetKey(s)), bridge, 0)
 	return err
 }
 
 func (t *Hypervisor) Subnets() (map[string]string, error) {
-	resp, err := t.context.etcd.Get(t.subnetKey(nil), true, true)
-	if err != nil {
-		return nil, err
-	}
-
-	subnets := make(map[string]string, resp.Node.Nodes.Len())
-	for _, n := range resp.Node.Nodes {
-		var i subnetInfo
-		if err := json.Unmarshal([]byte(n.Value), &i); err != nil {
-			return nil, err
-		}
-		subnets[filepath.Base(n.Key)] = i.Bridge
-	}
-
-	return subnets, nil
+	return t.subnets, nil
 }
 
 func (t *Hypervisor) heartbeatKey() string {
@@ -360,20 +354,7 @@ func (t *Hypervisor) Heartbeat(ttl time.Duration) error {
 
 // IsAlive checks if the Heartbeat is availible
 func (t *Hypervisor) IsAlive() (bool, error) {
-	resp, err := t.context.etcd.Get(t.heartbeatKey(), false, false)
-
-	if err != nil {
-		if strings.Contains(err.Error(), "Key not found") {
-			return false, nil
-		}
-		return false, err
-	}
-
-	if resp == nil || resp.Node == nil {
-		return false, nil
-	}
-
-	return true, nil
+	return t.alive, nil
 }
 
 func (t *Hypervisor) guestKey(g *Guest) string {
@@ -385,7 +366,7 @@ func (t *Hypervisor) guestKey(g *Guest) string {
 }
 
 func (t *Hypervisor) AddGuest(g *Guest) error {
-	_, err := t.context.etcd.Set(filepath.Join(t.guestKey(g)), "", 0)
+	_, err := t.context.etcd.Set(filepath.Join(t.guestKey(g)), g.ID, 0)
 
 	if err != nil {
 		return err
@@ -399,16 +380,5 @@ func (t *Hypervisor) AddGuest(g *Guest) error {
 }
 
 func (t *Hypervisor) Guests() ([]string, error) {
-	resp, err := t.context.etcd.Get(t.guestKey(nil), true, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var guests []string
-
-	for _, n := range resp.Node.Nodes {
-		guests = append(guests, filepath.Base(n.Key))
-	}
-
-	return guests, nil
+	return t.guests, nil
 }
