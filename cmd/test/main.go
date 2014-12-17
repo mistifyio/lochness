@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net"
 	"reflect"
+	"time"
 
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
@@ -19,6 +21,7 @@ func print(i interface{}) {
 }
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
 	c := lochness.NewContext(e)
@@ -68,6 +71,14 @@ func main() {
 		log.Fatal(err)
 	}
 	print(s)
+
+	addresses, err := s.Addresses()
+	if err != nil {
+		log.Fatal(err)
+	}
+	print(addresses)
+
+	print(s.AvailibleAddresses())
 
 	if err := n.AddSubnet(s); err != nil {
 		log.Fatal(err)
@@ -135,6 +146,11 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := h.AddGuest(g2); err != nil {
+		log.Fatal(err)
+	}
+
+	g2.IP, err = s.ReserveAddress(g2.ID)
+	if err != nil {
 		log.Fatal(err)
 	}
 	print(g2)
