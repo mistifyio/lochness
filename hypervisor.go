@@ -382,3 +382,23 @@ func (t *Hypervisor) AddGuest(g *Guest) error {
 func (t *Hypervisor) Guests() ([]string, error) {
 	return t.guests, nil
 }
+
+func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
+	// should we condense this to a single etcd call?
+	// We would need to rework how we "load" hypervisor a bit
+	resp, err := c.etcd.Get(HypervisorPath, false, false)
+	if err != nil {
+		return err
+	}
+	for _, n := range resp.Node.Nodes {
+		h, err := c.Hypervisor(filepath.Base(n.Key))
+		if err != nil {
+			return err
+		}
+
+		if err := f(h); err != nil {
+			return err
+		}
+	}
+	return nil
+}

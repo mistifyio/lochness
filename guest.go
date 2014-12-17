@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net"
 	"path/filepath"
 
@@ -168,4 +169,76 @@ func (t *Guest) Save() error {
 
 	t.modifiedIndex = resp.EtcdIndex
 	return nil
+}
+
+func (t *Guest) Candidates() (Hypervisors, error) {
+
+	f, err := t.context.Flavor(t.FlavorID)
+	if err != nil {
+		return nil, err
+	}
+
+	n, err := t.context.Network(t.NetworkID)
+	if err != nil {
+		return nil, err
+	}
+	s, err := n.Subnets()
+	if err != nil {
+		return nil, err
+	}
+
+	subnets := make(map[string]bool)
+	for _, k := range s {
+		subnets[k] = true
+	}
+
+	var hypervisors Hypervisors
+	err = t.context.ForEachHypervisor(func(h *Hypervisor) error {
+		if ok, err := h.IsAlive(); !ok || err != nil {
+			return nil
+		}
+		s, err := h.Subnets()
+		if err != nil {
+			// returning an error stops iteration, so just continue
+			return nil
+		}
+
+		hasSubnet := false
+		for k, _ := range s {
+			if _, ok := subnets[k]; ok {
+				// we want to see if we have any availible ip's?
+				hasSubnet = true
+			}
+		}
+
+		if !hasSubnet {
+			return nil
+		}
+
+		avail, ok := h.Resources["Availible"]
+		if !ok {
+			return nil
+		}
+
+		if (avail.Disk-f.Disk <= 0) || (avail.Memory-f.Memory <= 0) {
+			return nil
+		}
+
+		hypervisors = append(hypervisors, h)
+		return nil
+	})
+
+	if err != nil && len(hypervisors) == 0 {
+		return nil, err
+	}
+	return randomizeHypervisors(hypervisors), nil
+}
+
+func randomizeHypervisors(s Hypervisors) Hypervisors {
+	for i := range s {
+		j := rand.Intn(i + 1)
+		s[i], s[j] = s[j], s[i]
+	}
+
+	return s
 }
