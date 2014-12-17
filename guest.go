@@ -208,6 +208,7 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 			if _, ok := subnets[k]; ok {
 				// we want to see if we have any availible ip's?
 				hasSubnet = true
+				break
 			}
 		}
 
