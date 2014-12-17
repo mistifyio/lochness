@@ -23,14 +23,23 @@ func main() {
 	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
 	c := lochness.NewContext(e)
 
-	f := c.NewFlavor()
-	f.CPU = 4
-	f.Memory = 4096
-	f.Disk = 8192
-	if err := f.Save(); err != nil {
+	f1 := c.NewFlavor()
+	f1.CPU = 4
+	f1.Memory = 4096
+	f1.Disk = 8192
+	if err := f1.Save(); err != nil {
 		log.Fatal(err)
 	}
-	print(f)
+	print(f1)
+
+	f2 := c.NewFlavor()
+	f2.CPU = 6
+	f2.Memory = 8192
+	f2.Disk = 1024
+	if err := f2.Save(); err != nil {
+		log.Fatal(err)
+	}
+	print(f2)
 
 	n := c.NewNetwork()
 	if err := n.Save(); err != nil {
@@ -100,19 +109,29 @@ func main() {
 		print(s)
 	}
 
-	g := c.NewGuest()
-	g.SubnetID = s.ID
-	g.NetworkID = n.ID
-	g.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
-
-	if err := g.Save(); err != nil {
+	g1 := c.NewGuest()
+	g1.SubnetID = s.ID
+	g1.NetworkID = n.ID
+	g1.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
+	g1.FlavorID = f1.ID
+	if err := g1.Save(); err != nil {
 		log.Fatal(err)
 	}
-
-	if err := h.AddGuest(g); err != nil {
+	if err := h.AddGuest(g1); err != nil {
 		log.Fatal(err)
 	}
+	print(g1)
 
-	print(g)
-
+	g2 := c.NewGuest()
+	g2.SubnetID = s.ID
+	g2.NetworkID = n.ID
+	g2.MAC, err = net.ParseMAC("01:23:45:67:89:ac")
+	g2.FlavorID = f2.ID
+	if err := g2.Save(); err != nil {
+		log.Fatal(err)
+	}
+	if err := h.AddGuest(g2); err != nil {
+		log.Fatal(err)
+	}
+	print(g2)
 }
