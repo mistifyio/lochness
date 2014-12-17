@@ -220,7 +220,7 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 			return nil
 		}
 
-		if (avail.Disk-f.Disk <= 0) || (avail.Memory-f.Memory <= 0) {
+		if avail.Disk <= f.Disk || avail.Memory <= f.Memory {
 			return nil
 		}
 
