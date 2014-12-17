@@ -215,7 +215,7 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 			return nil
 		}
 
-		avail, ok := h.Resources["Availible"]
+		avail, ok := h.Resources["available"]
 		if !ok {
 			return nil
 		}
