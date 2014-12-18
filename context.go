@@ -1,8 +1,7 @@
 package lochness
 
 import (
-	"strings"
-
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/go-etcd/etcd"
 )
 
@@ -20,5 +19,6 @@ func NewContext(e *etcd.Client) *Context {
 
 // IsKeyNotFound is a helper to determine if the error is a key not found error
 func IsKeyNotFound(err error) bool {
-	return strings.Contains(err.Error(), "Key not found")
+	e, ok := err.(etcd.EtcdError)
+	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
 }

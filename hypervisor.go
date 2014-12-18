@@ -146,7 +146,7 @@ func (t *Hypervisor) Refresh() error {
 			if err := json.Unmarshal([]byte(n.Value), &t); err != nil {
 				return err
 			}
-
+			t.modifiedIndex = n.ModifiedIndex
 		case "heartbeat":
 			//if exists, then its alive
 			t.alive = true
