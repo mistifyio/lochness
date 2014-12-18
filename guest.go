@@ -187,7 +187,7 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 		return nil, err
 	}
 
-	make(map[string]bool, len(s))
+	subnets := make(map[string]bool, len(s))
 	for _, k := range s {
 		subnets[k] = true
 	}
