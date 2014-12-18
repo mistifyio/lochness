@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -378,7 +377,6 @@ func (t *Hypervisor) AddGuest(g *Guest) error {
 	// an instance where transactions would be cool...
 	g.HypervisorID = t.ID
 
-	fmt.Println(t.ID)
 	return g.Save()
 }
 
