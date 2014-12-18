@@ -29,6 +29,7 @@ type (
 		FWGroupID     string            `json:"fwgroup"`
 		MAC           net.HardwareAddr  `json:"mac"`
 		IP            net.IP            `json:"ip"`
+		Bridge        string            `json:"bridge"`
 	}
 
 	Guests []*Guest
@@ -44,6 +45,7 @@ type (
 		FWGroupID    string            `json:"fwgroup"`
 		MAC          string            `json:"mac"`
 		IP           net.IP            `json:"ip"`
+		Bridge       string            `json:"bridge"`
 	}
 )
 
@@ -59,6 +61,7 @@ func (t *Guest) MarshalJSON() ([]byte, error) {
 		HypervisorID: t.HypervisorID,
 		IP:           t.IP,
 		MAC:          t.MAC.String(),
+		Bridge:       t.Bridge,
 	}
 
 	return json.Marshal(data)
@@ -80,6 +83,7 @@ func (t *Guest) UnmarshalJSON(input []byte) error {
 	t.FWGroupID = data.FWGroupID
 	t.HypervisorID = data.HypervisorID
 	t.IP = data.IP
+	t.Bridge = data.Bridge
 
 	a, err := net.ParseMAC(data.MAC)
 	if err != nil {
