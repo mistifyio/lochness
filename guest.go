@@ -173,6 +173,9 @@ func (t *Guest) Save() error {
 
 func (t *Guest) Candidates() (Hypervisors, error) {
 
+	// should probably be holding a lock when calling this whole function
+	// this whole thing is brute force and nasty...
+
 	f, err := t.context.Flavor(t.FlavorID)
 	if err != nil {
 		return nil, err
@@ -189,7 +192,15 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 
 	subnets := make(map[string]bool, len(s))
 	for _, k := range s {
-		subnets[k] = true
+		subnet, err := t.context.Subnet(k)
+		if err != nil {
+			return nil, err
+		}
+		// only include subnets that have availible addresses
+		avail := subnet.AvailibleAddresses()
+		if len(avail) > 0 {
+			subnets[k] = true
+		}
 	}
 
 	var hypervisors Hypervisors
@@ -235,6 +246,7 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 	return randomizeHypervisors(hypervisors), nil
 }
 
+// based on code found on stackoverflow(?)
 func randomizeHypervisors(s Hypervisors) Hypervisors {
 	for i := range s {
 		j := rand.Intn(i + 1)
