@@ -21,8 +21,12 @@ func TestNewGuest(t *testing.T) {
 	h.Equals(t, 36, len(g.ID))
 }
 
+// TODO: cleanup after test
+
 func TestGuestCandidates(t *testing.T) {
 	c := newContext(t)
+	defer contextCleanup(t)
+
 	s := newSubnet(t)
 	hv := newHypervisor(t)
 

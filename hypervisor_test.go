@@ -19,11 +19,13 @@ func newHypervisor(t *testing.T) *lochness.Hypervisor {
 
 func TestNewHypervisor(t *testing.T) {
 	hv := newHypervisor(t)
+	defer contextCleanup(t)
 	h.Equals(t, 36, len(hv.ID))
 }
 
 func TestHypervisor(t *testing.T) {
 	c := newContext(t)
+	defer contextCleanup(t)
 	hv := newHypervisor(t)
 	id := hv.ID
 	hv, err := c.Hypervisor(id)
@@ -33,6 +35,7 @@ func TestHypervisor(t *testing.T) {
 
 func TestHypervisorIsAlive(t *testing.T) {
 	hv := newHypervisor(t)
+	defer contextCleanup(t)
 	alive, err := hv.IsAlive()
 	h.Ok(t, err)
 	h.Equals(t, false, alive)
