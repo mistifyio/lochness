@@ -154,6 +154,7 @@ func (t *Subnet) Refresh() error {
 	return nil
 }
 
+// Delete removes a subnet. It does not ensure it is unused, so use with extreme caution.
 func (t *Subnet) Delete() error {
 	_, err := t.context.etcd.Delete(filepath.Join(SubnetPath, t.ID), true)
 	return err
@@ -297,7 +298,7 @@ func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
 	return chosen, nil
 }
 
-// ReleaseAddress releases an address
+// ReleaseAddress releases an address. This does not change any thing that may also be referring to this address
 func (t *Subnet) ReleaseAddress(ip net.IP) error {
 	_, err := t.context.etcd.Delete(t.addressKey(ip.String()), false)
 	if err == nil {
