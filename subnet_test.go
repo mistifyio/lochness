@@ -107,6 +107,10 @@ func TestSubnetReserveAddress(t *testing.T) {
 	avail := s.AvailibleAddresses()
 	h.Equals(t, 90, len(avail))
 
+	addresses, err := s.Addresses()
+	h.Ok(t, err)
+	h.Equals(t, 1, len(addresses))
+
 	// make sure change persists
 	err = s.Refresh()
 	h.Ok(t, err)
@@ -139,5 +143,9 @@ func TestSubnetReleaseAddress(t *testing.T) {
 
 	avail = s.AvailibleAddresses()
 	h.Equals(t, 91, len(avail))
+
+	addresses, err := s.Addresses()
+	h.Ok(t, err)
+	h.Equals(t, 0, len(addresses))
 
 }
