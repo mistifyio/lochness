@@ -107,6 +107,7 @@ func reserveAddress(t *testing.T, s *lochness.Subnet) net.IP {
 	return ip
 
 }
+
 func TestSubnetReserveAddress(t *testing.T) {
 	s := newSubnet(t)
 	defer removeSubnet(t, s)
