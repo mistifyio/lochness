@@ -3,6 +3,7 @@ package lochness
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"net"
 	"path/filepath"
@@ -153,9 +154,30 @@ func (t *Subnet) Refresh() error {
 	return nil
 }
 
-// Validate ensures the values are reasonable. It currently does nothing
+func (t *Subnet) Delete() error {
+	_, err := t.context.etcd.Delete(filepath.Join(SubnetPath, t.ID), true)
+	return err
+}
+
+// Validate ensures the values are reasonable.
 func (t *Subnet) Validate() error {
-	// do validation stuff...
+	if t.CIDR == nil {
+		return errors.New("CIDR cannot be nil")
+	}
+
+	if t.StartRange == nil {
+		return errors.New("StartRange cannot be nil")
+	}
+	if !t.CIDR.Contains(t.StartRange) {
+		return fmt.Errorf("%s does not contain %s", t.CIDR, t.StartRange)
+	}
+
+	if t.EndRange == nil {
+		return errors.New("EndRange cannot be nil")
+	}
+	if !t.CIDR.Contains(t.EndRange) {
+		return fmt.Errorf("%s does not contain %s", t.CIDR, t.EndRange)
+	}
 	return nil
 }
 
@@ -277,9 +299,8 @@ func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
 
 // ReleaseAddress releases an address
 func (t *Subnet) ReleaseAddress(ip net.IP) error {
-
 	_, err := t.context.etcd.Delete(t.addressKey(ip.String()), false)
-	if err != nil {
+	if err == nil {
 		delete(t.addresses, ipToI32(ip))
 	}
 	return err
