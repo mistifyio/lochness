@@ -85,12 +85,15 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 		"total":     data.Resources["total"],
 	}
 
-	a, err := net.ParseMAC(data.MAC)
-	if err != nil {
-		return err
+	if data.MAC != "" {
+		a, err := net.ParseMAC(data.MAC)
+		if err != nil {
+			return err
+		}
+
+		t.MAC = a
 	}
 
-	t.MAC = a
 	return nil
 
 }
