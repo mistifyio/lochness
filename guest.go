@@ -221,11 +221,7 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 			return nil
 		}
 
-		avail, ok := h.Resources["available"]
-		if !ok {
-			return nil
-		}
-
+		avail := h.AvailableResources
 		if avail.Disk <= f.Disk || avail.Memory <= f.Memory {
 			return nil
 		}

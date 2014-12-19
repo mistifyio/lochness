@@ -23,45 +23,45 @@ var (
 type (
 	// Hypervisor is a physical box on which guests run
 	Hypervisor struct {
-		context       *Context
-		modifiedIndex uint64
-		ID            string               `json:"id"`
-		Metadata      map[string]string    `json:"metadata"`
-		IP            net.IP               `json:"ip"`
-		Netmask       net.IP               `json:"netmask"`
-		Gateway       net.IP               `json:"gateway"`
-		MAC           net.HardwareAddr     `json:"mac"`
-		Resources     map[string]Resources `json:"resources"`
-		subnets       map[string]string
-		guests        []string
-		alive         bool
+		context            *Context
+		modifiedIndex      uint64
+		ID                 string            `json:"id"`
+		Metadata           map[string]string `json:"metadata"`
+		IP                 net.IP            `json:"ip"`
+		Netmask            net.IP            `json:"netmask"`
+		Gateway            net.IP            `json:"gateway"`
+		MAC                net.HardwareAddr  `json:"mac"`
+		TotalResources     Resources         `json:"total_resources"`
+		AvailableResources Resources         `json:"available_resources"`
+		subnets            map[string]string
+		guests             []string
+		alive              bool
 	}
 
 	Hypervisors []*Hypervisor
 
 	hypervisorJSON struct {
-		ID        string               `json:"id"`
-		Metadata  map[string]string    `json:"metadata"`
-		IP        net.IP               `json:"ip"`
-		Netmask   net.IP               `json:"netmask"`
-		Gateway   net.IP               `json:"gateway"`
-		MAC       string               `json:"mac"`
-		Resources map[string]Resources `json:"resources"`
+		ID                 string            `json:"id"`
+		Metadata           map[string]string `json:"metadata"`
+		IP                 net.IP            `json:"ip"`
+		Netmask            net.IP            `json:"netmask"`
+		Gateway            net.IP            `json:"gateway"`
+		MAC                string            `json:"mac"`
+		TotalResources     Resources         `json:"total_resources"`
+		AvailableResources Resources         `json:"available_resources"`
 	}
 )
 
 func (t *Hypervisor) MarshalJSON() ([]byte, error) {
 	data := hypervisorJSON{
-		ID:       t.ID,
-		Metadata: t.Metadata,
-		IP:       t.IP,
-		Netmask:  t.Netmask,
-		Gateway:  t.Gateway,
-		MAC:      t.MAC.String(),
-		Resources: map[string]Resources{
-			"available": t.Resources["available"],
-			"total":     t.Resources["total"],
-		},
+		ID:                 t.ID,
+		Metadata:           t.Metadata,
+		IP:                 t.IP,
+		Netmask:            t.Netmask,
+		Gateway:            t.Gateway,
+		MAC:                t.MAC.String(),
+		TotalResources:     t.TotalResources,
+		AvailableResources: t.AvailableResources,
 	}
 
 	return json.Marshal(data)
@@ -79,10 +79,8 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 	t.IP = data.IP
 	t.Netmask = data.Netmask
 	t.Gateway = data.Gateway
-	t.Resources = map[string]Resources{
-		"available": data.Resources["available"],
-		"total":     data.Resources["total"],
-	}
+	t.TotalResources = data.TotalResources
+	t.AvailableResources = data.AvailableResources
 
 	if data.MAC != "" {
 		a, err := net.ParseMAC(data.MAC)
@@ -99,11 +97,10 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 
 func (c *Context) blankHypervisor(id string) *Hypervisor {
 	h := &Hypervisor{
-		context:   c,
-		ID:        id,
-		Resources: make(map[string]Resources),
-		subnets:   make(map[string]string),
-		guests:    make([]string, 0, 0),
+		context: c,
+		ID:      id,
+		subnets: make(map[string]string),
+		guests:  make([]string, 0, 0),
 	}
 
 	if id == "" {
@@ -263,20 +260,18 @@ func (t *Hypervisor) UpdateResources() error {
 		return err
 	}
 
-	total := Resources{Memory: m, Disk: d, CPU: c}
-	t.Resources["total"] = total
+	t.TotalResources = Resources{Memory: m, Disk: d, CPU: c}
 
 	usage, err := t.calcGuestsUsage()
 	if err != nil {
 		return err
 	}
 
-	available := Resources{
-		Memory: total.Memory - usage.Memory,
-		Disk:   total.Disk - usage.Disk,
-		CPU:    total.CPU - usage.CPU,
+	t.AvailableResources = Resources{
+		Memory: t.TotalResources.Memory - usage.Memory,
+		Disk:   t.TotalResources.Disk - usage.Disk,
+		CPU:    t.TotalResources.CPU - usage.CPU,
 	}
-	t.Resources["available"] = available
 
 	return t.Save()
 }
