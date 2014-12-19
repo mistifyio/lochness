@@ -50,13 +50,13 @@ func TestGuestCandidates(t *testing.T) {
 	hv, err = c.Hypervisor(hv.ID)
 	h.Ok(t, err)
 
-	hv.Resources["available"] = lochness.Resources{
+	hv.AvailableResources = lochness.Resources{
 		Memory: 8192,
 		CPU:    4,
 		Disk:   65536,
 	}
 
-	hv.Resources["total"] = hv.Resources["available"]
+	hv.TotalResources = hv.AvailableResources
 	err = hv.Save()
 	h.Ok(t, err)
 
