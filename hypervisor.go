@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -85,12 +84,15 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 		"total":     data.Resources["total"],
 	}
 
-	a, err := net.ParseMAC(data.MAC)
-	if err != nil {
-		return err
+	if data.MAC != "" {
+		a, err := net.ParseMAC(data.MAC)
+		if err != nil {
+			return err
+		}
+
+		t.MAC = a
 	}
 
-	t.MAC = a
 	return nil
 
 }
@@ -366,7 +368,46 @@ func (t *Hypervisor) guestKey(g *Guest) string {
 }
 
 func (t *Hypervisor) AddGuest(g *Guest) error {
-	_, err := t.context.etcd.Set(filepath.Join(t.guestKey(g)), g.ID, 0)
+
+	// make sure we have subnet guest wants.  we should have this figured out
+	// when we selected this hypervisor, so this is sort of silly to do again
+	// we need to rethink how we do this
+
+	n, err := t.context.Network(g.NetworkID)
+	if err != nil {
+		return err
+	}
+	subnets, err := n.Subnets()
+	if err != nil {
+		return err
+	}
+
+	var s *Subnet
+	var bridge string
+LOOP:
+	for _, k := range subnets {
+
+		for id, br := range t.subnets {
+			if id == k {
+				subnet, err := t.context.Subnet(id)
+				if err != nil {
+					return err
+				}
+				avail := subnet.AvailibleAddresses()
+				if len(avail) > 0 {
+					s = subnet
+					bridge = br
+					break LOOP
+				}
+			}
+		}
+	}
+
+	if s == nil {
+		return errors.New("no suitable subnet found")
+	}
+
+	ip, err := s.ReserveAddress(g.ID)
 
 	if err != nil {
 		return err
@@ -374,11 +415,39 @@ func (t *Hypervisor) AddGuest(g *Guest) error {
 
 	// an instance where transactions would be cool...
 	g.HypervisorID = t.ID
+	g.IP = ip
+	g.SubnetID = s.ID
+	g.Bridge = bridge
 
-	fmt.Println(t.ID)
+	_, err = t.context.etcd.Set(filepath.Join(t.guestKey(g)), g.ID, 0)
+
+	if err != nil {
+		return err
+	}
+
 	return g.Save()
 }
 
 func (t *Hypervisor) Guests() ([]string, error) {
 	return t.guests, nil
+}
+
+func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
+	// should we condense this to a single etcd call?
+	// We would need to rework how we "load" hypervisor a bit
+	resp, err := c.etcd.Get(HypervisorPath, false, false)
+	if err != nil {
+		return err
+	}
+	for _, n := range resp.Node.Nodes {
+		h, err := c.Hypervisor(filepath.Base(n.Key))
+		if err != nil {
+			return err
+		}
+
+		if err := f(h); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net"
 	"path/filepath"
 
@@ -28,6 +29,7 @@ type (
 		FWGroupID     string            `json:"fwgroup"`
 		MAC           net.HardwareAddr  `json:"mac"`
 		IP            net.IP            `json:"ip"`
+		Bridge        string            `json:"bridge"`
 	}
 
 	Guests []*Guest
@@ -43,6 +45,7 @@ type (
 		FWGroupID    string            `json:"fwgroup"`
 		MAC          string            `json:"mac"`
 		IP           net.IP            `json:"ip"`
+		Bridge       string            `json:"bridge"`
 	}
 )
 
@@ -58,6 +61,7 @@ func (t *Guest) MarshalJSON() ([]byte, error) {
 		HypervisorID: t.HypervisorID,
 		IP:           t.IP,
 		MAC:          t.MAC.String(),
+		Bridge:       t.Bridge,
 	}
 
 	return json.Marshal(data)
@@ -79,6 +83,7 @@ func (t *Guest) UnmarshalJSON(input []byte) error {
 	t.FWGroupID = data.FWGroupID
 	t.HypervisorID = data.HypervisorID
 	t.IP = data.IP
+	t.Bridge = data.Bridge
 
 	a, err := net.ParseMAC(data.MAC)
 	if err != nil {
@@ -168,4 +173,89 @@ func (t *Guest) Save() error {
 
 	t.modifiedIndex = resp.EtcdIndex
 	return nil
+}
+
+func (t *Guest) Candidates() (Hypervisors, error) {
+
+	// should probably be holding a lock when calling this whole function
+	// this whole thing is brute force and nasty...
+
+	f, err := t.context.Flavor(t.FlavorID)
+	if err != nil {
+		return nil, err
+	}
+
+	n, err := t.context.Network(t.NetworkID)
+	if err != nil {
+		return nil, err
+	}
+	s, err := n.Subnets()
+	if err != nil {
+		return nil, err
+	}
+
+	subnets := make(map[string]bool, len(s))
+	for _, k := range s {
+		subnet, err := t.context.Subnet(k)
+		if err != nil {
+			return nil, err
+		}
+		// only include subnets that have availible addresses
+		avail := subnet.AvailibleAddresses()
+		if len(avail) > 0 {
+			subnets[k] = true
+		}
+	}
+
+	var hypervisors Hypervisors
+	err = t.context.ForEachHypervisor(func(h *Hypervisor) error {
+		if ok, err := h.IsAlive(); !ok || err != nil {
+			return nil
+		}
+		s, err := h.Subnets()
+		if err != nil {
+			// returning an error stops iteration, so just continue
+			return nil
+		}
+
+		hasSubnet := false
+		for k, _ := range s {
+			if _, ok := subnets[k]; ok {
+				// we want to see if we have any availible ip's?
+				hasSubnet = true
+				break
+			}
+		}
+
+		if !hasSubnet {
+			return nil
+		}
+
+		avail, ok := h.Resources["available"]
+		if !ok {
+			return nil
+		}
+
+		if avail.Disk <= f.Disk || avail.Memory <= f.Memory {
+			return nil
+		}
+
+		hypervisors = append(hypervisors, h)
+		return nil
+	})
+
+	if err != nil && len(hypervisors) == 0 {
+		return nil, err
+	}
+	return randomizeHypervisors(hypervisors), nil
+}
+
+// based on code found on stackoverflow(?)
+func randomizeHypervisors(s Hypervisors) Hypervisors {
+	for i := range s {
+		j := rand.Intn(i + 1)
+		s[i], s[j] = s[j], s[i]
+	}
+
+	return s
 }
