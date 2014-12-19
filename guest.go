@@ -209,17 +209,11 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 
 	var hypervisors Hypervisors
 	err = t.context.ForEachHypervisor(func(h *Hypervisor) error {
-		if ok, err := h.IsAlive(); !ok || err != nil {
+		if !h.IsAlive() {
 			return nil
 		}
-		s, err := h.Subnets()
-		if err != nil {
-			// returning an error stops iteration, so just continue
-			return nil
-		}
-
 		hasSubnet := false
-		for k, _ := range s {
+		for k, _ := range h.Subnets() {
 			if _, ok := subnets[k]; ok {
 				// we want to see if we have any availible ip's?
 				hasSubnet = true

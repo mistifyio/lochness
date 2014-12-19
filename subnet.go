@@ -215,7 +215,7 @@ func (t *Subnet) addressKey(address string) string {
 }
 
 // Addresses returns used IP addresses
-func (t *Subnet) Addresses() (map[string]string, error) {
+func (t *Subnet) Addresses() map[string]string {
 
 	addresses := make(map[string]string)
 
@@ -230,7 +230,7 @@ func (t *Subnet) Addresses() (map[string]string, error) {
 		}
 	}
 
-	return addresses, nil
+	return addresses
 }
 
 // based on https://github.com/ziutek/utils/
