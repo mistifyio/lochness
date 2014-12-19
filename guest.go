@@ -189,11 +189,7 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 	if err != nil {
 		return nil, err
 	}
-	s, err := n.Subnets()
-	if err != nil {
-		return nil, err
-	}
-
+	s := n.Subnets()
 	subnets := make(map[string]bool, len(s))
 	for _, k := range s {
 		subnet, err := t.context.Subnet(k)

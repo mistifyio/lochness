@@ -31,7 +31,26 @@ func contextCleanup(t *testing.T) {
 	}
 
 	_, err := e.Delete("lochness", true)
-	h.Ok(t, err)
+	if !lochness.IsKeyNotFound(err) {
+		h.Ok(t, err)
+	}
+}
+
+func TestIsKeyNotFound(t *testing.T) {
+	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
+	newContext(t)
+	defer contextCleanup(t)
+
+	_, err := e.Get("lochness/some-randon-non-existent-key", false, false)
+
+	if !lochness.IsKeyNotFound(err) {
+		t.Fatalf("was expecting a KeyNotFound error, got: %#v\n", err)
+	}
+
+	err = errors.New("lochness/some-random-non-key-not-found-error")
+	if lochness.IsKeyNotFound(err) {
+		t.Fatal("got unexpected positive KeyNotFound error for err:", err)
+	}
 }
 
 func TestIsKeyNotFound(t *testing.T) {

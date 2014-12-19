@@ -367,15 +367,10 @@ func (t *Hypervisor) AddGuest(g *Guest) error {
 	if err != nil {
 		return err
 	}
-	subnets, err := n.Subnets()
-	if err != nil {
-		return err
-	}
-
 	var s *Subnet
 	var bridge string
 LOOP:
-	for _, k := range subnets {
+	for _, k := range n.Subnets() {
 
 		for id, br := range t.subnets {
 			if id == k {
