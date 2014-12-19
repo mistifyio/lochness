@@ -19,27 +19,33 @@ type (
 		modifiedIndex uint64
 		ID            string            `json:"id"`
 		Metadata      map[string]string `json:"metadata"`
+		subnets       []string
 	}
 
 	Networks []*Network
 )
 
-func (c *Context) NewNetwork() *Network {
+func (c *Context) blankNetwork(id string) *Network {
 	t := &Network{
 		context:  c,
-		ID:       uuid.New(),
+		ID:       id,
 		Metadata: make(map[string]string),
+		subnets:  make([]string, 0, 0),
+	}
+
+	if id == "" {
+		t.ID = uuid.New()
 	}
 
 	return t
 }
 
-func (c *Context) Network(id string) (*Network, error) {
-	t := &Network{
-		context: c,
-		ID:      id,
-	}
+func (c *Context) NewNetwork() *Network {
+	return c.blankNetwork("")
+}
 
+func (c *Context) Network(id string) (*Network, error) {
+	t := c.blankNetwork(id)
 	err := t.Refresh()
 	if err != nil {
 		return nil, err
@@ -51,25 +57,34 @@ func (t *Network) key() string {
 	return filepath.Join(NetworkPath, t.ID, "metadata")
 }
 
-func (t *Network) fromResponse(resp *etcd.Response) error {
-	t.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &t)
-}
-
 // Refresh reloads from the data store
 func (t *Network) Refresh() error {
-	resp, err := t.context.etcd.Get(t.key(), false, false)
+
+	resp, err := t.context.etcd.Get(filepath.Join(NetworkPath, t.ID), false, true)
 
 	if err != nil {
 		return err
 	}
 
-	if resp == nil || resp.Node == nil {
-		// should this be an error??
-		return nil
+	for _, n := range resp.Node.Nodes {
+		key := filepath.Base(n.Key)
+		switch key {
+
+		case "metadata":
+			if err := json.Unmarshal([]byte(n.Value), &t); err != nil {
+				return err
+			}
+			t.modifiedIndex = n.ModifiedIndex
+
+		case "subnets":
+			for _, n := range n.Nodes {
+				t.subnets = append(t.subnets, filepath.Base(n.Key))
+			}
+		}
 	}
 
-	return t.fromResponse(resp)
+	return nil
+
 }
 
 func (t *Network) Validate() error {
@@ -122,19 +137,17 @@ func (t *Network) AddSubnet(s *Subnet) error {
 
 	// an instance where transactions would be cool...
 	s.NetworkID = t.ID
-	return s.Save()
+	err = s.Save()
+	if err != nil {
+		return err
+	}
+
+	t.subnets = append(t.subnets, s.ID)
+
+	return nil
 }
 
-func (t *Network) Subnets() ([]string, error) {
-	resp, err := t.context.etcd.Get(t.subnetKey(nil), true, true)
-	if err != nil {
-		return nil, err
-	}
+func (t *Network) Subnets() []string {
+	return t.subnets
 
-	var subnets []string
-	for _, n := range resp.Node.Nodes {
-		subnets = append(subnets, filepath.Base(n.Key))
-	}
-
-	return subnets, nil
 }
