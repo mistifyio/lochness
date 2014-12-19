@@ -30,5 +30,7 @@ func contextCleanup(t *testing.T) {
 	}
 
 	_, err := e.Delete("lochness", true)
-	h.Ok(t, err)
+	if !lochness.IsKeyNotFound(err) {
+		h.Ok(t, err)
+	}
 }
