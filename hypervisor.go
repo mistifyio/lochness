@@ -226,13 +226,8 @@ func (t *Hypervisor) verifyOnHV() error {
 }
 
 func (t *Hypervisor) calcGuestsUsage() (Resources, error) {
-	guests, err := t.Guests()
-	if err != nil {
-		return Resources{}, err
-	}
-
 	usage := Resources{}
-	for _, guestID := range guests {
+	for _, guestID := range t.Guests() {
 		guest, err := t.context.Guest(guestID)
 		if err != nil {
 			return Resources{}, err
@@ -334,8 +329,8 @@ func (t *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 	return err
 }
 
-func (t *Hypervisor) Subnets() (map[string]string, error) {
-	return t.subnets, nil
+func (t *Hypervisor) Subnets() map[string]string {
+	return t.subnets
 }
 
 func (t *Hypervisor) heartbeatKey() string {
@@ -355,8 +350,8 @@ func (t *Hypervisor) Heartbeat(ttl time.Duration) error {
 }
 
 // IsAlive checks if the Heartbeat is availible
-func (t *Hypervisor) IsAlive() (bool, error) {
-	return t.alive, nil
+func (t *Hypervisor) IsAlive() bool {
+	return t.alive
 }
 
 func (t *Hypervisor) guestKey(g *Guest) string {
@@ -428,8 +423,8 @@ LOOP:
 	return g.Save()
 }
 
-func (t *Hypervisor) Guests() ([]string, error) {
-	return t.guests, nil
+func (t *Hypervisor) Guests() []string {
+	return t.guests
 }
 
 func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {

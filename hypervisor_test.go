@@ -36,7 +36,5 @@ func TestHypervisor(t *testing.T) {
 func TestHypervisorIsAlive(t *testing.T) {
 	hv := newHypervisor(t)
 	defer contextCleanup(t)
-	alive, err := hv.IsAlive()
-	h.Ok(t, err)
-	h.Equals(t, false, alive)
+	h.Equals(t, false, hv.IsAlive())
 }

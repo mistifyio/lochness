@@ -72,9 +72,7 @@ func TestSubnetAddresses(t *testing.T) {
 	s := newSubnet(t)
 	defer removeSubnet(t, s)
 
-	addresses, err := s.Addresses()
-	h.Ok(t, err)
-	h.Equals(t, 0, len(addresses))
+	h.Equals(t, 0, len(s.Addresses()))
 }
 
 func TestSubnetAvailibleAddresses(t *testing.T) {
@@ -90,19 +88,15 @@ func reserveAddress(t *testing.T, s *lochness.Subnet) net.IP {
 
 	h.Assert(t, strings.Contains(ip.String(), "10.10.10."), "unexpected ip address")
 
-	avail := s.AvailibleAddresses()
-	h.Equals(t, 90, len(avail))
+	h.Equals(t, 90, len(s.AvailibleAddresses()))
 
-	addresses, err := s.Addresses()
-	h.Ok(t, err)
-	h.Equals(t, 1, len(addresses))
+	h.Equals(t, 1, len(s.Addresses()))
 
 	// make sure change persists
 	err = s.Refresh()
 	h.Ok(t, err)
 
-	avail = s.AvailibleAddresses()
-	h.Equals(t, 90, len(avail))
+	h.Equals(t, 90, len(s.AvailibleAddresses()))
 
 	return ip
 
@@ -123,18 +117,14 @@ func TestSubnetReleaseAddress(t *testing.T) {
 	err := s.ReleaseAddress(ip)
 	h.Ok(t, err)
 
-	avail := s.AvailibleAddresses()
-	h.Equals(t, 91, len(avail))
+	h.Equals(t, 91, len(s.AvailibleAddresses()))
 
 	// make sure change persists
 	err = s.Refresh()
 	h.Ok(t, err)
 
-	avail = s.AvailibleAddresses()
-	h.Equals(t, 91, len(avail))
+	h.Equals(t, 91, len(s.AvailibleAddresses()))
 
-	addresses, err := s.Addresses()
-	h.Ok(t, err)
-	h.Equals(t, 0, len(addresses))
+	h.Equals(t, 0, len(s.Addresses()))
 
 }
