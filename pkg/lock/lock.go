@@ -33,7 +33,9 @@ func acquire(c *etcd.Client, key, value string, ttl uint64) (uint64, error) {
 	return resp.EtcdIndex, nil
 }
 
-//Acquire will attempt to acquire the lock, if blocking is set to true it will wait forever to do so
+//Acquire will attempt to acquire the lock, if blocking is set to true it will wait forever to do so.
+//Setting blocking to false would be the equivalent of a fictional TryAcquire, an immediate return
+//if locking fails.
 func Acquire(c *etcd.Client, key, value string, ttl uint64, blocking bool) (*Lock, error) {
 	index := uint64(0)
 	var err error
