@@ -9,11 +9,12 @@ import (
 )
 
 var (
+	// NetworkPath is the path in the config store.
 	NetworkPath = "lochness/networks/"
 )
 
 type (
-	// Network is a logical collection of subnets
+	// Network is a logical collection of subnets.
 	Network struct {
 		context       *Context
 		modifiedIndex uint64
@@ -22,11 +23,13 @@ type (
 		subnets       []string
 	}
 
+	// Networks is a convenience type for Network slices
 	Networks []*Network
 )
 
+// blankHypervisor is a helper for creating a blank Network.
 func (c *Context) blankNetwork(id string) *Network {
-	t := &Network{
+	n := &Network{
 		context:  c,
 		ID:       id,
 		Metadata: make(map[string]string),
@@ -34,51 +37,54 @@ func (c *Context) blankNetwork(id string) *Network {
 	}
 
 	if id == "" {
-		t.ID = uuid.New()
+		n.ID = uuid.New()
 	}
 
-	return t
+	return n
 }
 
+// NewNetwork creates a new, blank Network.
 func (c *Context) NewNetwork() *Network {
 	return c.blankNetwork("")
 }
 
+// Network fetches a Network from the data store.
 func (c *Context) Network(id string) (*Network, error) {
-	t := c.blankNetwork(id)
-	err := t.Refresh()
+	n := c.blankNetwork(id)
+	err := n.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	return t, nil
+	return n, nil
 }
 
-func (t *Network) key() string {
-	return filepath.Join(NetworkPath, t.ID, "metadata")
+// key is a helper to generate the config store key.
+func (n *Network) key() string {
+	return filepath.Join(NetworkPath, n.ID, "metadata")
 }
 
-// Refresh reloads from the data store
-func (t *Network) Refresh() error {
+// Refresh reloads the Network from the data store.
+func (n *Network) Refresh() error {
 
-	resp, err := t.context.etcd.Get(filepath.Join(NetworkPath, t.ID), false, true)
+	resp, err := n.context.etcd.Get(filepath.Join(NetworkPath, n.ID), false, true)
 
 	if err != nil {
 		return err
 	}
 
-	for _, n := range resp.Node.Nodes {
-		key := filepath.Base(n.Key)
+	for _, node := range resp.Node.Nodes {
+		key := filepath.Base(node.Key)
 		switch key {
 
 		case "metadata":
-			if err := json.Unmarshal([]byte(n.Value), &t); err != nil {
+			if err := json.Unmarshal([]byte(node.Value), &n); err != nil {
 				return err
 			}
-			t.modifiedIndex = n.ModifiedIndex
+			n.modifiedIndex = node.ModifiedIndex
 
 		case "subnets":
-			for _, n := range n.Nodes {
-				t.subnets = append(t.subnets, filepath.Base(n.Key))
+			for _, x := range node.Nodes {
+				n.subnets = append(n.subnets, filepath.Base(x.Key))
 			}
 		}
 	}
@@ -87,18 +93,20 @@ func (t *Network) Refresh() error {
 
 }
 
-func (t *Network) Validate() error {
+// Validate ensures a Network has reasonable data. It currently does nothing.
+func (n *Network) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
-func (t *Network) Save() error {
+// Save persists a Network.  It will call Validate.
+func (n *Network) Save() error {
 
-	if err := t.Validate(); err != nil {
+	if err := n.Validate(); err != nil {
 		return err
 	}
 
-	v, err := json.Marshal(t)
+	v, err := json.Marshal(n)
 
 	if err != nil {
 		return err
@@ -106,48 +114,50 @@ func (t *Network) Save() error {
 
 	// if we changed something, don't clobber
 	var resp *etcd.Response
-	if t.modifiedIndex != 0 {
-		resp, err = t.context.etcd.CompareAndSwap(t.key(), string(v), 0, "", t.modifiedIndex)
+	if n.modifiedIndex != 0 {
+		resp, err = n.context.etcd.CompareAndSwap(n.key(), string(v), 0, "", n.modifiedIndex)
 	} else {
-		resp, err = t.context.etcd.Create(t.key(), string(v), 0)
+		resp, err = n.context.etcd.Create(n.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
 	}
 
-	t.modifiedIndex = resp.EtcdIndex
+	n.modifiedIndex = resp.EtcdIndex
 	return nil
 }
 
-func (t *Network) subnetKey(s *Subnet) string {
+func (n *Network) subnetKey(s *Subnet) string {
 	var key string
 	if s != nil {
 		key = s.ID
 	}
-	return filepath.Join(NetworkPath, t.ID, "subnets", key)
+	return filepath.Join(NetworkPath, n.ID, "subnets", key)
 }
 
 // when we load one, should we make sure the networkid actually matches us?
 
-func (t *Network) AddSubnet(s *Subnet) error {
-	_, err := t.context.etcd.Set(filepath.Join(t.subnetKey(s)), "", 0)
+// AddSubnet adds a Subnet to the Network.
+func (n *Network) AddSubnet(s *Subnet) error {
+	_, err := n.context.etcd.Set(filepath.Join(n.subnetKey(s)), "", 0)
 	if err != nil {
 		return err
 	}
 
 	// an instance where transactions would be cool...
-	s.NetworkID = t.ID
+	s.NetworkID = n.ID
 	err = s.Save()
 	if err != nil {
 		return err
 	}
 
-	t.subnets = append(t.subnets, s.ID)
+	n.subnets = append(n.subnets, s.ID)
 
 	return nil
 }
 
-func (t *Network) Subnets() []string {
-	return t.subnets
+// Subnets returns the IDs of the Subnets associated with the network.
+func (n *Network) Subnets() []string {
+	return n.subnets
 
 }

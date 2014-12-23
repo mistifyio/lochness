@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	// FlavorPath is the path in the config store
 	FlavorPath = "lochness/flavors/"
 )
 
@@ -22,8 +23,10 @@ type (
 		Resources
 	}
 
+	// Flavors is a convenience type for Flavor slices
 	Flavors []*Flavor
 
+	// Resources represents compute resources
 	Resources struct {
 		Memory uint64 `json:"memory"` // memory in MB
 		Disk   uint64 `json:"disk"`   // disk in MB
@@ -31,41 +34,45 @@ type (
 	}
 )
 
+// NewFlavor creates a blank Flavor
 func (c *Context) NewFlavor() *Flavor {
-	t := &Flavor{
+	f := &Flavor{
 		context:  c,
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
 
-	return t
+	return f
 }
 
+// Flavor fetches a single Flavor from the config store
 func (c *Context) Flavor(id string) (*Flavor, error) {
-	t := &Flavor{
+	f := &Flavor{
 		context: c,
 		ID:      id,
 	}
 
-	err := t.Refresh()
+	err := f.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	return t, nil
+	return f, nil
 }
 
-func (t *Flavor) key() string {
-	return filepath.Join(FlavorPath, t.ID, "metadata")
+// key is a helper to generate the config store key
+func (f *Flavor) key() string {
+	return filepath.Join(FlavorPath, f.ID, "metadata")
 }
 
-func (t *Flavor) fromResponse(resp *etcd.Response) error {
-	t.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &t)
+// fromResponse is a helper to unmarshal a Flavor
+func (f *Flavor) fromResponse(resp *etcd.Response) error {
+	f.modifiedIndex = resp.Node.ModifiedIndex
+	return json.Unmarshal([]byte(resp.Node.Value), &f)
 }
 
 // Refresh reloads from the data store
-func (t *Flavor) Refresh() error {
-	resp, err := t.context.etcd.Get(t.key(), false, false)
+func (f *Flavor) Refresh() error {
+	resp, err := f.context.etcd.Get(f.key(), false, false)
 
 	if err != nil {
 		return err
@@ -76,21 +83,23 @@ func (t *Flavor) Refresh() error {
 		return nil
 	}
 
-	return t.fromResponse(resp)
+	return f.fromResponse(resp)
 }
 
-func (t *Flavor) Validate() error {
+// Validate ensures a Flavor has reasonable data. It currently does nothing.
+func (f *Flavor) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
-func (t *Flavor) Save() error {
+// Save persists a Flavor.  It will call Validate.
+func (f *Flavor) Save() error {
 
-	if err := t.Validate(); err != nil {
+	if err := f.Validate(); err != nil {
 		return err
 	}
 
-	v, err := json.Marshal(t)
+	v, err := json.Marshal(f)
 
 	if err != nil {
 		return err
@@ -98,15 +107,15 @@ func (t *Flavor) Save() error {
 
 	// if we changed something, don't clobber
 	var resp *etcd.Response
-	if t.modifiedIndex != 0 {
-		resp, err = t.context.etcd.CompareAndSwap(t.key(), string(v), 0, "", t.modifiedIndex)
+	if f.modifiedIndex != 0 {
+		resp, err = f.context.etcd.CompareAndSwap(f.key(), string(v), 0, "", f.modifiedIndex)
 	} else {
-		resp, err = t.context.etcd.Create(t.key(), string(v), 0)
+		resp, err = f.context.etcd.Create(f.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
 	}
 
-	t.modifiedIndex = resp.EtcdIndex
+	f.modifiedIndex = resp.EtcdIndex
 	return nil
 }

@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	// HypervisorPath is the path in the config store
 	HypervisorPath = "lochness/hypervisors/"
 )
 
@@ -38,8 +39,10 @@ type (
 		alive              bool
 	}
 
+	// Hypervisors is a convenience type for Hypervisor slices
 	Hypervisors []*Hypervisor
 
+	// hypervisorJSON is used to ease json marshal/unmarshal
 	hypervisorJSON struct {
 		ID                 string            `json:"id"`
 		Metadata           map[string]string `json:"metadata"`
@@ -52,35 +55,37 @@ type (
 	}
 )
 
-func (t *Hypervisor) MarshalJSON() ([]byte, error) {
+// MarshalJSON is a helper for marshalling a Hypervisor
+func (h *Hypervisor) MarshalJSON() ([]byte, error) {
 	data := hypervisorJSON{
-		ID:                 t.ID,
-		Metadata:           t.Metadata,
-		IP:                 t.IP,
-		Netmask:            t.Netmask,
-		Gateway:            t.Gateway,
-		MAC:                t.MAC.String(),
-		TotalResources:     t.TotalResources,
-		AvailableResources: t.AvailableResources,
+		ID:                 h.ID,
+		Metadata:           h.Metadata,
+		IP:                 h.IP,
+		Netmask:            h.Netmask,
+		Gateway:            h.Gateway,
+		MAC:                h.MAC.String(),
+		TotalResources:     h.TotalResources,
+		AvailableResources: h.AvailableResources,
 	}
 
 	return json.Marshal(data)
 }
 
-func (t *Hypervisor) UnmarshalJSON(input []byte) error {
+// UnmarshalJSON is a helper for unmarshalling a Hypervisor
+func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 	data := hypervisorJSON{}
 
 	if err := json.Unmarshal(input, &data); err != nil {
 		return err
 	}
 
-	t.ID = data.ID
-	t.Metadata = data.Metadata
-	t.IP = data.IP
-	t.Netmask = data.Netmask
-	t.Gateway = data.Gateway
-	t.TotalResources = data.TotalResources
-	t.AvailableResources = data.AvailableResources
+	h.ID = data.ID
+	h.Metadata = data.Metadata
+	h.IP = data.IP
+	h.Netmask = data.Netmask
+	h.Gateway = data.Gateway
+	h.TotalResources = data.TotalResources
+	h.AvailableResources = data.AvailableResources
 
 	if data.MAC != "" {
 		a, err := net.ParseMAC(data.MAC)
@@ -88,13 +93,14 @@ func (t *Hypervisor) UnmarshalJSON(input []byte) error {
 			return err
 		}
 
-		t.MAC = a
+		h.MAC = a
 	}
 
 	return nil
 
 }
 
+// blankHypervisor is a helper for creating a blank Hypervisor.
 func (c *Context) blankHypervisor(id string) *Hypervisor {
 	h := &Hypervisor{
 		context: c,
@@ -110,28 +116,31 @@ func (c *Context) blankHypervisor(id string) *Hypervisor {
 	return h
 }
 
+// NewHypervisor create a new blank Hypervisor.
 func (c *Context) NewHypervisor() *Hypervisor {
 	return c.blankHypervisor("")
 }
 
+// Hypervisor fetches a Hypervisor from the config store.
 func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
-	t := c.blankHypervisor(id)
+	h := c.blankHypervisor(id)
 
-	err := t.Refresh()
+	err := h.Refresh()
 	if err != nil {
 		return nil, err
 	}
 
-	return t, nil
+	return h, nil
 }
 
-func (t *Hypervisor) key() string {
-	return filepath.Join(HypervisorPath, t.ID, "metadata")
+// key is a helper to generate the config store key.
+func (h *Hypervisor) key() string {
+	return filepath.Join(HypervisorPath, h.ID, "metadata")
 }
 
-// Refresh reloads from the data store
-func (t *Hypervisor) Refresh() error {
-	resp, err := t.context.etcd.Get(filepath.Join(HypervisorPath, t.ID), false, true)
+// Refresh reloads a Hypervisor from the data store.
+func (h *Hypervisor) Refresh() error {
+	resp, err := h.context.etcd.Get(filepath.Join(HypervisorPath, h.ID), false, true)
 
 	if err != nil {
 		return err
@@ -142,21 +151,21 @@ func (t *Hypervisor) Refresh() error {
 		switch key {
 
 		case "metadata":
-			if err := json.Unmarshal([]byte(n.Value), &t); err != nil {
+			if err := json.Unmarshal([]byte(n.Value), &h); err != nil {
 				return err
 			}
-			t.modifiedIndex = n.ModifiedIndex
+			h.modifiedIndex = n.ModifiedIndex
 		case "heartbeat":
 			//if exists, then its alive
-			t.alive = true
+			h.alive = true
 
 		case "subnets":
 			for _, n := range n.Nodes {
-				t.subnets[filepath.Base(n.Key)] = n.Value
+				h.subnets[filepath.Base(n.Key)] = n.Value
 			}
 		case "guests":
 			for _, n := range n.Nodes {
-				t.guests = append(t.guests, filepath.Base(n.Key))
+				h.guests = append(h.guests, filepath.Base(n.Key))
 			}
 		}
 	}
@@ -192,6 +201,7 @@ func disk() (uint64, error) {
 	return uint64(stat.Bsize) * stat.Bavail * 80 / 100 / 1024 / 1024, err
 }
 
+// cpu gets number of CPU's.
 func cpu() (uint32, error) {
 	f, err := os.Open("/proc/cpuinfo")
 	if err != nil {
@@ -207,7 +217,8 @@ func cpu() (uint32, error) {
 	return uint32(count - 1), scanner.Err()
 }
 
-func (t *Hypervisor) verifyOnHV() error {
+// verifyOnHV verifies that it is being ran on hypervisor with same hostname as id.
+func (h *Hypervisor) verifyOnHV() error {
 	hostname := os.Getenv("TEST_HOSTNAME")
 	if hostname == "" {
 		var err error
@@ -216,22 +227,23 @@ func (t *Hypervisor) verifyOnHV() error {
 			return err
 		}
 	}
-	if hostname != t.ID {
+	if hostname != h.ID {
 		return errors.New("Hypervisor ID does not match hostname")
 	}
 	return nil
 }
 
-func (t *Hypervisor) calcGuestsUsage() (Resources, error) {
+// calcGuestsUsage calculates gutes usage
+func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	usage := Resources{}
-	for _, guestID := range t.Guests() {
-		guest, err := t.context.Guest(guestID)
+	for _, guestID := range h.Guests() {
+		guest, err := h.context.Guest(guestID)
 		if err != nil {
 			return Resources{}, err
 		}
 
 		// cache?
-		flavor, err := t.context.Flavor(guest.FlavorID)
+		flavor, err := h.context.Flavor(guest.FlavorID)
 		if err != nil {
 			return Resources{}, err
 		}
@@ -241,9 +253,10 @@ func (t *Hypervisor) calcGuestsUsage() (Resources, error) {
 	return usage, nil
 }
 
-// UpdateResources syncs resource usage to the data store
-func (t *Hypervisor) UpdateResources() error {
-	if err := t.verifyOnHV(); err != nil {
+// UpdateResources syncs Hypervisor resource usage to the data store. It should only be ran on
+// the actual hypervisor.
+func (h *Hypervisor) UpdateResources() error {
+	if err := h.verifyOnHV(); err != nil {
 		return err
 	}
 
@@ -260,34 +273,36 @@ func (t *Hypervisor) UpdateResources() error {
 		return err
 	}
 
-	t.TotalResources = Resources{Memory: m, Disk: d, CPU: c}
+	h.TotalResources = Resources{Memory: m, Disk: d, CPU: c}
 
-	usage, err := t.calcGuestsUsage()
+	usage, err := h.calcGuestsUsage()
 	if err != nil {
 		return err
 	}
 
-	t.AvailableResources = Resources{
-		Memory: t.TotalResources.Memory - usage.Memory,
-		Disk:   t.TotalResources.Disk - usage.Disk,
-		CPU:    t.TotalResources.CPU - usage.CPU,
+	h.AvailableResources = Resources{
+		Memory: h.TotalResources.Memory - usage.Memory,
+		Disk:   h.TotalResources.Disk - usage.Disk,
+		CPU:    h.TotalResources.CPU - usage.CPU,
 	}
 
-	return t.Save()
+	return h.Save()
 }
 
-func (t *Hypervisor) Validate() error {
+// Validate ensures a Hypervisor has reasonable data. It currently does nothing.
+func (h *Hypervisor) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
-func (t *Hypervisor) Save() error {
+// Save persists a FWGroup.  It will call Validate.
+func (h *Hypervisor) Save() error {
 
-	if err := t.Validate(); err != nil {
+	if err := h.Validate(); err != nil {
 		return err
 	}
 
-	v, err := json.Marshal(t)
+	v, err := json.Marshal(h)
 
 	if err != nil {
 		return err
@@ -295,75 +310,81 @@ func (t *Hypervisor) Save() error {
 
 	// if we changed something, don't clobber
 	var resp *etcd.Response
-	if t.modifiedIndex != 0 {
-		resp, err = t.context.etcd.CompareAndSwap(t.key(), string(v), 0, "", t.modifiedIndex)
+	if h.modifiedIndex != 0 {
+		resp, err = h.context.etcd.CompareAndSwap(h.key(), string(v), 0, "", h.modifiedIndex)
 	} else {
-		resp, err = t.context.etcd.Create(t.key(), string(v), 0)
+		resp, err = h.context.etcd.Create(h.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
 	}
 
-	t.modifiedIndex = resp.EtcdIndex
+	h.modifiedIndex = resp.EtcdIndex
 
 	return nil
 }
 
 // the many side of many:one relationships is done with nested keys
 
-func (t *Hypervisor) subnetKey(s *Subnet) string {
+func (h *Hypervisor) subnetKey(s *Subnet) string {
 	var key string
 	if s != nil {
 		key = s.ID
 	}
-	return filepath.Join(HypervisorPath, t.ID, "subnets", key)
+	return filepath.Join(HypervisorPath, h.ID, "subnets", key)
 }
 
-func (t *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
-	_, err := t.context.etcd.Set(filepath.Join(t.subnetKey(s)), bridge, 0)
+// AddSubnet adds a subnet to a Hypervisor.
+func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
+	_, err := h.context.etcd.Set(filepath.Join(h.subnetKey(s)), bridge, 0)
 	return err
 }
 
-func (t *Hypervisor) Subnets() map[string]string {
-	return t.subnets
+// Subnets returns the subnet/bridge mappings for a Hypervisor.
+func (h *Hypervisor) Subnets() map[string]string {
+	return h.subnets
 }
 
-func (t *Hypervisor) heartbeatKey() string {
-	return filepath.Join(HypervisorPath, t.ID, "heartbeat")
+// heartbeatKey is a helper for generating a key for config store.
+func (h *Hypervisor) heartbeatKey() string {
+	return filepath.Join(HypervisorPath, h.ID, "heartbeat")
 }
 
 // Heartbeat announces the avilibility of a hypervisor.  In general, this is useful for
 // service announcement/discovery. Should be ran from the hypervisor, or something monitoring it.
-func (t *Hypervisor) Heartbeat(ttl time.Duration) error {
-	if err := t.verifyOnHV(); err != nil {
+func (h *Hypervisor) Heartbeat(ttl time.Duration) error {
+	if err := h.verifyOnHV(); err != nil {
 		return err
 	}
 
 	v := time.Now().String()
-	_, err := t.context.etcd.Set(t.heartbeatKey(), v, uint64(ttl.Seconds()))
+	_, err := h.context.etcd.Set(h.heartbeatKey(), v, uint64(ttl.Seconds()))
 	return err
 }
 
-// IsAlive checks if the Heartbeat is availible
-func (t *Hypervisor) IsAlive() bool {
-	return t.alive
+// IsAlive returns true if the heartbeat is present.
+func (h *Hypervisor) IsAlive() bool {
+	return h.alive
 }
 
-func (t *Hypervisor) guestKey(g *Guest) string {
+// guestKey for generating a key for config store.
+func (h *Hypervisor) guestKey(g *Guest) string {
 	var key string
 	if g != nil {
 		key = g.ID
 	}
-	return filepath.Join(HypervisorPath, t.ID, "guests", key)
+	return filepath.Join(HypervisorPath, h.ID, "guests", key)
 }
 
-func (t *Hypervisor) AddGuest(g *Guest) error {
+// AddGuest adds a Guest to the Hypervisor. It reserves an IPaddress for the Guest.
+/// It also updates the Guest.
+func (h *Hypervisor) AddGuest(g *Guest) error {
 
 	// make sure we have subnet guest wants.  we should have this figured out
 	// when we selected this hypervisor, so this is sort of silly to do again
 	// we need to rethink how we do this
 
-	n, err := t.context.Network(g.NetworkID)
+	n, err := h.context.Network(g.NetworkID)
 	if err != nil {
 		return err
 	}
@@ -372,9 +393,9 @@ func (t *Hypervisor) AddGuest(g *Guest) error {
 LOOP:
 	for _, k := range n.Subnets() {
 
-		for id, br := range t.subnets {
+		for id, br := range h.subnets {
 			if id == k {
-				subnet, err := t.context.Subnet(id)
+				subnet, err := h.context.Subnet(id)
 				if err != nil {
 					return err
 				}
@@ -399,12 +420,12 @@ LOOP:
 	}
 
 	// an instance where transactions would be cool...
-	g.HypervisorID = t.ID
+	g.HypervisorID = h.ID
 	g.IP = ip
 	g.SubnetID = s.ID
 	g.Bridge = bridge
 
-	_, err = t.context.etcd.Set(filepath.Join(t.guestKey(g)), g.ID, 0)
+	_, err = h.context.etcd.Set(filepath.Join(h.guestKey(g)), g.ID, 0)
 
 	if err != nil {
 		return err
@@ -413,10 +434,12 @@ LOOP:
 	return g.Save()
 }
 
-func (t *Hypervisor) Guests() []string {
-	return t.guests
+// Guests returns a slice of Guests assigned to the Hypervisor.
+func (h *Hypervisor) Guests() []string {
+	return h.guests
 }
 
+// ForEachHypervisor will run f on each Hypervisor. It will stop iteration if f returns an error.
 func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 	// should we condense this to a single etcd call?
 	// We would need to rework how we "load" hypervisor a bit
