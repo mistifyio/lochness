@@ -10,10 +10,15 @@ import (
 )
 
 var (
+	// FWGroupPath is the path in the config store
 	FWGroupPath = "lochness/fwgroups/"
 )
 
+// XXX: should individual rules be their own keys??
+
 type (
+
+	// FWRule represents a single firewall rule
 	FWRule struct {
 		Source    *net.IPNet `json:"source,omitempty"`
 		Group     string     `json:"group"`
@@ -23,8 +28,10 @@ type (
 		Action    string     `json:"action"`
 	}
 
-	FWRules []*FWRule
+	// FWRules is a convenience type for FWRules slices
+	FWRules []*FWRules
 
+	// FWGroup represents a group of firewall rules
 	FWGroup struct {
 		context       *Context
 		modifiedIndex uint64
@@ -33,44 +40,49 @@ type (
 		Rules         FWRules           `json:"rules"`
 	}
 
-	FWGroups []*FWGroup
+	// FWGroups is a convenience type for FWGroups slices
+	FWGroups []*FWGroups
 )
 
+// NewFWGroup creates a new, blank FWGroup
 func (c *Context) NewFWGroup() *FWGroup {
-	t := &FWGroup{
+	g := &FWGroup{
 		context:  c,
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
 
-	return t
+	return g
 }
 
+// FWGroup fetches a FWGroup from the config store
 func (c *Context) FWGroup(id string) (*FWGroup, error) {
-	t := &FWGroup{
+	g := &FWGroup{
 		context: c,
 		ID:      id,
 	}
 
-	err := t.Refresh()
+	err := g.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	return t, nil
+	return g, nil
 }
 
-func (t *FWGroup) key() string {
-	return filepath.Join(FWGroupPath, t.ID, "metadata")
+// key is a helper to generate the config store key
+func (g *FWGroup) key() string {
+	return filepath.Join(FWGroupPath, g.ID, "metadata")
 }
 
-func (t *FWGroup) fromResponse(resp *etcd.Response) error {
-	t.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &t)
+// fromResponse is a helper to unmarshal a FWGroup
+func (g *FWGroup) fromResponse(resp *etcd.Response) error {
+	g.modifiedIndex = resp.Node.ModifiedIndex
+	return json.Unmarshal([]byte(resp.Node.Value), &g)
 }
 
 // Refresh reloads from the data store
-func (t *FWGroup) Refresh() error {
-	resp, err := t.context.etcd.Get(t.key(), false, false)
+func (g *FWGroup) Refresh() error {
+	resp, err := g.context.etcd.Get(g.key(), false, false)
 
 	if err != nil {
 		return err
@@ -81,21 +93,23 @@ func (t *FWGroup) Refresh() error {
 		return nil
 	}
 
-	return t.fromResponse(resp)
+	return g.fromResponse(resp)
 }
 
-func (t *FWGroup) Validate() error {
+// Validate ensures a FWGroup has reasonable data. It currently does nothing.
+func (g *FWGroup) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
-func (t *FWGroup) Save() error {
+// Save persists a FWGroup.  It will call Validate.
+func (g *FWGroup) Save() error {
 
-	if err := t.Validate(); err != nil {
+	if err := g.Validate(); err != nil {
 		return err
 	}
 
-	v, err := json.Marshal(t)
+	v, err := json.Marshal(g)
 
 	if err != nil {
 		return err
@@ -103,15 +117,15 @@ func (t *FWGroup) Save() error {
 
 	// if we changed something, don't clobber
 	var resp *etcd.Response
-	if t.modifiedIndex != 0 {
-		resp, err = t.context.etcd.CompareAndSwap(t.key(), string(v), 0, "", t.modifiedIndex)
+	if g.modifiedIndex != 0 {
+		resp, err = g.context.etcd.CompareAndSwap(g.key(), string(v), 0, "", g.modifiedIndex)
 	} else {
-		resp, err = t.context.etcd.Create(t.key(), string(v), 0)
+		resp, err = g.context.etcd.Create(g.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
 	}
 
-	t.modifiedIndex = resp.EtcdIndex
+	g.modifiedIndex = resp.EtcdIndex
 	return nil
 }

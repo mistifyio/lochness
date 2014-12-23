@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	// GuestPath is the path in the config store
 	GuestPath = "lochness/guests/"
 )
 
@@ -32,8 +33,10 @@ type (
 		Bridge        string            `json:"bridge"`
 	}
 
-	Guests []*Guest
+	// Guests is a convenience type for Guest slices
+	Guests []*Guests
 
+	// guestJSON is used to ease json marshal/unmarshal
 	guestJSON struct {
 		ID           string            `json:"id"`
 		Metadata     map[string]string `json:"metadata"`
@@ -49,87 +52,93 @@ type (
 	}
 )
 
-func (t *Guest) MarshalJSON() ([]byte, error) {
+// MarshalJSON is a helper for marshalling a Guest
+func (g *Guest) MarshalJSON() ([]byte, error) {
 	data := guestJSON{
-		ID:           t.ID,
-		Metadata:     t.Metadata,
-		Type:         t.Type,
-		FlavorID:     t.FlavorID,
-		NetworkID:    t.NetworkID,
-		SubnetID:     t.SubnetID,
-		FWGroupID:    t.FWGroupID,
-		HypervisorID: t.HypervisorID,
-		IP:           t.IP,
-		MAC:          t.MAC.String(),
-		Bridge:       t.Bridge,
+		ID:           g.ID,
+		Metadata:     g.Metadata,
+		Type:         g.Type,
+		FlavorID:     g.FlavorID,
+		NetworkID:    g.NetworkID,
+		SubnetID:     g.SubnetID,
+		FWGroupID:    g.FWGroupID,
+		HypervisorID: g.HypervisorID,
+		IP:           g.IP,
+		MAC:          g.MAC.String(),
+		Bridge:       g.Bridge,
 	}
 
 	return json.Marshal(data)
 }
 
-func (t *Guest) UnmarshalJSON(input []byte) error {
+// UnmarshalJSON is a helper for unmarshalling a Guest
+func (g *Guest) UnmarshalJSON(input []byte) error {
 	data := guestJSON{}
 
 	if err := json.Unmarshal(input, &data); err != nil {
 		return err
 	}
 
-	t.ID = data.ID
-	t.Metadata = data.Metadata
-	t.Type = data.Type
-	t.FlavorID = data.FlavorID
-	t.NetworkID = data.NetworkID
-	t.SubnetID = data.SubnetID
-	t.FWGroupID = data.FWGroupID
-	t.HypervisorID = data.HypervisorID
-	t.IP = data.IP
-	t.Bridge = data.Bridge
+	g.ID = data.ID
+	g.Metadata = data.Metadata
+	g.Type = data.Type
+	g.FlavorID = data.FlavorID
+	g.NetworkID = data.NetworkID
+	g.SubnetID = data.SubnetID
+	g.FWGroupID = data.FWGroupID
+	g.HypervisorID = data.HypervisorID
+	g.IP = data.IP
+	g.Bridge = data.Bridge
 
 	a, err := net.ParseMAC(data.MAC)
 	if err != nil {
 		return err
 	}
 
-	t.MAC = a
+	g.MAC = a
 	return nil
 
 }
 
+// NewGuest create a new blank Guest
 func (c *Context) NewGuest() *Guest {
-	t := &Guest{
+	g := &Guest{
 		context:  c,
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
 
-	return t
+	return g
 }
 
+// Guest fetches a Guest from the config store
 func (c *Context) Guest(id string) (*Guest, error) {
-	t := &Guest{
+	g := &Guest{
 		context: c,
 		ID:      id,
 	}
 
-	err := t.Refresh()
+	err := g.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	return t, nil
+	return g, nil
 }
 
-func (t *Guest) key() string {
-	return filepath.Join(GuestPath, t.ID, "metadata")
+// key is a helper to generate the config store key
+func (g *Guest) key() string {
+	return filepath.Join(GuestPath, g.ID, "metadata")
 }
 
-func (t *Guest) fromResponse(resp *etcd.Response) error {
-	t.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &t)
+// fromResponse is a helper to unmarshal a Guest
+func (g *Guest) fromResponse(resp *etcd.Response) error {
+	g.modifiedIndex = resp.Node.ModifiedIndex
+	return json.Unmarshal([]byte(resp.Node.Value), &g)
 }
 
 // Refresh reloads from the data store
-func (t *Guest) Refresh() error {
-	resp, err := t.context.etcd.Get(t.key(), false, false)
+func (g *Guest) Refresh() error {
+	resp, err := g.context.etcd.Get(g.key(), false, false)
 
 	if err != nil {
 		return err
@@ -140,21 +149,24 @@ func (t *Guest) Refresh() error {
 		return nil
 	}
 
-	return t.fromResponse(resp)
+	return g.fromResponse(resp)
 }
 
-func (t *Guest) Validate() error {
+// Validate ensures a Guest has reasonable data. It currently does nothing.
+// TODO: a guest needs a valid flavor, firewall group, and network
+func (g *Guest) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
-func (t *Guest) Save() error {
+// Save persists the Guest to the data store.
+func (g *Guest) Save() error {
 
-	if err := t.Validate(); err != nil {
+	if err := g.Validate(); err != nil {
 		return err
 	}
 
-	v, err := json.Marshal(t)
+	v, err := json.Marshal(g)
 
 	if err != nil {
 		return err
@@ -162,37 +174,38 @@ func (t *Guest) Save() error {
 
 	// if we changed something, don't clobber
 	var resp *etcd.Response
-	if t.modifiedIndex != 0 {
-		resp, err = t.context.etcd.CompareAndSwap(t.key(), string(v), 0, "", t.modifiedIndex)
+	if g.modifiedIndex != 0 {
+		resp, err = g.context.etcd.CompareAndSwap(g.key(), string(v), 0, "", g.modifiedIndex)
 	} else {
-		resp, err = t.context.etcd.Create(t.key(), string(v), 0)
+		resp, err = g.context.etcd.Create(g.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
 	}
 
-	t.modifiedIndex = resp.EtcdIndex
+	g.modifiedIndex = resp.EtcdIndex
 	return nil
 }
 
-func (t *Guest) Candidates() (Hypervisors, error) {
+// Candidates returns a list of Hypervisors that may run this Guest.
+func (g *Guest) Candidates() (Hypervisors, error) {
 
 	// should probably be holding a lock when calling this whole function
 	// this whole thing is brute force and nasty...
 
-	f, err := t.context.Flavor(t.FlavorID)
+	f, err := g.context.Flavor(g.FlavorID)
 	if err != nil {
 		return nil, err
 	}
 
-	n, err := t.context.Network(t.NetworkID)
+	n, err := g.context.Network(g.NetworkID)
 	if err != nil {
 		return nil, err
 	}
 	s := n.Subnets()
 	subnets := make(map[string]bool, len(s))
 	for _, k := range s {
-		subnet, err := t.context.Subnet(k)
+		subnet, err := g.context.Subnet(k)
 		if err != nil {
 			return nil, err
 		}
@@ -204,12 +217,12 @@ func (t *Guest) Candidates() (Hypervisors, error) {
 	}
 
 	var hypervisors Hypervisors
-	err = t.context.ForEachHypervisor(func(h *Hypervisor) error {
+	err = g.context.ForEachHypervisor(func(h *Hypervisor) error {
 		if !h.IsAlive() {
 			return nil
 		}
 		hasSubnet := false
-		for k, _ := range h.Subnets() {
+		for k := range h.Subnets() {
 			if _, ok := subnets[k]; ok {
 				// we want to see if we have any availible ip's?
 				hasSubnet = true

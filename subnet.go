@@ -50,47 +50,47 @@ type (
 // issues with (un)marshal of net.IPnet
 
 // MarshalJSON is used by the json package
-func (t *Subnet) MarshalJSON() ([]byte, error) {
+func (s *Subnet) MarshalJSON() ([]byte, error) {
 	data := subnetJSON{
-		ID:         t.ID,
-		Metadata:   t.Metadata,
-		NetworkID:  t.NetworkID,
-		Gateway:    t.Gateway,
-		CIDR:       t.CIDR.String(),
-		StartRange: t.StartRange,
-		EndRange:   t.EndRange,
+		ID:         s.ID,
+		Metadata:   s.Metadata,
+		NetworkID:  s.NetworkID,
+		Gateway:    s.Gateway,
+		CIDR:       s.CIDR.String(),
+		StartRange: s.StartRange,
+		EndRange:   s.EndRange,
 	}
 
 	return json.Marshal(data)
 }
 
 // UnmarshalJSON is used by the json package
-func (t *Subnet) UnmarshalJSON(input []byte) error {
+func (s *Subnet) UnmarshalJSON(input []byte) error {
 	data := subnetJSON{}
 
 	if err := json.Unmarshal(input, &data); err != nil {
 		return err
 	}
 
-	t.ID = data.ID
-	t.Metadata = data.Metadata
-	t.NetworkID = data.NetworkID
-	t.Gateway = data.Gateway
-	t.StartRange = data.StartRange
-	t.EndRange = data.EndRange
+	s.ID = data.ID
+	s.Metadata = data.Metadata
+	s.NetworkID = data.NetworkID
+	s.Gateway = data.Gateway
+	s.StartRange = data.StartRange
+	s.EndRange = data.EndRange
 
 	_, n, err := net.ParseCIDR(data.CIDR)
 	if err != nil {
 		return err
 	}
 
-	t.CIDR = n
+	s.CIDR = n
 	return nil
 
 }
 
 func (c *Context) blankSubnet(id string) *Subnet {
-	t := &Subnet{
+	s := &Subnet{
 		context:   c,
 		ID:        id,
 		Metadata:  make(map[string]string),
@@ -98,10 +98,10 @@ func (c *Context) blankSubnet(id string) *Subnet {
 	}
 
 	if id == "" {
-		t.ID = uuid.New()
+		s.ID = uuid.New()
 	}
 
-	return t
+	return s
 }
 
 // NewSubnet creates a new "blank" subnet.  Fill in the needed values and then call Save
@@ -111,21 +111,21 @@ func (c *Context) NewSubnet() *Subnet {
 
 // Subnet fetches a single subnet by ID
 func (c *Context) Subnet(id string) (*Subnet, error) {
-	t := c.blankSubnet(id)
-	err := t.Refresh()
+	s := c.blankSubnet(id)
+	err := s.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	return t, nil
+	return s, nil
 }
 
-func (t *Subnet) key() string {
-	return filepath.Join(SubnetPath, t.ID, "metadata")
+func (s *Subnet) key() string {
+	return filepath.Join(SubnetPath, s.ID, "metadata")
 }
 
-// Refresh reloads from the data store
-func (t *Subnet) Refresh() error {
-	resp, err := t.context.etcd.Get(filepath.Join(SubnetPath, t.ID), false, true)
+// Refresh reloads the Subnet from the data store.
+func (s *Subnet) Refresh() error {
+	resp, err := s.context.etcd.Get(filepath.Join(SubnetPath, s.ID), false, true)
 
 	if err != nil {
 		return err
@@ -136,16 +136,16 @@ func (t *Subnet) Refresh() error {
 		switch key {
 
 		case "metadata":
-			if err := json.Unmarshal([]byte(n.Value), &t); err != nil {
+			if err := json.Unmarshal([]byte(n.Value), &s); err != nil {
 				return err
 			}
-			t.modifiedIndex = n.ModifiedIndex
+			s.modifiedIndex = n.ModifiedIndex
 
 		case "addresses":
 			for _, n := range n.Nodes {
 				if ip := net.ParseIP(filepath.Base(n.Key)); ip != nil {
 					// just skip on error
-					t.addresses[ipToI32(ip)] = n.Value
+					s.addresses[ipToI32(ip)] = n.Value
 				}
 			}
 		}
@@ -155,41 +155,41 @@ func (t *Subnet) Refresh() error {
 }
 
 // Delete removes a subnet. It does not ensure it is unused, so use with extreme caution.
-func (t *Subnet) Delete() error {
-	_, err := t.context.etcd.Delete(filepath.Join(SubnetPath, t.ID), true)
+func (s *Subnet) Delete() error {
+	_, err := s.context.etcd.Delete(filepath.Join(SubnetPath, s.ID), true)
 	return err
 }
 
 // Validate ensures the values are reasonable.
-func (t *Subnet) Validate() error {
-	if t.CIDR == nil {
+func (s *Subnet) Validate() error {
+	if s.CIDR == nil {
 		return errors.New("CIDR cannot be nil")
 	}
 
-	if t.StartRange == nil {
+	if s.StartRange == nil {
 		return errors.New("StartRange cannot be nil")
 	}
-	if !t.CIDR.Contains(t.StartRange) {
-		return fmt.Errorf("%s does not contain %s", t.CIDR, t.StartRange)
+	if !s.CIDR.Contains(s.StartRange) {
+		return fmt.Errorf("%s does not contain %s", s.CIDR, s.StartRange)
 	}
 
-	if t.EndRange == nil {
+	if s.EndRange == nil {
 		return errors.New("EndRange cannot be nil")
 	}
-	if !t.CIDR.Contains(t.EndRange) {
-		return fmt.Errorf("%s does not contain %s", t.CIDR, t.EndRange)
+	if !s.CIDR.Contains(s.EndRange) {
+		return fmt.Errorf("%s does not contain %s", s.CIDR, s.EndRange)
 	}
 	return nil
 }
 
-// Save persists the subnet to the datastore
-func (t *Subnet) Save() error {
+// Save persists the subnet to the datastore.
+func (s *Subnet) Save() error {
 
-	if err := t.Validate(); err != nil {
+	if err := s.Validate(); err != nil {
 		return err
 	}
 
-	v, err := json.Marshal(t)
+	v, err := json.Marshal(s)
 
 	if err != nil {
 		return err
@@ -197,34 +197,34 @@ func (t *Subnet) Save() error {
 
 	// if we changed something, don't clobber
 	var resp *etcd.Response
-	if t.modifiedIndex != 0 {
-		resp, err = t.context.etcd.CompareAndSwap(t.key(), string(v), 0, "", t.modifiedIndex)
+	if s.modifiedIndex != 0 {
+		resp, err = s.context.etcd.CompareAndSwap(s.key(), string(v), 0, "", s.modifiedIndex)
 	} else {
-		resp, err = t.context.etcd.Create(t.key(), string(v), 0)
+		resp, err = s.context.etcd.Create(s.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
 	}
 
-	t.modifiedIndex = resp.EtcdIndex
+	s.modifiedIndex = resp.EtcdIndex
 	return nil
 }
 
-func (t *Subnet) addressKey(address string) string {
-	return filepath.Join(SubnetPath, t.ID, "addresses", address)
+func (s *Subnet) addressKey(address string) string {
+	return filepath.Join(SubnetPath, s.ID, "addresses", address)
 }
 
-// Addresses returns used IP addresses
-func (t *Subnet) Addresses() map[string]string {
+// Addresses returns used IP addresses.
+func (s *Subnet) Addresses() map[string]string {
 
 	addresses := make(map[string]string)
 
-	start := ipToI32(t.StartRange)
-	end := ipToI32(t.EndRange)
+	start := ipToI32(s.StartRange)
+	end := ipToI32(s.EndRange)
 
 	// this is a horrible way to do this. should this be simple set math?
 	for i := start; i <= end; i++ {
-		if id, ok := t.addresses[i]; ok {
+		if id, ok := s.addresses[i]; ok {
 			ip := i32ToIP(i)
 			addresses[ip.String()] = id
 		}
@@ -244,15 +244,15 @@ func i32ToIP(a uint32) net.IP {
 }
 
 // AvailibleAddresses returns the availible ip addresses.
-// this is probably a horrible idea for ipv6
-func (t *Subnet) AvailibleAddresses() []net.IP {
+// this is probably a horrible idea for ipv6.
+func (s *Subnet) AvailibleAddresses() []net.IP {
 	addresses := make([]net.IP, 0, 0)
-	start := ipToI32(t.StartRange)
-	end := ipToI32(t.EndRange)
+	start := ipToI32(s.StartRange)
+	end := ipToI32(s.EndRange)
 
 	// this is a horrible way to do this. should this be simple set math?
 	for i := start; i <= end; i++ {
-		if _, ok := t.addresses[i]; !ok {
+		if _, ok := s.addresses[i]; !ok {
 			addresses = append(addresses, i32ToIP(i))
 		}
 	}
@@ -269,13 +269,13 @@ func randomizeAddresses(a []net.IP) []net.IP {
 	return a
 }
 
-// ReserveAddress reserves an ip address. The id is guest id
-func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
+// ReserveAddress reserves an ip address. The id is a guest id.
+func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 
 	// hacky...
 	//should this lock?? or do we assume lock is held?
 
-	avail := t.AvailibleAddresses()
+	avail := s.AvailibleAddresses()
 
 	if len(avail) == 0 {
 		return nil, errors.New("no availible addresses")
@@ -286,10 +286,10 @@ func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
 	var chosen net.IP
 	for _, ip := range avail {
 		v := ip.String()
-		_, err := t.context.etcd.Create(t.addressKey(v), id, 0)
+		_, err := s.context.etcd.Create(s.addressKey(v), id, 0)
 		if err == nil {
 			chosen = ip
-			t.addresses[ipToI32(ip)] = id
+			s.addresses[ipToI32(ip)] = id
 			break
 		}
 	}
@@ -298,11 +298,11 @@ func (t *Subnet) ReserveAddress(id string) (net.IP, error) {
 	return chosen, nil
 }
 
-// ReleaseAddress releases an address. This does not change any thing that may also be referring to this address
-func (t *Subnet) ReleaseAddress(ip net.IP) error {
-	_, err := t.context.etcd.Delete(t.addressKey(ip.String()), false)
+// ReleaseAddress releases an address. This does not change any thing that may also be referring to this address.
+func (s *Subnet) ReleaseAddress(ip net.IP) error {
+	_, err := s.context.etcd.Delete(s.addressKey(ip.String()), false)
 	if err == nil {
-		delete(t.addresses, ipToI32(ip))
+		delete(s.addresses, ipToI32(ip))
 	}
 	return err
 }
