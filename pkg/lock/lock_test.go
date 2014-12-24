@@ -102,11 +102,11 @@ func TestRefresh(t *testing.T) {
 
 	time.Sleep(time.Duration(ttl+1) * time.Second)
 	if err := l.Refresh(); err != ErrKeyNotFound {
-		t.Fatal("wanted: %v, got: %v\n", ErrKeyNotFound, err)
+		t.Fatalf("wanted: %v, got: %v\n", ErrKeyNotFound, err)
 	}
 
 	if err := l.Refresh(); err != ErrLockNotHeld {
-		t.Fatal("wanted: %v, got: %v\n", ErrLockNotHeld, err)
+		t.Fatalf("wanted: %v, got: %v\n", ErrLockNotHeld, err)
 	}
 }
 
