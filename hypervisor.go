@@ -337,6 +337,9 @@ func (h *Hypervisor) subnetKey(s *Subnet) string {
 // AddSubnet adds a subnet to a Hypervisor.
 func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 	_, err := h.context.etcd.Set(filepath.Join(h.subnetKey(s)), bridge, 0)
+	if err == nil {
+		h.subnets[s.ID] = bridge
+	}
 	return err
 }
 
