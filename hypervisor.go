@@ -434,7 +434,15 @@ LOOP:
 		return err
 	}
 
-	return g.Save()
+	err = g.Save()
+
+	if err != nil {
+		return err
+	}
+
+	h.guests = append(h.guests, g.ID)
+
+	return nil
 }
 
 // Guests returns a slice of Guests assigned to the Hypervisor.
