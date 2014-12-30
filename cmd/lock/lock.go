@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"syscall"
@@ -146,6 +147,14 @@ func stopService(name string) error {
 	return nil
 }
 
+func resolveCommand(command string) (string, error) {
+	command, err := exec.LookPath(command)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Abs(command)
+}
+
 func main() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 
@@ -176,6 +185,11 @@ func main() {
 	if len(params.Args) < 1 {
 		log.Fatal("command is required")
 	}
+	cmd, err := resolveCommand(params.Args[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+	params.Args[0] = cmd
 
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -196,7 +210,11 @@ func main() {
 
 	cmddone := make(chan struct{})
 	base := filepath.Base(params.Args[0])
-	go cmdrun(cmddone, params.ID, params.TTL, "/usr/bin/locker", base, string(args))
+	locker, err := resolveCommand("locker")
+	if err != nil {
+		log.Fatal(err)
+	}
+	go cmdrun(cmddone, params.ID, params.TTL, locker, base, string(args))
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
