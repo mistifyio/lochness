@@ -36,3 +36,7 @@ func TestNetworkAddSubnet(t *testing.T) {
 
 	h.Equals(t, 1, len(n.Subnets()))
 }
+
+func TestNetworkAlias(t *testing.T) {
+	_ = lochness.Networks([]*lochness.Network{})
+}
