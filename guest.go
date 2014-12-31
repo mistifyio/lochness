@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"errors"
 	"math/rand"
 	"net"
 	"path/filepath"
@@ -50,6 +51,8 @@ type (
 		IP           net.IP            `json:"ip"`
 		Bridge       string            `json:"bridge"`
 	}
+
+	CandidateFunction func(*Guest, Hypervisors) (Hypervisors, error)
 )
 
 // MarshalJSON is a helper for marshalling a Guest
@@ -188,22 +191,75 @@ func (g *Guest) Save() error {
 }
 
 // Candidates returns a list of Hypervisors that may run this Guest.
-func (g *Guest) Candidates() (Hypervisors, error) {
+func (g *Guest) Candidates(f ...CandidateFunction) (Hypervisors, error) {
+	// this is not terribly effecient, but is fairly easy to understand
 
-	// should probably be holding a lock when calling this whole function
-	// this whole thing is brute force and nasty...
+	var hypervisors Hypervisors
+	_ = g.context.ForEachHypervisor(func(h *Hypervisor) error {
+		hypervisors = append(hypervisors, h)
+		return nil
+	})
 
+	if len(hypervisors) == 0 {
+		return nil, errors.New("no hypervisors")
+	}
+
+	for _, fn := range f {
+		hs, err := fn(g, hypervisors)
+		if err != nil {
+			return nil, err
+		}
+		hypervisors = hs
+		if len(hypervisors) == 0 {
+			return nil, errors.New("no hypervisors")
+		}
+	}
+
+	return hypervisors, nil
+}
+
+// CandidateIsAlive returns Hypervisors that are "alive" based on heartbeat
+func CandidateIsAlive(g *Guest, hs Hypervisors) (Hypervisors, error) {
+
+	var hypervisors Hypervisors
+	for _, h := range hs {
+		if h.IsAlive() {
+			hypervisors = append(hypervisors, h)
+		}
+	}
+	return hypervisors, nil
+}
+
+// CandidateHasResources returns Hypervisors that have availible resources
+// based on the request Flavor of the Guest.
+func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	f, err := g.context.Flavor(g.FlavorID)
 	if err != nil {
 		return nil, err
 	}
 
+	var hypervisors Hypervisors
+	for _, h := range hs {
+		avail := h.AvailableResources
+		if avail.Disk >= f.Disk || avail.Memory >= f.Memory || avail.CPU >= f.CPU {
+			hypervisors = append(hypervisors, h)
+		}
+	}
+	return hypervisors, nil
+}
+
+// CandidateHasSubnet returns Hypervisors that have subnets with availible addresses
+// in the request Network of the Guest.
+func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	n, err := g.context.Network(g.NetworkID)
 	if err != nil {
 		return nil, err
 	}
 	s := n.Subnets()
 	subnets := make(map[string]bool, len(s))
+
+	var hypervisors Hypervisors
+
 	for _, k := range s {
 		subnet, err := g.context.Subnet(k)
 		if err != nil {
@@ -216,37 +272,25 @@ func (g *Guest) Candidates() (Hypervisors, error) {
 		}
 	}
 
-	var hypervisors Hypervisors
-	err = g.context.ForEachHypervisor(func(h *Hypervisor) error {
-		if !h.IsAlive() {
-			return nil
-		}
+	for _, h := range hs {
 		hasSubnet := false
 		for k := range h.Subnets() {
 			if _, ok := subnets[k]; ok {
-				// we want to see if we have any availible ip's?
 				hasSubnet = true
 				break
 			}
 		}
-
-		if !hasSubnet {
-			return nil
+		if hasSubnet {
+			hypervisors = append(hypervisors, h)
 		}
-
-		avail := h.AvailableResources
-		if avail.Disk <= f.Disk || avail.Memory <= f.Memory {
-			return nil
-		}
-
-		hypervisors = append(hypervisors, h)
-		return nil
-	})
-
-	if err != nil && len(hypervisors) == 0 {
-		return nil, err
 	}
-	return randomizeHypervisors(hypervisors), nil
+
+	return hypervisors, nil
+}
+
+// CandidateRandomize shuffles the list of Hypervisors.
+func CandidateRandomize(g *Guest, hs Hypervisors) (Hypervisors, error) {
+	return randomizeHypervisors(hs), nil
 }
 
 // based on code found on stackoverflow(?)
@@ -257,4 +301,11 @@ func randomizeHypervisors(s Hypervisors) Hypervisors {
 	}
 
 	return s
+}
+
+// DefaultCadidateFuctions is a default list of CandidateFunctions for general use
+var DefaultCadidateFuctions []CandidateFunction = []CandidateFunction{
+	CandidateIsAlive,
+	CandidateHasSubnet,
+	CandidateHasResources,
 }
