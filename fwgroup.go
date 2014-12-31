@@ -29,7 +29,7 @@ type (
 	}
 
 	// FWRules is a convenience type for FWRules slices
-	FWRules []*FWRules
+	FWRules []*FWRule
 
 	// FWGroup represents a group of firewall rules
 	FWGroup struct {
@@ -41,7 +41,7 @@ type (
 	}
 
 	// FWGroups is a convenience type for FWGroups slices
-	FWGroups []*FWGroups
+	FWGroups []*FWGroup
 )
 
 // NewFWGroup creates a new, blank FWGroup

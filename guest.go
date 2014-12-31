@@ -35,7 +35,7 @@ type (
 	}
 
 	// Guests is a convenience type for Guest slices
-	Guests []*Guests
+	Guests []*Guest
 
 	// guestJSON is used to ease json marshal/unmarshal
 	guestJSON struct {
