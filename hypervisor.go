@@ -39,7 +39,7 @@ type (
 		alive              bool
 	}
 
-	// Hypervisors is a convenience type for Hypervisor slices
+	// Hypervisors is an alias to a slice of *Hypervisor
 	Hypervisors []*Hypervisor
 
 	// hypervisorJSON is used to ease json marshal/unmarshal

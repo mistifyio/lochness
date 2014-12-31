@@ -28,7 +28,7 @@ type (
 		Action    string     `json:"action"`
 	}
 
-	// FWRules is a convenience type for FWRules slices
+	// FWRules is an alias to a slice of *FWRule
 	FWRules []*FWRule
 
 	// FWGroup represents a group of firewall rules
@@ -40,7 +40,7 @@ type (
 		Rules         FWRules           `json:"rules"`
 	}
 
-	// FWGroups is a convenience type for FWGroups slices
+	// FWGroups is an alias to FWGroup slices
 	FWGroups []*FWGroup
 )
 

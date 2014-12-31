@@ -34,7 +34,7 @@ type (
 		Bridge        string            `json:"bridge"`
 	}
 
-	// Guests is a convenience type for Guest slices
+	// Guests is an alias to a slice of *Guest
 	Guests []*Guest
 
 	// guestJSON is used to ease json marshal/unmarshal
