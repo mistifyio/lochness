@@ -72,10 +72,7 @@ func main() {
 	}
 	print(s)
 
-	addresses, err := s.Addresses()
-	if err != nil {
-		log.Fatal(err)
-	}
+	addresses := s.Addresses()
 	print(addresses)
 
 	print(s.AvailibleAddresses())
@@ -84,9 +81,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	network_subnets, err := n.Subnets()
-	if err != nil {
-		log.Fatal(err)
+	network_subnets := n.Subnets()
+	if len(network_subnets) == 0 {
+		log.Fatal("no subnets available on network")
 	}
 	for _, k := range network_subnets {
 		s, err := c.Subnet(k)
@@ -111,9 +108,9 @@ func main() {
 
 	print(h)
 
-	subnets, err := h.Subnets()
-	if err != nil {
-		log.Fatal(err)
+	subnets := h.Subnets()
+	if len(subnets) == 0 {
+		log.Fatal("no subnets available on hypervisor")
 	}
 
 	for k := range subnets {
