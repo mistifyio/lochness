@@ -103,10 +103,11 @@ func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 // blankHypervisor is a helper for creating a blank Hypervisor.
 func (c *Context) blankHypervisor(id string) *Hypervisor {
 	h := &Hypervisor{
-		context: c,
-		ID:      id,
-		subnets: make(map[string]string),
-		guests:  make([]string, 0, 0),
+		context:  c,
+		ID:       id,
+		Metadata: make(map[string]string),
+		subnets:  make(map[string]string),
+		guests:   make([]string, 0, 0),
 	}
 
 	if id == "" {
