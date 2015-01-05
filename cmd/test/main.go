@@ -116,7 +116,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for k, _ := range subnets {
+	for k := range subnets {
 		s, err := c.Subnet(k)
 		if err != nil {
 			log.Fatal(err)
