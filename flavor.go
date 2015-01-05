@@ -23,7 +23,7 @@ type (
 		Resources
 	}
 
-	// Flavors is a convenience type for Flavor slices
+	// Flavors is an alias to a slice of *Flavor
 	Flavors []*Flavor
 
 	// Resources represents compute resources

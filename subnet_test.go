@@ -128,3 +128,7 @@ func TestSubnetReleaseAddress(t *testing.T) {
 	h.Equals(t, 0, len(s.Addresses()))
 
 }
+
+func TestSubnetsAlias(t *testing.T) {
+	_ = lochness.Subnets([]*lochness.Subnet{})
+}

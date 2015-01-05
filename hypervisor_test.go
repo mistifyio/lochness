@@ -38,3 +38,7 @@ func TestHypervisorIsAlive(t *testing.T) {
 	defer contextCleanup(t)
 	h.Equals(t, false, hv.IsAlive())
 }
+
+func TestHypervisorsAlias(t *testing.T) {
+	_ = lochness.Hypervisors([]*lochness.Hypervisor{})
+}

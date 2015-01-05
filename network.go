@@ -23,7 +23,7 @@ type (
 		subnets       []string
 	}
 
-	// Networks is a convenience type for Network slices
+	// Networks is an alias to a slice of *Network
 	Networks []*Network
 )
 

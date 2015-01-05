@@ -32,7 +32,7 @@ type (
 		addresses     map[uint32]string //all allocated addresses. use int as its quickest to go back and forth
 	}
 
-	// Subnets is a helper for slices of subnets
+	// Subnets is an alias to a slice of *Subnet
 	Subnets []*Subnet
 
 	//helper struct for json

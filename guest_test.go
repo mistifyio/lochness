@@ -83,3 +83,7 @@ func TestGuestCandidates(t *testing.T) {
 	err = hv.AddGuest(g)
 	h.Ok(t, err)
 }
+
+func TestGuestsAlias(t *testing.T) {
+	_ = lochness.Guests([]*lochness.Guest{})
+}
