@@ -241,7 +241,7 @@ func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	var hypervisors Hypervisors
 	for _, h := range hs {
 		avail := h.AvailableResources
-		if avail.Disk >= f.Disk || avail.Memory >= f.Memory || avail.CPU >= f.CPU {
+		if avail.Disk >= f.Disk && avail.Memory >= f.Memory && avail.CPU >= f.CPU {
 			hypervisors = append(hypervisors, h)
 		}
 	}
