@@ -18,12 +18,15 @@ func main() {
 	eaddr := flag.String("etcd", "http://localhost:4001", "address of etcd machine")
 	baseUrl := flag.String("base", "http://127.0.0.1:8080", "base address of bits request") // this could/should be discovered in etcd?
 	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
+	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
 	flag.Parse()
 
 	e := etcd.NewClient([]string{*eaddr})
 	c := lochness.NewContext(e)
 
 	r := mux.NewRouter()
+
+	r.PathPrefix("/images").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir))))
 
 	// this is a little horrible... clean it up with a "Config" struct or something
 	r.HandleFunc("/ipxe/{ip}",
