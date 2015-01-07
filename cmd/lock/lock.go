@@ -26,7 +26,7 @@ Description=Cluster unique %s locker
 
 [Service]
 ExecStart=
-ExecStart=/usr/bin/locker "%s"
+ExecStart=%s "%s"
 WatchdogSec=%d
 `
 
@@ -70,7 +70,7 @@ func startService(ttl uint64, target, cmd, base, arg string) (chan struct{}, err
 	defer f.Close()
 
 	arg = base64.StdEncoding.EncodeToString([]byte(arg))
-	dotService := fmt.Sprintf(service, base, arg, ttl)
+	dotService := fmt.Sprintf(service, base, cmd, arg, ttl)
 	_, err = f.WriteString(dotService)
 	if err != nil {
 		return nil, err
