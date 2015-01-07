@@ -1,17 +1,35 @@
 package main
 
 import (
+	_ "expvar"
 	"flag"
-
 	"log"
 	"net/http"
-
+	_ "net/http/pprof"
+	"os"
 	"text/template"
 
+	"github.com/bakins/net-http-recover"
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/gorilla/context"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
 )
+
+type Server struct {
+	ctx            *lochness.Context
+	t              *template.Template
+	defaultVersion string
+	baseUrl        string
+}
+
+const ipxeTemplate = `#!ipxe
+kernel {{.BaseUrl}}/images/{{.Version}}/vmlinuz {{.Options}}
+initrd {{.BaseUrl}}/images/{{.Version}}/initrd
+boot
+`
 
 func main() {
 	address := flag.String("port", ":8888", "address to listen")
@@ -24,57 +42,84 @@ func main() {
 	e := etcd.NewClient([]string{*eaddr})
 	c := lochness.NewContext(e)
 
-	r := mux.NewRouter()
+	router := mux.NewRouter()
+	router.StrictSlash(true)
 
-	r.PathPrefix("/images").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir))))
+	// default mux will have the profiler handlers
+	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
+	router.PathPrefix("/images").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir))))
 
-	// this is a little horrible... clean it up with a "Config" struct or something
-	r.HandleFunc("/ipxe/{ip}",
-		func(w http.ResponseWriter, r *http.Request) {
-			// we should make sure it actually looks like a valid ip
-			var found *lochness.Hypervisor
+	s := &Server{
+		ctx:            c,
+		t:              template.Must(template.New("ipxe").Parse(ipxeTemplate)),
+		defaultVersion: *defaultVersion,
+		baseUrl:        *baseUrl,
+	}
 
-			// this currently loops over all hypervisors, no matter what...
-			c.ForEachHypervisor(func(h *lochness.Hypervisor) error {
-				ip := h.IP.String()
-				if ip == mux.Vars(r)["ip"] {
-					found = h
-				}
-				return nil
+	chain := alice.New(
+		func(h http.Handler) http.Handler {
+			return recovery.Handler(os.Stderr, h, true)
+		},
+		func(h http.Handler) http.Handler {
+			return handlers.CombinedLoggingHandler(os.Stdout, h)
+		},
+		handlers.CompressHandler,
+		func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				context.Set(r, "_server_", s)
+				h.ServeHTTP(w, r)
 			})
+		},
+	)
 
-			if found == nil {
-				http.NotFound(w, r)
-				return
-			}
+	router.Handle("/ipxe/{ip}", chain.ThenFunc(ipxeHandler))
 
-			// do we need to parse this evertime??
-			t, err := template.New("ipxe").Parse(ipxeTemplate)
-
-			version := found.Config["version"]
-			if version == "" {
-				version, err = c.GetConfig("defaultVersion")
-				if err != nil {
-					// not found? should be fatal?
-				}
-				if version == "" {
-					version = *defaultVersion
-				}
-			}
-			data := map[string]string{
-				"BaseUrl": *baseUrl,
-				"Options": "", // options would be any other things we set. probably want to pass along UUID, etc
-				"Version": version,
-			}
-			err = t.Execute(w, data)
-
-		})
-
-	log.Fatal(http.ListenAndServe(*address, r))
+	log.Fatal(http.ListenAndServe(*address, router))
 }
 
-const ipxeTemplate = `#!ipxe
-kernel {{.BaseUrl}}/images/{{.Version}}/vmlinuz {{.Options}}
-initrd {{.BaseUrl}}/images/{{.Version}}/initrd
-boot
-`
+func ipxeHandler(w http.ResponseWriter, r *http.Request) {
+
+	s := context.Get(r, "_server_").(*Server)
+
+	// we should make sure path variable actually looks like a valid ip
+
+	var found *lochness.Hypervisor
+
+	// this currently loops over all hypervisors. do we need a way to exit early?
+	s.ctx.ForEachHypervisor(func(h *lochness.Hypervisor) error {
+		ip := h.IP.String()
+		if ip == mux.Vars(r)["ip"] {
+			found = h
+		}
+		return nil
+	})
+
+	if found == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	version := found.Config["version"]
+	var err error
+	if version == "" {
+		version, err = s.ctx.GetConfig("defaultVersion")
+		if err != nil && !lochness.IsKeyNotFound(err) {
+			// XXX: should be fatal?
+			log.Println(err)
+		}
+		if version == "" {
+			version = s.defaultVersion
+		}
+	}
+	data := map[string]string{
+		"BaseUrl": s.baseUrl,
+		"Options": "", // options would be any other things we set. probably want to pass along UUID, etc
+		"Version": version,
+	}
+	err = s.t.Execute(w, data)
+	if err != nil {
+		// we shouldn not get here
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
