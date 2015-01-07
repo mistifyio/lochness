@@ -91,15 +91,14 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var found *lochness.Hypervisor
-
-	// this currently loops over all hypervisors. do we need a way to exit early?
-	s.ctx.ForEachHypervisor(func(h *lochness.Hypervisor) error {
-		if ip == h.IP.String() {
-			found = h
-		}
-		return nil
+	found, err := s.ctx.FirstHypervisor(func(h *lochness.Hypervisor) bool {
+		return ip == h.IP.String()
 	})
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if found == nil {
 		http.NotFound(w, r)
@@ -107,7 +106,7 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	version := found.Config["version"]
-	var err error
+
 	if version == "" {
 		version, err = s.ctx.GetConfig("defaultVersion")
 		if err != nil && !lochness.IsKeyNotFound(err) {
