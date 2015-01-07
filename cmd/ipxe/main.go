@@ -141,7 +141,7 @@ func mapToOptions(m map[string]string) string {
 
 	for k, v := range m {
 		// need to sanitize ?
-		parts := append(parts, fmt.Sprintf("%s=%s", k, v))
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
 	}
 	return strings.Join(parts, " ")
 }
