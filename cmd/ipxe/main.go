@@ -3,11 +3,13 @@ package main
 import (
 	_ "expvar"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/bakins/net-http-recover"
@@ -116,9 +118,14 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 			version = s.defaultVersion
 		}
 	}
+
+	options := map[string]string{
+		"uuid": found.ID,
+	}
+
 	data := map[string]string{
 		"BaseUrl": s.baseUrl,
-		"Options": "", // options would be any other things we set. probably want to pass along UUID, etc
+		"Options": mapToOptions(options),
 		"Version": version,
 	}
 	err = s.t.Execute(w, data)
@@ -127,4 +134,14 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func mapToOptions(m map[string]string) string {
+	var parts []string
+
+	for k, v := range m {
+		// need to sanitize ?
+		parts := append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(parts, " ")
 }
