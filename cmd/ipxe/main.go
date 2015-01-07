@@ -48,9 +48,6 @@ func main() {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
-	// default mux will have the profiler handlers
-	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
-
 	s := &Server{
 		ctx:            c,
 		t:              template.Must(template.New("ipxe").Parse(ipxeTemplate)),
@@ -66,17 +63,19 @@ func main() {
 			return handlers.CombinedLoggingHandler(os.Stdout, h)
 		},
 		handlers.CompressHandler,
+	)
+
+	router.PathPrefix("/debug/").Handler(chain.Then((http.DefaultServeMux)))
+	router.PathPrefix("/images").Handler(chain.Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
+
+	router.Handle("/ipxe/{ip}", chain.Append(
 		func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				context.Set(r, "_server_", s)
 				h.ServeHTTP(w, r)
 			})
 		},
-	)
-
-	router.PathPrefix("/images").Handler(chain.Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
-
-	router.Handle("/ipxe/{ip}", chain.ThenFunc(ipxeHandler))
+	).ThenFunc(ipxeHandler))
 
 	log.Fatal(http.ListenAndServe(*address, router))
 }
