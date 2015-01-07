@@ -459,6 +459,25 @@ func (h *Hypervisor) Guests() []string {
 	return h.guests
 }
 
+// FirstHypervisor will return the first hypervisor for which the function returns true.
+func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error) {
+	resp, err := c.etcd.Get(HypervisorPath, false, false)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range resp.Node.Nodes {
+		h, err := c.Hypervisor(filepath.Base(n.Key))
+		if err != nil {
+			return nil, err
+		}
+
+		if f(h) {
+			return h, nil
+		}
+	}
+	return nil, nil
+}
+
 // ForEachHypervisor will run f on each Hypervisor. It will stop iteration if f returns an error.
 func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 	// should we condense this to a single etcd call?
