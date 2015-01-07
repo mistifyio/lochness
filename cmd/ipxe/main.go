@@ -50,7 +50,6 @@ func main() {
 
 	// default mux will have the profiler handlers
 	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
-	router.PathPrefix("/images").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir))))
 
 	s := &Server{
 		ctx:            c,
@@ -74,6 +73,8 @@ func main() {
 			})
 		},
 	)
+
+	router.PathPrefix("/images").Handler(chain.Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
 
 	router.Handle("/ipxe/{ip}", chain.ThenFunc(ipxeHandler))
 
