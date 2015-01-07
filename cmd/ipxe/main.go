@@ -35,7 +35,7 @@ boot
 func main() {
 	address := flag.String("port", ":8888", "address to listen")
 	eaddr := flag.String("etcd", "http://localhost:4001", "address of etcd machine")
-	baseUrl := flag.String("base", "http://127.0.0.1:8080", "base address of bits request") // this could/should be discovered in etcd?
+	baseUrl := flag.String("base", "http://ipxe.mistify.local:8888", "base address of bits request")
 	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
 	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
 	flag.Parse()
@@ -81,8 +81,6 @@ func main() {
 func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 
 	s := context.Get(r, "_server_").(*Server)
-
-	// we should make sure path variable actually looks like a valid ip
 
 	ip := mux.Vars(r)["ip"]
 
