@@ -34,11 +34,12 @@ func startService(id int, name string, args []string) (chan struct{}, error) {
 		return nil, err
 	}
 
-	desc := fmt.Sprintf("Cluster unique %s", filepath.Base(args[0]))
+	base := filepath.Base(args[0])
+	desc := fmt.Sprintf("Cluster unique %s", base)
 	props := []dbus.Property{
 		dbus.PropDescription(desc),
 		dbus.PropExecStart(args, false),
-		dbus.PropBindsTo(fmt.Sprintf("locker-%d.service", id)),
+		dbus.PropBindsTo(fmt.Sprintf("%s-locker-%d.service", base, id)),
 	}
 
 	done := make(chan string)
@@ -175,7 +176,8 @@ func main() {
 	}
 	tickler := tickle(params.Interval)
 
-	target := fmt.Sprintf("locked-%d.service", time.Now().Unix())
+	base := filepath.Base(params.Args[0])
+	target := fmt.Sprintf("%s-locked-%d.service", base, params.ID)
 	service, err := startService(params.ID, target, params.Args)
 	if err != nil {
 		log.Fatal(err)

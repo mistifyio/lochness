@@ -28,6 +28,7 @@ Description=Cluster unique %s locker
 ExecStart=
 ExecStart=%s "%s"
 WatchdogSec=%d
+BoundBy=%s-locked-%d.service
 `
 
 type params struct {
@@ -42,8 +43,8 @@ type params struct {
 }
 
 func cmdrun(done chan struct{}, id int, ttl uint64, cmd, base, arg string) {
-	target := fmt.Sprintf("locker-%d.service", id)
-	exited, err := startService(ttl, target, cmd, base, arg)
+	target := fmt.Sprintf("%s-locker-%d.service", base, id)
+	exited, err := startService(id, ttl, target, cmd, base, arg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,7 +58,7 @@ func cmdrun(done chan struct{}, id int, ttl uint64, cmd, base, arg string) {
 	}
 }
 
-func startService(ttl uint64, target, cmd, base, arg string) (chan struct{}, error) {
+func startService(id int, ttl uint64, target, cmd, base, arg string) (chan struct{}, error) {
 	conn, err := dbus.New()
 	if err != nil {
 		return nil, err
@@ -70,7 +71,7 @@ func startService(ttl uint64, target, cmd, base, arg string) (chan struct{}, err
 	defer f.Close()
 
 	arg = base64.StdEncoding.EncodeToString([]byte(arg))
-	dotService := fmt.Sprintf(service, base, cmd, arg, ttl)
+	dotService := fmt.Sprintf(service, base, cmd, arg, ttl, base, id)
 	_, err = f.WriteString(dotService)
 	if err != nil {
 		return nil, err
@@ -95,6 +96,10 @@ func startService(ttl uint64, target, cmd, base, arg string) (chan struct{}, err
 
 	serviceDone := make(chan struct{})
 	go monService(statuses, errs, serviceDone)
+
+	log.Println("services names are:")
+	log.Printf("%s-locker-%d\n", base, id)
+	log.Printf("%s-locked-%d\n", base, id)
 	return serviceDone, nil
 }
 
