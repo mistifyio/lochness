@@ -4,6 +4,7 @@ import (
 	_ "expvar"
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -83,12 +84,18 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// we should make sure path variable actually looks like a valid ip
 
+	ip := mux.Vars(r)["ip"]
+
+	if net.ParseIP(ip) == nil {
+		http.Error(w, "invalid address", http.StatusBadRequest)
+		return
+	}
+
 	var found *lochness.Hypervisor
 
 	// this currently loops over all hypervisors. do we need a way to exit early?
 	s.ctx.ForEachHypervisor(func(h *lochness.Hypervisor) error {
-		ip := h.IP.String()
-		if ip == mux.Vars(r)["ip"] {
+		if ip == h.IP.String() {
 			found = h
 		}
 		return nil
