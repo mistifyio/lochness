@@ -210,6 +210,7 @@ func main() {
 
 	args, err := json.Marshal(&params)
 	if err != nil {
+		params.Lock.Release()
 		log.Fatal(err)
 	}
 
@@ -217,6 +218,7 @@ func main() {
 	base := filepath.Base(params.Args[0])
 	locker, err := resolveCommand("locker")
 	if err != nil {
+		params.Lock.Release()
 		log.Fatal(err)
 	}
 	go cmdrun(cmddone, params.ID, params.TTL, locker, base, string(args))
