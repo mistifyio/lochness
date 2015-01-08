@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/dbus"
+	"github.com/mistifyio/lochness/pkg/deferer"
 	"github.com/mistifyio/lochness/pkg/lock"
 	"github.com/mistifyio/lochness/pkg/sd"
 )
@@ -34,6 +35,16 @@ func startService(id int, name string, args []string) (chan struct{}, error) {
 		return nil, err
 	}
 
+	subset := conn.NewSubscriptionSet()
+	subset.Add(name)
+	statuses, errs := subset.Subscribe()
+
+	statdone := make(chan struct{})
+	go monService(statuses, errs, statdone)
+	// There seems to be a race condition and waiting less than 1s leads to
+	// locker hanging if the application to be run is quick
+	time.Sleep(1 * time.Second)
+
 	base := filepath.Base(args[0])
 	desc := fmt.Sprintf("Cluster unique %s", base)
 	props := []dbus.Property{
@@ -53,12 +64,6 @@ func startService(id int, name string, args []string) (chan struct{}, error) {
 		return nil, errors.New("failed to start service")
 	}
 
-	subset := conn.NewSubscriptionSet()
-	subset.Add(name)
-	statuses, errs := subset.Subscribe()
-
-	statdone := make(chan struct{})
-	go monService(statuses, errs, statdone)
 	return statdone, nil
 }
 
@@ -149,30 +154,33 @@ func tickle(interval uint64) chan struct{} {
 }
 
 func main() {
+	d := deferer.NewDeferer(nil)
+	defer d.Run()
+
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 
 	params := params{}
 	arg, err := base64.StdEncoding.DecodeString(os.Args[1])
 	if err != nil {
-		panic(err)
+		d.Fatal(err)
 	}
 	if err := json.Unmarshal(arg, &params); err != nil {
-		log.Fatal(err)
+		d.Fatal(err)
 	}
 
 	l := params.Lock
 	if err := l.Refresh(); err != nil {
-		log.Fatal(err)
+		d.Fatal(err)
 	}
-	defer l.Release()
+	d.Defer(func() { l.Release() })
 	locker := refresh(l, params.Interval)
 
 	sdttl, err := sd.WatchdogEnabled()
 	if err != nil {
-		log.Fatal(err)
+		d.Fatal(err)
 	}
 	if uint64(sdttl.Seconds()) != params.TTL {
-		log.Fatal("params and systemd ttls do not match")
+		d.Fatal("params and systemd ttls do not match")
 	}
 	tickler := tickle(params.Interval)
 
@@ -180,7 +188,7 @@ func main() {
 	target := fmt.Sprintf("%s-locked-%d.service", base, params.ID)
 	service, err := startService(params.ID, target, params.Args)
 	if err != nil {
-		log.Fatal(err)
+		d.Fatal(err)
 	}
 
 	sigs := make(chan os.Signal)

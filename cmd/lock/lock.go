@@ -17,6 +17,7 @@ import (
 
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/go-systemd/dbus"
+	"github.com/mistifyio/lochness/pkg/deferer"
 	"github.com/mistifyio/lochness/pkg/lock"
 )
 
@@ -42,11 +43,14 @@ type params struct {
 	Lock     *lock.Lock `json:"lock"`
 }
 
-func cmdrun(done chan struct{}, id int, ttl uint64, cmd, base, arg string) {
+func cmdrun(dc *deferer.Deferer, done chan struct{}, id int, ttl uint64, cmd, base, arg string) {
+	d := deferer.NewDeferer(dc)
+	defer d.Run()
+
 	target := fmt.Sprintf("%s-locker-%d.service", base, id)
 	exited, err := startService(id, ttl, target, cmd, base, arg)
 	if err != nil {
-		log.Fatal(err)
+		d.Fatal(err)
 	}
 
 	select {
@@ -161,6 +165,9 @@ func resolveCommand(command string) (string, error) {
 }
 
 func main() {
+	d := deferer.NewDeferer(nil)
+	defer d.Run()
+
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 
 	rand.Seed(time.Now().UnixNano())
@@ -188,40 +195,39 @@ func main() {
 
 	params.Args = flag.Args()
 	if len(params.Args) < 1 {
-		log.Fatal("command is required")
+		d.Fatal("command is required")
 	}
 	cmd, err := resolveCommand(params.Args[0])
 	if err != nil {
-		log.Fatal(err)
+		d.Fatal(err)
 	}
 	params.Args[0] = cmd
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatal(err)
+		d.Fatal(err)
 	}
 
 	c := etcd.NewClient([]string{params.Addr})
 	l, err := lock.Acquire(c, params.Key, hostname, params.TTL, params.Blocking)
 	if err != nil {
-		log.Fatal("failed to get lock", params.Key, err)
+		d.Fatal("failed to get lock", params.Key, err)
 	}
+	d.Defer(func() { l.Release() })
 	params.Lock = l
 
 	args, err := json.Marshal(&params)
 	if err != nil {
-		params.Lock.Release()
-		log.Fatal(err)
+		d.Fatal(err)
 	}
 
 	cmddone := make(chan struct{})
 	base := filepath.Base(params.Args[0])
 	locker, err := resolveCommand("locker")
 	if err != nil {
-		params.Lock.Release()
-		log.Fatal(err)
+		d.Fatal(err)
 	}
-	go cmdrun(cmddone, params.ID, params.TTL, locker, base, string(args))
+	go cmdrun(d, cmddone, params.ID, params.TTL, locker, base, string(args))
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
