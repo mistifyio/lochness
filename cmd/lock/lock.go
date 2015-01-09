@@ -29,7 +29,6 @@ Description=Cluster unique %s locker
 ExecStart=
 ExecStart=%s "%s"
 WatchdogSec=%d
-BoundBy=%s-locked-%d.service
 `
 
 type params struct {
@@ -75,7 +74,7 @@ func startService(id int, ttl uint64, target, cmd, base, arg string) (chan struc
 	defer f.Close()
 
 	arg = base64.StdEncoding.EncodeToString([]byte(arg))
-	dotService := fmt.Sprintf(service, base, cmd, arg, ttl, base, id)
+	dotService := fmt.Sprintf(service, base, cmd, arg, ttl)
 	_, err = f.WriteString(dotService)
 	if err != nil {
 		return nil, err
