@@ -41,16 +41,14 @@ func startService(id int, name string, args []string) (chan struct{}, error) {
 
 	statdone := make(chan struct{})
 	go monService(statuses, errs, statdone)
-	// There seems to be a race condition and waiting less than 1s leads to
-	// locker hanging if the application to be run is quick
-	time.Sleep(1 * time.Second)
 
 	base := filepath.Base(args[0])
 	desc := fmt.Sprintf("Cluster unique %s", base)
 	props := []dbus.Property{
 		dbus.PropDescription(desc),
 		dbus.PropExecStart(args, false),
-		dbus.PropBindsTo(fmt.Sprintf("%s-locker-%d.service", base, id)),
+		dbus.PropRemainAfterExit(true),
+		dbus.PropRequires(fmt.Sprintf("%s-locker-%d.service", base, id)),
 	}
 
 	done := make(chan string)
@@ -76,6 +74,11 @@ func monService(statuses <-chan map[string]*dbus.UnitStatus, errs <-chan error, 
 			for _, v := range status {
 				if v == nil {
 					log.Println("nil, exiting")
+					resp <- struct{}{}
+					return
+				}
+				if v.SubState == "exited" {
+					log.Println("exited, exiting")
 					resp <- struct{}{}
 					return
 				}
