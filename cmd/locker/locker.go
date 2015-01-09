@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +18,15 @@ import (
 	"github.com/mistifyio/lochness/pkg/lock"
 	"github.com/mistifyio/lochness/pkg/sd"
 )
+
+const service = `[Unit]
+Description=Cluster unique %s
+
+[Service]
+Type=oneshot
+ExecStart=
+ExecStart=%s
+`
 
 type params struct {
 	Interval uint64     `json:"interval"`
@@ -29,93 +39,58 @@ type params struct {
 	Lock     *lock.Lock `json:"lock"`
 }
 
-func startService(id int, name string, args []string) (chan struct{}, error) {
+func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name string, args []string) {
+	d := deferer.NewDeferer(dc)
+	defer d.Run()
+
 	conn, err := dbus.New()
 	if err != nil {
-		return nil, err
+		d.Fatal(err)
 	}
 
-	subset := conn.NewSubscriptionSet()
-	subset.Add(name)
-	statuses, errs := subset.Subscribe()
-
-	statdone := make(chan struct{})
-	go monService(statuses, errs, statdone)
+	f, err := os.Create("/run/systemd/system/" + name)
+	if err != nil {
+		d.Fatal(err)
+	}
+	d.Defer(func() { f.Close() })
 
 	base := filepath.Base(args[0])
-	desc := fmt.Sprintf("Cluster unique %s", base)
-	props := []dbus.Property{
-		dbus.PropDescription(desc),
-		dbus.PropExecStart(args, false),
-		dbus.PropRemainAfterExit(true),
-		dbus.PropRequires(fmt.Sprintf("%s-locker-%d.service", base, id)),
+	// For args with spaces, quote 'em
+	for i, v := range args {
+		if strings.Contains(v, " ") {
+			args[i] = "'" + v + "'"
+		}
 	}
+	dotService := fmt.Sprintf(service, base, strings.Join(args, " "))
+	_, err = f.WriteString(dotService)
+	if err != nil {
+		d.Fatal(err)
+	}
+	f.Sync()
 
 	done := make(chan string)
-	_, err = conn.StartTransientUnit(name, "fail", props, done)
+	_, err = conn.StartUnit(name, "fail", done)
 	if err != nil {
-		return nil, err
+		d.Fatal(err)
 	}
 
 	status := <-done
 	if status != "done" {
-		return nil, errors.New("failed to start service")
+		d.Fatal(errors.New(name + " " + status))
 	}
+	log.Println("status:", status)
 
-	return statdone, nil
+	serviceDone <- struct{}{}
 }
 
-func monService(statuses <-chan map[string]*dbus.UnitStatus, errs <-chan error, resp chan<- struct{}) {
-	for {
-		select {
-		case err := <-errs:
-			log.Printf("error: %#v\n", err)
-		case status := <-statuses:
-			for _, v := range status {
-				if v == nil {
-					log.Println("nil, exiting")
-					resp <- struct{}{}
-					return
-				}
-				if v.SubState == "exited" {
-					log.Println("exited, exiting")
-					resp <- struct{}{}
-					return
-				}
-				if v.ActiveState == "failed" {
-					log.Println("service failed:", v)
-					resp <- struct{}{}
-					return
-				}
-				if v.ActiveState == "inactive" {
-					log.Println("service is inactive:", v)
-					resp <- struct{}{}
-					return
-				}
-			}
-		}
-	}
-}
-
-func stopService(name string) error {
+func killService(name string, signal int32) error {
 	conn, err := dbus.New()
 	if err != nil {
 		log.Println("err:", err)
 		return err
 	}
 
-	done := make(chan string)
-	_, err = conn.StopUnit(name, "fail", done)
-	if err != nil {
-		log.Println("err:", err)
-		return err
-	}
-
-	status := <-done
-	if status != "done" {
-		log.Println("err:", err)
-		return errors.New("failed to stop service")
-	}
+	conn.KillUnit(name, signal)
 	return nil
 }
 
@@ -187,12 +162,10 @@ func main() {
 	}
 	tickler := tickle(params.Interval)
 
+	serviceDone := make(chan struct{})
 	base := filepath.Base(params.Args[0])
 	target := fmt.Sprintf("%s-locked-%d.service", base, params.ID)
-	service, err := startService(params.ID, target, params.Args)
-	if err != nil {
-		d.Fatal(err)
-	}
+	go runService(d, serviceDone, params.ID, target, params.Args)
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
@@ -200,15 +173,16 @@ func main() {
 	select {
 	case <-locker:
 		// TODO: should we never expect this?
-		stopService(target)
-	case <-service:
+		killService(target, int32(syscall.SIGINT))
+	case <-serviceDone:
 		close(locker)
-	case <-sigs:
-		stopService(target)
+	case s := <-sigs:
+		log.Println("got a sig:", s)
+		killService(target, int32(s.(syscall.Signal)))
 		close(locker)
 	case <-tickler:
 		// watchdog tickler stopped, uh oh we are going down pretty soon
-		stopService(target)
+		killService(target, int32(syscall.SIGINT))
 		close(locker)
 	}
 }

@@ -26,6 +26,7 @@ const service = `[Unit]
 Description=Cluster unique %s locker
 
 [Service]
+Type=oneshot
 ExecStart=
 ExecStart=%s "%s"
 WatchdogSec=%d
@@ -42,116 +43,56 @@ type params struct {
 	Lock     *lock.Lock `json:"lock"`
 }
 
-func cmdrun(dc *deferer.Deferer, done chan struct{}, id int, ttl uint64, cmd, base, arg string) {
+func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint64, target, cmd, base, arg string) {
 	d := deferer.NewDeferer(dc)
 	defer d.Run()
 
-	target := fmt.Sprintf("%s-locker-%d.service", base, id)
-	exited, err := startService(id, ttl, target, cmd, base, arg)
+	conn, err := dbus.New()
 	if err != nil {
 		d.Fatal(err)
 	}
 
-	select {
-	case <-done:
-		stopService(target)
-		done <- struct{}{}
-	case <-exited:
-		done <- struct{}{}
-	}
-}
-
-func startService(id int, ttl uint64, target, cmd, base, arg string) (chan struct{}, error) {
-	conn, err := dbus.New()
-	if err != nil {
-		return nil, err
-	}
-
 	f, err := os.Create("/run/systemd/system/" + target)
 	if err != nil {
-		return nil, err
+		d.Fatal(err)
 	}
-	defer f.Close()
+	d.Defer(func() { f.Close() })
 
 	arg = base64.StdEncoding.EncodeToString([]byte(arg))
 	dotService := fmt.Sprintf(service, base, cmd, arg, ttl)
 	_, err = f.WriteString(dotService)
 	if err != nil {
-		return nil, err
+		d.Fatal(err)
 	}
 	f.Sync()
-
-	done := make(chan string)
-	_, err = conn.StartUnit(target, "fail", done)
-	if err != nil {
-		return nil, err
-	}
-
-	status := <-done
-	if status != "done" {
-		return nil, errors.New("failed to start service")
-	}
-	log.Println("status:", status)
-
-	subset := conn.NewSubscriptionSet()
-	subset.Add(target)
-	statuses, errs := subset.Subscribe()
-
-	serviceDone := make(chan struct{})
-	go monService(statuses, errs, serviceDone)
 
 	log.Println("services names are:")
 	log.Printf("%s-locker-%d\n", base, id)
 	log.Printf("%s-locked-%d\n", base, id)
-	return serviceDone, nil
-}
 
-func monService(statuses <-chan map[string]*dbus.UnitStatus, errs <-chan error, resp chan<- struct{}) {
-	for {
-		select {
-		case err := <-errs:
-			log.Printf("error: %#v\n", err)
-		case status := <-statuses:
-			for _, v := range status {
-				if v == nil {
-					log.Println("nil, exiting")
-					resp <- struct{}{}
-					return
-				}
-				if v.ActiveState == "failed" {
-					log.Println("service failed:", v)
-					resp <- struct{}{}
-					return
-				}
-				if v.ActiveState == "inactive" {
-					log.Println("service is inactive:", v)
-					resp <- struct{}{}
-					return
-				}
-			}
-		}
+	done := make(chan string)
+	_, err = conn.StartUnit(target, "fail", done)
+	if err != nil {
+		d.Fatal(err)
 	}
+
+	status := <-done
+	if status != "done" {
+		d.Fatal(errors.New(target + " " + status))
+	}
+	log.Println("status:", status)
+
+	serviceDone <- struct{}{}
 }
 
-func stopService(name string) error {
+func killService(name string, signal int32) error {
 	conn, err := dbus.New()
 	if err != nil {
 		log.Println("err:", err)
 		return err
 	}
 
-	done := make(chan string)
-	_, err = conn.StopUnit(name, "fail", done)
-	if err != nil {
-		log.Println("err:", err)
-		return err
-	}
-
-	status := <-done
-	if status != "done" {
-		log.Println("err:", err)
-		return errors.New("failed to stop service")
-	}
+	conn.KillUnit(name, signal)
 	return nil
 }
 
@@ -220,23 +161,23 @@ func main() {
 		d.Fatal(err)
 	}
 
-	cmddone := make(chan struct{})
+	serviceDone := make(chan struct{})
 	base := filepath.Base(params.Args[0])
+	target := fmt.Sprintf("%s-locker-%d.service", base, id)
 	locker, err := resolveCommand("locker")
 	if err != nil {
 		d.Fatal(err)
 	}
-	go cmdrun(d, cmddone, params.ID, params.TTL, locker, base, string(args))
+	go runService(d, serviceDone, params.ID, params.TTL, target, locker, base, string(args))
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-cmddone:
+	case <-serviceDone:
 		log.Println("cmd is done")
-	case <-sigs:
-		log.Println("got a sig")
-		cmddone <- struct{}{}
-		<-cmddone
+	case s := <-sigs:
+		log.Println("got a sig:", s)
+		killService(target, int32(s.(syscall.Signal)))
 	}
 }
