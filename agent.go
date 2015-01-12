@@ -13,7 +13,7 @@ type (
 	// agent
 	Agenter interface {
 		GetGuest(string) (*client.Guest, error)
-		CreateGuest(*client.Guest) (*client.Guest, error)
+		CreateGuest(string) (*client.Guest, error)
 		DeleteGuest(string) (*client.Guest, error)
 		GuestAction(string, string) (*client.Guest, error)
 	}
@@ -102,11 +102,12 @@ func (agent *AgentStubs) GetGuest(guestID string) (*client.Guest, error) {
 }
 
 // CreateGuest is a stub for creating a guest via request to the agent.
-func (agent *AgentStubs) CreateGuest(guest *client.Guest) (*client.Guest, error) {
+func (agent *AgentStubs) CreateGuest(guestID string) (*client.Guest, error) {
 	if err := agent.randomError(); err != nil {
 		return nil, err
 	}
-	return guest, nil
+	guest, err := agent.guestFromID(guestID)
+	return guest, err
 }
 
 // DeleteGuest is a stub for deleting a guest via request to the agent.
