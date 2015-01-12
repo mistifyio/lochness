@@ -19,20 +19,12 @@ type Job struct {
 }
 
 func create(agent lochness.Agenter, id string) error {
-	guest, err := agent.GetGuest(id)
-	if err != nil {
-		return err
-	}
-	_, err = agent.CreateGuest(guest)
+	_, err := agent.CreateGuest(id)
 	return err
 }
 
 func del(agent lochness.Agenter, id string) error {
-	guest, err := agent.GetGuest(id)
-	if err != nil {
-		return err
-	}
-	_, err = agent.CreateGuest(guest)
+	_, err := agent.DeleteGuest(id)
 	return err
 }
 
