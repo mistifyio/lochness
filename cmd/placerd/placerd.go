@@ -17,6 +17,20 @@ type Job struct {
 	Guest  string `json:"guest"`
 }
 
+type Agenter interface {
+	Create(guestID string) error
+	Delete(guestID string) error
+	Start(guestID string) error
+	Stop(guestID string) error
+}
+
+type FakeAgent struct{}
+
+func (a *FakeAgent) Create(id string) error { return nil }
+func (a *FakeAgent) Delete(id string) error { return nil }
+func (a *FakeAgent) Start(id string) error  { return nil }
+func (a *FakeAgent) Stop(id string) error   { return nil }
+
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
 
@@ -56,6 +70,7 @@ func main() {
 	}()
 
 	log.Println("waiting for jobs")
+	var agent Agenter = &FakeAgent{}
 	for value := range q.C {
 		job := Job{}
 		err := json.Unmarshal([]byte(value), &job)
@@ -66,9 +81,13 @@ func main() {
 		log.Println("got new job:", job)
 		switch job.Action {
 		case "create":
+			agent.Create(job.Guest)
 		case "delete":
+			agent.Delete(job.Guest)
 		case "start":
+			agent.Start(job.Guest)
 		case "stop":
+			agent.Stop(job.Guest)
 		default:
 			log.Println("invalid job", job)
 		}
