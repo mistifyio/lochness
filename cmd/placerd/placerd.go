@@ -6,10 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/coreos/go-etcd/etcd"
-	"github.com/mistifyio/lochness/pkg/lock"
 	"github.com/mistifyio/lochness/pkg/queue"
 )
 
@@ -36,19 +34,6 @@ func main() {
 			log.Fatal("unable to get hostname:", err)
 		}
 	}
-
-	lock, err := lock.Acquire(e, *dir+".lock", hn, *ttl, true)
-	if err != nil {
-		panic(err)
-	}
-	go func() {
-		ticker := time.NewTicker(*interval)
-		for range ticker.C {
-			if err := lock.Refresh(); err != nil {
-				panic(err)
-			}
-		}
-	}()
 
 	stop := make(chan bool)
 	q, err := queue.Open(e, *dir, stop)
