@@ -2,6 +2,7 @@
 package lock
 
 import (
+	"encoding/json"
 	"errors"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -23,6 +24,48 @@ type Lock struct {
 	ttl   uint64
 	index uint64
 	held  bool
+}
+
+type lockJSON struct {
+	Addr  string `json:"addr"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
+	Ttl   uint64 `json:"ttl"`
+	Index uint64 `json:"index"`
+	Held  bool   `json:"held"`
+}
+
+func (l *Lock) UnmarshalJSON(data []byte) error {
+	j := lockJSON{}
+	err := json.Unmarshal(data, &j)
+	if err != nil {
+		return err
+	}
+	l.c = etcd.NewClient([]string{j.Addr})
+	l.key = j.Key
+	l.value = j.Value
+	l.ttl = j.Ttl
+	l.index = j.Index
+	l.held = j.Held
+	return nil
+}
+
+func (l *Lock) MarshalJSON() ([]byte, error) {
+	addr := ""
+	if cluster := l.c.GetCluster(); len(cluster) > 0 {
+		addr = cluster[0]
+	}
+
+	j := lockJSON{
+		Addr:  addr,
+		Key:   l.key,
+		Value: l.value,
+		Ttl:   l.ttl,
+		Index: l.index,
+		Held:  l.held,
+	}
+
+	return json.Marshal(&j)
 }
 
 func acquire(c *etcd.Client, key, value string, ttl uint64) (uint64, error) {

@@ -1,6 +1,8 @@
 package lock
 
 import (
+	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
@@ -102,11 +104,11 @@ func TestRefresh(t *testing.T) {
 
 	time.Sleep(time.Duration(ttl+1) * time.Second)
 	if err := l.Refresh(); err != ErrKeyNotFound {
-		t.Fatal("wanted: %v, got: %v\n", ErrKeyNotFound, err)
+		t.Fatalf("wanted: %v, got: %v\n", ErrKeyNotFound, err)
 	}
 
 	if err := l.Refresh(); err != ErrLockNotHeld {
-		t.Fatal("wanted: %v, got: %v\n", ErrLockNotHeld, err)
+		t.Fatalf("wanted: %v, got: %v\n", ErrLockNotHeld, err)
 	}
 }
 
@@ -142,5 +144,50 @@ func TestRelease(t *testing.T) {
 
 	if err := l.Release(); err != ErrLockNotHeld {
 		t.Fatalf("wanted: %v, got: %v\n", ErrLockNotHeld, err)
+	}
+}
+
+func TestJSON(t *testing.T) {
+	t.Parallel()
+	kv := "some-dir/" + uuid.New()
+	c := newClient(t)
+
+	l, err := Acquire(c, kv, kv, 60, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := json.Marshal(&l)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	l2 := &Lock{}
+	err = json.Unmarshal(data, l2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l2.c == nil {
+		t.Fatal("l2.c should not be nil")
+	}
+
+	match := false
+LOOP:
+	for _, h := range l.c.GetCluster() {
+		for _, h2 := range l2.c.GetCluster() {
+			if h == h2 {
+				match = true
+				break LOOP
+			}
+		}
+	}
+	if !match {
+		t.Fatalf("could not find a matching host in clusters, wanted: %v, got: %v\n",
+			l.c.GetCluster, l2.c.GetCluster())
+	}
+	l2.c = l.c
+	if !reflect.DeepEqual(*l, *l2) {
+		t.Fatalf("lock mismatch\nwanted: %#v\n   got: %#v\n", l, l2)
 	}
 }
