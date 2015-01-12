@@ -67,8 +67,8 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 	f.Sync()
 
 	log.Println("services names are:")
-	log.Printf("%s-locker-%d\n", base, id)
-	log.Printf("%s-locked-%d\n", base, id)
+	log.Printf("locker-%s-%d\n", base, id)
+	log.Printf("locked-%s-%d\n", base, id)
 
 	done := make(chan string)
 	_, err = conn.StartUnit(target, "fail", done)
@@ -163,7 +163,7 @@ func main() {
 
 	serviceDone := make(chan struct{})
 	base := filepath.Base(params.Args[0])
-	target := fmt.Sprintf("%s-locker-%d.service", base, id)
+	target := fmt.Sprintf("locker-%s-%d.service", base, id)
 	locker, err := resolveCommand("locker")
 	if err != nil {
 		d.Fatal(err)

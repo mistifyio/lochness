@@ -164,7 +164,7 @@ func main() {
 
 	serviceDone := make(chan struct{})
 	base := filepath.Base(params.Args[0])
-	target := fmt.Sprintf("%s-locked-%d.service", base, params.ID)
+	target := fmt.Sprintf("locked-%s-%d.service", base, params.ID)
 	go runService(d, serviceDone, params.ID, target, params.Args)
 
 	sigs := make(chan os.Signal)
