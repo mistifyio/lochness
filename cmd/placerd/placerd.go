@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log"
 	"os"
@@ -10,6 +11,11 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness/pkg/queue"
 )
+
+type Job struct {
+	Action string `json:"action"`
+	Guest  string `json:"guest"`
+}
 
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
@@ -49,7 +55,22 @@ func main() {
 		stop <- true
 	}()
 
-	for job := range q.C {
+	log.Println("waiting for jobs")
+	for value := range q.C {
+		job := Job{}
+		err := json.Unmarshal([]byte(value), &job)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 		log.Println("got new job:", job)
+		switch job.Action {
+		case "create":
+		case "delete":
+		case "start":
+		case "stop":
+		default:
+			log.Println("invalid job", job)
+		}
 	}
 }
