@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/queue"
 )
 
@@ -17,19 +18,33 @@ type Job struct {
 	Guest  string `json:"guest"`
 }
 
-type Agenter interface {
-	Create(guestID string) error
-	Delete(guestID string) error
-	Start(guestID string) error
-	Stop(guestID string) error
+func create(agent lochness.Agenter, id string) error {
+	guest, err := agent.GetGuest(id)
+	if err != nil {
+		return err
+	}
+	_, err = agent.CreateGuest(guest)
+	return err
 }
 
-type FakeAgent struct{}
+func del(agent lochness.Agenter, id string) error {
+	guest, err := agent.GetGuest(id)
+	if err != nil {
+		return err
+	}
+	_, err = agent.CreateGuest(guest)
+	return err
+}
 
-func (a *FakeAgent) Create(id string) error { return nil }
-func (a *FakeAgent) Delete(id string) error { return nil }
-func (a *FakeAgent) Start(id string) error  { return nil }
-func (a *FakeAgent) Stop(id string) error   { return nil }
+func start(agent lochness.Agenter, id string) error {
+	_, err := agent.GuestAction(id, "start")
+	return err
+}
+
+func stop(agent lochness.Agenter, id string) error {
+	_, err := agent.GuestAction(id, "shutdown")
+	return err
+}
 
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
@@ -55,8 +70,8 @@ func main() {
 		}
 	}
 
-	stop := make(chan bool)
-	q, err := queue.Open(e, *dir, stop)
+	queueStop := make(chan bool)
+	q, err := queue.Open(e, *dir, queueStop)
 	if err != nil {
 		panic(err)
 	}
@@ -66,11 +81,13 @@ func main() {
 	go func() {
 		sig := <-sigs
 		log.Println("received signal:", sig)
-		stop <- true
+		queueStop <- true
 	}()
 
+	ctx := lochness.NewContext(e)
+	var agent lochness.Agenter = ctx.NewAgentStubs(0)
+
 	log.Println("waiting for jobs")
-	var agent Agenter = &FakeAgent{}
 	for value := range q.C {
 		job := Job{}
 		err := json.Unmarshal([]byte(value), &job)
@@ -81,13 +98,13 @@ func main() {
 		log.Println("got new job:", job)
 		switch job.Action {
 		case "create":
-			agent.Create(job.Guest)
+			create(agent, job.Guest)
 		case "delete":
-			agent.Delete(job.Guest)
+			del(agent, job.Guest)
 		case "start":
-			agent.Start(job.Guest)
+			start(agent, job.Guest)
 		case "stop":
-			agent.Stop(job.Guest)
+			stop(agent, job.Guest)
 		default:
 			log.Println("invalid job", job)
 		}
