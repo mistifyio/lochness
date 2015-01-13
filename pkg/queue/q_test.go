@@ -90,21 +90,22 @@ func TestPut(t *testing.T) {
 
 	vals := []string{"1", "2"}
 	for i := range vals {
-		_, err := conn.Put(vals[i])
+		resp, err := conn.Put(vals[i])
 		if err != nil {
 			t.Fatal(err)
 		}
+		if resp != vals[i]+vals[i] {
+			t.Fatal("wanted:", vals[i]+vals[i], "got:", resp)
+		}
 	}
+
+	// queue should be drained
 	resp, err := c.Get(q.k, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	i := 0
-	for _, node := range resp.Node.Nodes {
-		if node.Value != vals[i] {
-			t.Fatal("wanted:", vals[i], "got:", node.Value)
-		}
-		i++
+	if len(resp.Node.Nodes) != 0 {
+		t.Fatal("queue should be drained, found", len(resp.Node.Nodes), "nodes")
 	}
 }
 
