@@ -3,8 +3,9 @@ package queue
 // Not really any tests, just broke out my dirty hacking into lib and extra
 
 import (
+	"encoding/json"
+	"log"
 	"testing"
-	"time"
 
 	"code.google.com/p/go-uuid/uuid"
 
@@ -12,6 +13,10 @@ import (
 )
 
 var c = etcd.NewClient([]string{"http://localhost:4001"})
+
+func init() {
+	log.SetFlags(log.Lshortfile | log.Ldate)
+}
 
 type q struct {
 	*Q
@@ -75,11 +80,18 @@ func TestPut(t *testing.T) {
 	q := newQ(t, nil)
 	defer delQ(t, q, true)
 
+	go func() {
+		for v := range q.C {
+			q.C <- v + v
+		}
+	}()
+
 	conn := Connect(c, q.k)
 
 	vals := []string{"1", "2"}
 	for i := range vals {
-		if err := conn.Put(vals[i]); err != nil {
+		_, err := conn.Put(vals[i])
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -100,7 +112,12 @@ func TestPoll(t *testing.T) {
 	n := "/test/" + uuid.New()
 	vals := []string{"1", "2", "3", "4", "5"}
 	for i := range vals {
-		if _, err := c.CreateInOrder(n, vals[i], 0); err != nil {
+		req := queued{Request: vals[i]}
+		data, err := json.Marshal(&req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.CreateInOrder(n, string(data), 0); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -114,21 +131,12 @@ func TestPoll(t *testing.T) {
 		if vals[i] != got {
 			t.Fatal("wanted:", vals[i], "got:", got)
 		}
+		q.C <- got
 	}
 	close(stop)
 	v, ok := <-q.C
 	if ok {
 		t.Fatal("unexpected chan receive:", v, ok)
-	}
-
-	// allow the last delete to work, 3ms seems to be the edge
-	time.Sleep(6 * time.Millisecond)
-	resp, err := c.Get(q.k, true, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, node := range resp.Node.Nodes {
-		t.Fatal("unexpected job (extra or not deleted):", node.Value)
 	}
 }
 
@@ -136,7 +144,12 @@ func TestStopMidPoll(t *testing.T) {
 	n := "/test/" + uuid.New()
 	vals := []string{"1", "2", "3", "4", "5"}
 	for i := range vals {
-		if _, err := c.CreateInOrder(n, vals[i], 0); err != nil {
+		req := queued{Request: vals[i]}
+		data, err := json.Marshal(&req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.CreateInOrder(n, string(data), 0); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -147,11 +160,11 @@ func TestStopMidPoll(t *testing.T) {
 
 	i := 0
 	for v := range q.C {
-		t.Log(i, v)
 		if vals[i] != v {
 			t.Fatal("wanted:", vals[i], "v:", v)
 		}
 		i++
+		q.C <- v
 		close(stop)
 	}
 	if i != 1 {

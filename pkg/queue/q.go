@@ -2,6 +2,7 @@
 package queue
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 
@@ -10,6 +11,14 @@ import (
 )
 
 var ErrStopped = errors.New("stopped by the user via stop channel")
+
+// TODO unique error with json error return?
+var jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
+
+type queued struct {
+	Request  string `json:"request,omitempty"`
+	Response string `json:"response,omitempty"`
+}
 
 type Conn struct {
 	dir string
@@ -22,9 +31,30 @@ func Connect(c *etcd.Client, dir string) *Conn {
 }
 
 // Put enqueues the value
-func (conn *Conn) Put(value string) error {
-	_, err := conn.c.CreateInOrder(conn.dir, value, 0)
-	return err
+func (conn *Conn) Put(value string) (string, error) {
+	Req := queued{Request: value}
+	data, err := json.Marshal(&Req)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := conn.c.CreateInOrder(conn.dir, string(data), 0)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err = conn.c.Watch(resp.Node.Key, resp.Node.CreatedIndex+1, false, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	Resp := queued{}
+	if err := json.Unmarshal([]byte(resp.Node.Value), &Resp); err != nil {
+		return "", err
+	}
+
+	_, err = conn.c.Delete(resp.Node.Key, false)
+	return Resp.Response, err
 }
 
 func isKeyExists(err error) bool {
@@ -37,7 +67,7 @@ type Q struct {
 	// C is a blocking chan used to deliver values as they are inserted into
 	// the queue. Once the value is delivered the object is deleted from
 	// the etcd directory.
-	C   <-chan string
+	C   chan string
 	dir string
 	c   *etcd.Client
 }
@@ -67,6 +97,40 @@ func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
 	return q, nil
 }
 
+// passMessage will Marshal the job, post it, wait for a response (forever),
+// unmarshal the resopnse and then return the data.
+func passMessage(c *etcd.Client, values chan string, key string) error {
+	resp, err := c.Get(key, false, false)
+	if err != nil {
+		return err
+	}
+
+	data := queued{}
+	if err := json.Unmarshal([]byte(resp.Node.Value), &data); err != nil {
+		return err
+	}
+
+	if data.Request == "" {
+		return errors.New("empty request")
+	}
+
+	values <- data.Request
+	data = queued{Response: <-values}
+
+	buf, err := json.Marshal(&data)
+	if err != nil {
+		log.Println(err)
+		buf = jsonMarshalError
+	}
+
+	_, err = c.Update(key, string(buf), 0)
+	if err != nil {
+		// retry?
+		return err
+	}
+	return nil
+}
+
 func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64, error) {
 	resp, err := c.Get(dir, true, true)
 	if err != nil {
@@ -81,20 +145,11 @@ func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64,
 		case <-stop:
 			return 0, ErrStopped
 		default:
-			resp, err := c.Get(node.Key, false, false)
-			if err != nil {
-				log.Println(err)
-				return 0, err
-			}
-
-			keys <- resp.Node.Value
-
-			_, err = c.Delete(node.Key, false)
-			if err != nil {
-				log.Println(err)
-				return 0, err
-			}
 			index = node.ModifiedIndex + 1
+			err := passMessage(c, keys, node.Key)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 	}
 	return index, nil
@@ -109,19 +164,9 @@ func watch(c *etcd.Client, dir string, index uint64, keys chan string, stop chan
 			default:
 				continue
 			}
-
-			r, err := c.Get(resp.Node.Key, false, false)
+			err := passMessage(c, keys, resp.Node.Key)
 			if err != nil {
 				log.Println(err)
-				break
-			}
-
-			keys <- r.Node.Value
-
-			_, err = c.Delete(r.Node.Key, false)
-			if err != nil {
-				log.Println(err)
-				break
 			}
 		}
 	}()
