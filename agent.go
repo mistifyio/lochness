@@ -1,8 +1,14 @@
 package lochness
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
+	"path"
 	"time"
 
 	"github.com/mistifyio/mistify-agent/client"
@@ -23,6 +29,12 @@ type (
 		context     *Context
 		rand        *rand.Rand
 		failPercent int
+	}
+
+	// Agent is an Agenter that communicates with a hypervisor agent to perform
+	// actions relating to guests
+	Agent struct {
+		context *Context
 	}
 )
 
@@ -136,4 +148,116 @@ func (agent *AgentStubs) GuestAction(guestID, actionName string) (*client.Guest,
 		}
 	}
 	return guest, nil
+}
+
+// generateURL crafts the agent url out of known and supplied parts
+func (agent *Agent) generateURL(host string, guestID string, action string) string {
+	// TODO: Get port from somewhere
+	port := 1337
+	urlPath := path.Join("guests", guestID, action)
+	return fmt.Sprintf("http://%s:%d/%s", host, port, urlPath)
+}
+
+// request makes a request to the agent for a guest and checks response
+func (agent *Agent) request(url, httpMethod string, expectedCode int, dataObj interface{}) (*client.Guest, error) {
+	httpClient := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	var resp *http.Response
+	var err error
+	if httpMethod == "POST" {
+		dataJSON, err := json.Marshal(dataObj)
+		if err != nil {
+			return nil, err
+		}
+		resp, err = httpClient.Post(url, "application/json", bytes.NewReader(dataJSON))
+	} else {
+		resp, err = httpClient.Get(url)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != expectedCode {
+		return nil, fmt.Errorf("Unexpected HTTP Response Code: Expected %d, Received %d", expectedCode, resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var guest client.Guest
+	if err := json.Unmarshal(body, &guest); err != nil {
+		return nil, err
+	}
+	return &guest, nil
+}
+
+// requestGuestAction is a convenience wrapper for basic guest actions other
+// than "get" and "create".
+func (agent *Agent) requestGuestAction(guestID, actionName string) (*client.Guest, error) {
+	g, err := agent.context.Guest(guestID)
+	if err != nil {
+		return nil, err
+	}
+	hypervisor, err := agent.context.Hypervisor(g.HypervisorID)
+	if err != nil {
+		return nil, err
+	}
+
+	url := agent.generateURL(string(hypervisor.IP), guestID, actionName)
+	guest, err := agent.request(url, "POST", 202, nil)
+	return guest, err
+}
+
+// GetGuest retrieves information on a guest from an agent
+func (agent *Agent) GetGuest(guestID string) (*client.Guest, error) {
+	g, err := agent.context.Guest(guestID)
+	if err != nil {
+		return nil, err
+	}
+	hypervisor, err := agent.context.Hypervisor(g.HypervisorID)
+	if err != nil {
+		return nil, err
+	}
+	url := agent.generateURL(string(hypervisor.IP), guestID, "")
+	guest, err := agent.request(url, "GET", 200, nil)
+	return guest, err
+}
+
+// CreateGuest tries to create a new guest on a hypervisor selected from a list
+// of viable candidates
+func (agent *Agent) CreateGuest(guestID string) (*client.Guest, error) {
+	g, err := agent.context.Guest(guestID)
+	if err != nil {
+		return nil, err
+	}
+
+	candidates, err := g.Candidates(DefaultCadidateFuctions...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, hypervisor := range candidates {
+		url := agent.generateURL(string(hypervisor.IP), "", "")
+		guest, err := agent.request(url, "POST", 202, g)
+		if err == nil {
+			return guest, nil
+		}
+	}
+
+	return nil, err
+}
+
+// DeleteGuest deletes a guest from a hypervisor
+func (agent *Agent) DeleteGuest(guestID string) (*client.Guest, error) {
+	guest, err := agent.requestGuestAction(guestID, "delete")
+	return guest, err
+}
+
+// GuestAction is used to run various actions on a guest under a hypervisor
+// Actions: "shutdown", "reboot", "restart", "poweroff", "start", "suspend"
+func (agent *Agent) GuestAction(guestID, actionName string) (*client.Guest, error) {
+	guest, err := agent.requestGuestAction(guestID, actionName)
+	return guest, err
 }
