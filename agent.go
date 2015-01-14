@@ -11,6 +11,7 @@ import (
 	"path"
 	"time"
 
+	mistifyagent "github.com/mistifyio/mistify-agent"
 	"github.com/mistifyio/mistify-agent/client"
 )
 
@@ -150,51 +151,99 @@ func (agent *AgentStubs) GuestAction(guestID, actionName string) (*client.Guest,
 	return guest, nil
 }
 
-// generateURL crafts the agent url out of known and supplied parts
-func (agent *Agent) generateURL(host string, guestID string, action string) string {
-	// TODO: Get port from somewhere
-	port := 1337
+// TODO: REMOVE =============================================
+
+// guestActionURL crafts the guest action url
+func (agent *Agent) guestActionURL(host, guestID, action string) string {
+
+	port := 1337 // TODO: Get port from somewhere. Config?
+
+	// Create and Get don't have the action name in the URL, so blank it out
+	if action == "create" || action == "get" {
+		action = ""
+	}
+
+	// Join with appropriate seperators whether action is blank or not
 	urlPath := path.Join("guests", guestID, action)
+
 	return fmt.Sprintf("http://%s:%d/%s", host, port, urlPath)
 }
 
-// request makes a request to the agent for a guest and checks response
-func (agent *Agent) request(url, httpMethod string, expectedCode int, dataObj interface{}) (*client.Guest, error) {
+// guestJobURL crafts the job status url
+func (agent *Agent) guestJobURL(host, guestID, jobID string) string {
+	port := 1337 // TODO: Get port from somewhere
+	return fmt.Sprintf("http://%s:%d/guests/%s/jobs/%s", host, port, guestID, jobID)
+}
+
+// request is the generic way to hit an agent endpoint with minimal response
+// checking. It returns the body string for later parsing and an optional jobID.
+// Generally don't use directly; other, more convenient methods will wrap this
+func (agent *Agent) request(url, httpMethod string, expectedCode int, dataObj interface{}) ([]byte, string, error) {
 	httpClient := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: 15 * time.Second,
 	}
 
+	// Make the request. POST sends JSON data, GET doesn't
 	var resp *http.Response
 	var err error
 	if httpMethod == "POST" {
 		dataJSON, err := json.Marshal(dataObj)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		resp, err = httpClient.Post(url, "application/json", bytes.NewReader(dataJSON))
 	} else {
 		resp, err = httpClient.Get(url)
 	}
+	if err != nil {
+		return nil, "", err
+	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != expectedCode {
-		return nil, fmt.Errorf("Unexpected HTTP Response Code: Expected %d, Received %d", expectedCode, resp.StatusCode)
+		return nil, "", fmt.Errorf("Unexpected HTTP Response Code: Expected %d, Received %d", expectedCode, resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
+	return body, resp.Header.Get("X-Guest-Job-ID"), err
+}
+
+// guestRequest makes requests for a guest to a hypervisor agent. It wraps
+// Agent.request, generating the url, parsing the result, and handling job
+// status polling
+func (agent *Agent) guestRequest(hypervisor *Hypervisor, guestID string, actionName string, dataObj interface{}) (*client.Guest, error) {
+	url := agent.guestActionURL(string(hypervisor.IP), guestID, actionName)
+
+	// Determine appropriate http method and response code
+	httpCode := http.StatusAccepted
+	httpMethod := "POST"
+	if actionName == "get" {
+		httpCode = http.StatusOK
+		httpMethod = "GET"
+	}
+
+	// Make the request
+	body, jobID, err := agent.request(url, httpMethod, httpCode, dataObj)
 	if err != nil {
 		return nil, err
 	}
 
+	// Parse the response
 	var guest client.Guest
 	if err := json.Unmarshal(body, &guest); err != nil {
 		return nil, err
 	}
-	return &guest, nil
+
+	// If there's no jobID to poll for, return now
+	if jobID == "" {
+		return &guest, nil
+	}
+
+	return &guest, agent.waitForGuestJob(hypervisor, guestID, jobID)
 }
 
-// requestGuestAction is a convenience wrapper for basic guest actions other
-// than "get" and "create".
+// requestGuestAction makes requests for a guest to a hypervisor agent. It wraps
+// Agent.guestRequest, looking up the hypervisor
 func (agent *Agent) requestGuestAction(guestID, actionName string) (*client.Guest, error) {
 	g, err := agent.context.Guest(guestID)
 	if err != nil {
@@ -205,23 +254,53 @@ func (agent *Agent) requestGuestAction(guestID, actionName string) (*client.Gues
 		return nil, err
 	}
 
-	url := agent.generateURL(string(hypervisor.IP), guestID, actionName)
-	guest, err := agent.request(url, "POST", 202, nil)
+	guest, err := agent.guestRequest(hypervisor, guestID, actionName, nil)
 	return guest, err
+}
+
+// waitForGuestJob polls the hypervisor for the job status until it errors or
+// finishes
+func (agent *Agent) waitForGuestJob(hypervisor *Hypervisor, guestID, jobID string) error {
+	url := agent.guestJobURL(string(hypervisor.IP), guestID, jobID)
+	done := false
+	var err error
+	for !done {
+		done, err = agent.checkJobStatus(url)
+		if err != nil {
+			return err
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return nil
+}
+
+// checkJobStatus looks up whether a guest job has been completed or not.
+// Since it is likely to be called multiple times, it takes a url rather than
+// regenerating it every time from components
+func (agent *Agent) checkJobStatus(url string) (bool, error) {
+	body, _, err := agent.request(url, "GET", http.StatusOK, nil)
+	if err != nil {
+		return false, err
+	}
+
+	var job mistifyagent.GuestJob
+	if err := json.Unmarshal(body, &job); err != nil {
+		return false, err
+	}
+
+	switch job.Status {
+	case mistifyagent.Complete:
+		return true, nil
+	case mistifyagent.Errored:
+		return false, errors.New(job.Message)
+	default:
+		return false, nil
+	}
 }
 
 // GetGuest retrieves information on a guest from an agent
 func (agent *Agent) GetGuest(guestID string) (*client.Guest, error) {
-	g, err := agent.context.Guest(guestID)
-	if err != nil {
-		return nil, err
-	}
-	hypervisor, err := agent.context.Hypervisor(g.HypervisorID)
-	if err != nil {
-		return nil, err
-	}
-	url := agent.generateURL(string(hypervisor.IP), guestID, "")
-	guest, err := agent.request(url, "GET", 200, nil)
+	guest, err := agent.requestGuestAction(guestID, "get")
 	return guest, err
 }
 
@@ -239,8 +318,7 @@ func (agent *Agent) CreateGuest(guestID string) (*client.Guest, error) {
 	}
 
 	for _, hypervisor := range candidates {
-		url := agent.generateURL(string(hypervisor.IP), "", "")
-		guest, err := agent.request(url, "POST", 202, g)
+		guest, err := agent.guestRequest(hypervisor, guestID, "create", g)
 		if err == nil {
 			return guest, nil
 		}
