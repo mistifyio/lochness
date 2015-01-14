@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"log"
 	"os"
@@ -97,15 +98,20 @@ func main() {
 		log.Println("got new job:", job)
 		switch job.Action {
 		case "create":
-			create(agent, job.Guest)
+			err = create(agent, job.Guest)
 		case "delete":
-			del(agent, job.Guest)
+			err = del(agent, job.Guest)
 		case "start":
-			start(agent, job.Guest)
+			err = start(agent, job.Guest)
 		case "stop":
-			stop(agent, job.Guest)
+			err = stop(agent, job.Guest)
 		default:
-			log.Println("invalid job", job)
+			err = errors.New("unknown job type")
 		}
+		resp := ""
+		if err != nil {
+			resp = err.Error()
+		}
+		q.C <- resp
 	}
 }
