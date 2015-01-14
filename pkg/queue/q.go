@@ -30,7 +30,8 @@ func Connect(c *etcd.Client, dir string) *Conn {
 	return &Conn{dir: dir, c: c}
 }
 
-// Put enqueues the value
+// Put enqueues the value, and wait for the response. Once the response has been
+// received, the node is deleted.
 func (conn *Conn) Put(value string) (string, error) {
 	Req := queued{Request: value}
 	data, err := json.Marshal(&Req)
@@ -64,9 +65,8 @@ func isKeyExists(err error) bool {
 
 // Q represents the opened queue
 type Q struct {
-	// C is a blocking chan used to deliver values as they are inserted into
-	// the queue. Once the value is delivered the object is deleted from
-	// the etcd directory.
+	// C is a blocking chan used to deliver requests as they are inserted
+	// into the queue and to deliver responses.
 	C   chan string
 	dir string
 	c   *etcd.Client
@@ -98,7 +98,7 @@ func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
 }
 
 // passMessage will Marshal the job, post it, wait for a response (forever),
-// unmarshal the resopnse and then return the data.
+// unmarshal the response and then return the data.
 func passMessage(c *etcd.Client, values chan string, key string) error {
 	resp, err := c.Get(key, false, false)
 	if err != nil {
