@@ -52,6 +52,7 @@ type (
 		Bridge       string            `json:"bridge"`
 	}
 
+	// CandidateFunction is used to select hypervisors that can run the given guest.
 	CandidateFunction func(*Guest, Hypervisors) (Hypervisors, error)
 )
 
@@ -304,7 +305,7 @@ func randomizeHypervisors(s Hypervisors) Hypervisors {
 }
 
 // DefaultCadidateFuctions is a default list of CandidateFunctions for general use
-var DefaultCadidateFuctions []CandidateFunction = []CandidateFunction{
+var DefaultCadidateFuctions = []CandidateFunction{
 	CandidateIsAlive,
 	CandidateHasSubnet,
 	CandidateHasResources,
