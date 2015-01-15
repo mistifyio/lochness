@@ -37,6 +37,9 @@ type (
 		subnets            map[string]string
 		guests             []string
 		alive              bool
+		// Config is a set of key/values for driving various config options. writes should
+		// only be done using SetConfig
+		Config map[string]string
 	}
 
 	// Hypervisors is an alias to a slice of *Hypervisor
@@ -107,6 +110,7 @@ func (c *Context) blankHypervisor(id string) *Hypervisor {
 		ID:       id,
 		Metadata: make(map[string]string),
 		subnets:  make(map[string]string),
+		Config:   make(map[string]string),
 		guests:   make([]string, 0, 0),
 	}
 
@@ -167,6 +171,10 @@ func (h *Hypervisor) Refresh() error {
 		case "guests":
 			for _, n := range n.Nodes {
 				h.guests = append(h.guests, filepath.Base(n.Key))
+			}
+		case "config":
+			for _, n := range n.Nodes {
+				h.Config[filepath.Base(n.Key)] = n.Value
 			}
 		}
 	}
@@ -451,6 +459,25 @@ func (h *Hypervisor) Guests() []string {
 	return h.guests
 }
 
+// FirstHypervisor will return the first hypervisor for which the function returns true.
+func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error) {
+	resp, err := c.etcd.Get(HypervisorPath, false, false)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range resp.Node.Nodes {
+		h, err := c.Hypervisor(filepath.Base(n.Key))
+		if err != nil {
+			return nil, err
+		}
+
+		if f(h) {
+			return h, nil
+		}
+	}
+	return nil, nil
+}
+
 // ForEachHypervisor will run f on each Hypervisor. It will stop iteration if f returns an error.
 func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 	// should we condense this to a single etcd call?
@@ -468,6 +495,24 @@ func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 		if err := f(h); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// SetConfig sets a single Hypervisor Config value. Set value to "" to unset.
+func (h *Hypervisor) SetConfig(key, value string) error {
+
+	if value != "" {
+		if _, err := h.context.etcd.Set(filepath.Join(HypervisorPath, h.ID, "config", key), value, 0); err != nil {
+			return err
+		}
+
+		h.Config[key] = value
+	} else {
+		if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID, "config", key), false); err != nil {
+			return err
+		}
+		delete(h.Config, key)
 	}
 	return nil
 }

@@ -42,3 +42,46 @@ func TestHypervisorIsAlive(t *testing.T) {
 func TestHypervisorsAlias(t *testing.T) {
 	_ = lochness.Hypervisors([]*lochness.Hypervisor{})
 }
+
+func TestHypervisorSetConfig(t *testing.T) {
+	hv := newHypervisor(t)
+	defer contextCleanup(t)
+
+	h.Ok(t, hv.SetConfig("foo", "bar"))
+
+	h.Equals(t, "bar", hv.Config["foo"])
+
+	h.Ok(t, hv.Refresh())
+
+	h.Equals(t, "bar", hv.Config["foo"])
+
+	h.Ok(t, hv.SetConfig("foo", ""))
+
+	_, ok := hv.Config["foo"]
+	h.Equals(t, ok, false)
+}
+
+func TestFirstHypervisor(t *testing.T) {
+	c := newContext(t)
+	newHypervisor(t)
+	newHypervisor(t)
+	hv := newHypervisor(t)
+	defer contextCleanup(t)
+
+	found, err := c.FirstHypervisor(func(h *lochness.Hypervisor) bool {
+		return h.ID == "foo"
+	})
+
+	h.Ok(t, err)
+
+	h.Assert(t, found == nil, "unexpected value")
+
+	found, err = c.FirstHypervisor(func(h *lochness.Hypervisor) bool {
+		return h.ID == hv.ID
+	})
+
+	h.Ok(t, err)
+
+	h.Assert(t, found != nil, "unexpected nil")
+
+}
