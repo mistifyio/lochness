@@ -30,16 +30,55 @@ func (context *Context) NewAgent() *Agent {
 	}
 }
 
+// generateClientGuest creates a client.Guest object based on the stored guest
+// properties. Used during guest creation
+func (agent *Agent) generateClientGuest(g *Guest) (*client.Guest, error) {
+	flavor, err := agent.context.Flavor(g.FlavorID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	subnet, err := agent.context.Subnet(g.SubnetID)
+	if err != nil {
+		return nil, err
+	}
+
+	nic := client.Nic{
+		Network: g.Bridge,
+		Model:   "virtio", // TODO: Check whether this is alwalys the case
+		Address: g.IP.String(),
+		Netmask: subnet.CIDR.Mask.String(),
+		Gateway: subnet.Gateway.String(),
+	}
+
+	disk := client.Disk{
+		Size: flavor.Disk,
+	}
+
+	return &client.Guest{
+		Id:       g.ID,
+		Type:     g.Type,
+		Nics:     []client.Nic{nic},
+		Disks:    []client.Disk{disk},
+		Memory:   uint(flavor.Memory),
+		Cpu:      uint(flavor.CPU),
+		Metadata: g.Metadata,
+	}, nil
+}
+
 // guestActionURL crafts the guest action url
 func (agent *Agent) guestActionURL(host, guestID, action string) string {
-
 	port := 1337 // TODO: Get port from somewhere. Config?
 
 	// Create and Get don't have the action name in the URL, so blank it out
+	// Create doesn't specify a guest id in the URL
 	if action == "create" || action == "get" {
+		if action == "create" {
+			guestID = ""
+		}
 		action = ""
 	}
-
 	// Join with appropriate seperators whether action is blank or not
 	urlPath := path.Join("guests", guestID, action)
 
@@ -62,18 +101,18 @@ func (agent *Agent) request(url, httpMethod string, expectedCode int, dataObj in
 
 	// Make the request. POST sends JSON data, GET doesn't
 	var resp *http.Response
-	var err error
+	var reqErr error
 	if httpMethod == "POST" {
 		dataJSON, err := json.Marshal(dataObj)
 		if err != nil {
 			return nil, "", err
 		}
-		resp, err = httpClient.Post(url, "application/json", bytes.NewReader(dataJSON))
+		resp, reqErr = httpClient.Post(url, "application/json", bytes.NewReader(dataJSON))
 	} else {
-		resp, err = httpClient.Get(url)
+		resp, reqErr = httpClient.Get(url)
 	}
-	if err != nil {
-		return nil, "", err
+	if reqErr != nil {
+		return nil, "", reqErr
 	}
 	defer resp.Body.Close()
 
@@ -89,7 +128,7 @@ func (agent *Agent) request(url, httpMethod string, expectedCode int, dataObj in
 // Agent.request, generating the url, parsing the result, and handling job
 // status polling
 func (agent *Agent) guestRequest(hypervisor *Hypervisor, guestID string, actionName string, dataObj interface{}) (*client.Guest, error) {
-	url := agent.guestActionURL(string(hypervisor.IP), guestID, actionName)
+	url := agent.guestActionURL(hypervisor.IP.String(), guestID, actionName)
 
 	// Determine appropriate http method and response code
 	httpCode := http.StatusAccepted
@@ -138,7 +177,7 @@ func (agent *Agent) requestGuestAction(guestID, actionName string) (*client.Gues
 // waitForGuestJob polls the hypervisor for the job status until it errors or
 // finishes
 func (agent *Agent) waitForGuestJob(hypervisor *Hypervisor, guestID, jobID string) error {
-	url := agent.guestJobURL(string(hypervisor.IP), guestID, jobID)
+	url := agent.guestJobURL(hypervisor.IP.String(), guestID, jobID)
 	done := false
 	var err error
 	for !done {
@@ -194,16 +233,21 @@ func (agent *Agent) CreateGuest(guestID string) (*client.Guest, error) {
 		return nil, err
 	}
 
+	guest, err := agent.generateClientGuest(g)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, hypervisor := range candidates {
-		// TODO: Convert lochness.Guest to client.Guest as much as needed for
-		// creation
-		guest, err := agent.guestRequest(hypervisor, guestID, "create", g)
+		guest, err = agent.guestRequest(hypervisor, guestID, "create", guest)
 		if err == nil {
 			return guest, nil
+		} else {
+			fmt.Println("Guest Create Error:", err)
 		}
 	}
 
-	return nil, err
+	return nil, errors.New("failed to create guest")
 }
 
 // DeleteGuest deletes a guest from a hypervisor
