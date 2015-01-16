@@ -16,8 +16,8 @@ var ErrStopped = errors.New("stopped by the user via stop channel")
 var jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
 
 type Job struct {
-	Request  string `json:"request,omitempty"`
-	Response string `json:"response,omitempty"`
+	Request  string `json:"request"`
+	Response string `json:"response"`
 }
 
 type Conn struct {
@@ -119,6 +119,11 @@ func passMessage(c *etcd.Client, values chan string, key string) {
 
 	if req.Request == "" {
 		log.Println("empty request")
+		return
+	}
+
+	if req.Response != "" {
+		log.Println("message already handled")
 		return
 	}
 
