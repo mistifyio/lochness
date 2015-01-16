@@ -81,8 +81,9 @@ func TestPut(t *testing.T) {
 	defer delQ(t, q, true)
 
 	go func() {
-		for v := range q.C {
-			q.C <- v + v
+		for r := range q.C {
+			r.Response = r.Request + r.Request
+			q.C <- r
 		}
 	}()
 
@@ -129,8 +130,8 @@ func TestPoll(t *testing.T) {
 
 	for i := 0; i < len(vals); i++ {
 		got := <-q.C
-		if vals[i] != got {
-			t.Fatal("wanted:", vals[i], "got:", got)
+		if vals[i] != got.Request {
+			t.Fatal("wanted:", vals[i], "got:", got.Request)
 		}
 		q.C <- got
 	}
@@ -161,8 +162,8 @@ func TestStopMidPoll(t *testing.T) {
 
 	i := 0
 	for v := range q.C {
-		if vals[i] != v {
-			t.Fatal("wanted:", vals[i], "v:", v)
+		if vals[i] != v.Request {
+			t.Fatal("wanted:", vals[i], "v:", v.Request)
 		}
 		i++
 		q.C <- v

@@ -73,7 +73,7 @@ func isEventIndexCleared(err error) bool {
 type Q struct {
 	// C is a blocking chan used to deliver requests as they are inserted
 	// into the queue and to deliver responses.
-	C   chan string
+	C   chan Job
 	dir string
 	c   *etcd.Client
 }
@@ -87,30 +87,30 @@ func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
 		return nil, err
 	}
 
-	keys := make(chan string)
-	q := &Q{C: keys, dir: dir, c: c}
+	jobs := make(chan Job)
+	q := &Q{C: jobs, dir: dir, c: c}
 	go func() {
-		defer close(keys)
+		defer close(jobs)
 
-		index, err := poll(c, dir, keys, stop)
+		index, err := poll(c, dir, jobs, stop)
 		if err != nil {
 			return
 		}
 
-		watch(c, dir, index, keys, stop)
+		watch(c, dir, index, jobs, stop)
 	}()
 
 	return q, nil
 }
 
-func sendMessage(c *etcd.Client, values chan string, req *Job) {
+func sendMessage(c *etcd.Client, jobs chan Job, req *Job) {
 	resp, err := c.Get(req.key, false, false)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	if err := json.Unmarshal([]byte(resp.Node.Value), &req); err != nil {
+	if err := json.Unmarshal([]byte(resp.Node.Value), req); err != nil {
 		log.Println(err)
 		return
 	}
@@ -125,11 +125,11 @@ func sendMessage(c *etcd.Client, values chan string, req *Job) {
 		return
 	}
 
-	values <- req.Request
+	jobs <- *req
 }
 
-func receiveMessage(c *etcd.Client, values chan string, j Job) {
-	j.Response = <-values
+func receiveMessage(c *etcd.Client, jobs chan Job) {
+	j := <-jobs
 	buf, err := json.Marshal(&j)
 	if err != nil {
 		log.Println(err)
@@ -143,7 +143,7 @@ func receiveMessage(c *etcd.Client, values chan string, j Job) {
 	}
 }
 
-func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64, error) {
+func poll(c *etcd.Client, dir string, jobs chan Job, stop chan bool) (uint64, error) {
 	resp, err := c.Get(dir, true, true)
 	if err != nil {
 		return 0, err
@@ -159,14 +159,14 @@ func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64,
 		default:
 			index = node.ModifiedIndex + 1
 			j := Job{key: node.Key}
-			sendMessage(c, keys, &j)
-			receiveMessage(c, keys, j)
+			sendMessage(c, jobs, &j)
+			receiveMessage(c, jobs)
 		}
 	}
 	return index, nil
 }
 
-func watch(c *etcd.Client, dir string, index uint64, keys chan string, stop chan bool) {
+func watch(c *etcd.Client, dir string, index uint64, jobs chan Job, stop chan bool) {
 	for {
 		resps := make(chan *etcd.Response)
 		go func() {
@@ -177,8 +177,8 @@ func watch(c *etcd.Client, dir string, index uint64, keys chan string, stop chan
 					continue
 				}
 				j := Job{key: resp.Node.Key}
-				sendMessage(c, keys, &j)
-				receiveMessage(c, keys, j)
+				sendMessage(c, jobs, &j)
+				receiveMessage(c, jobs)
 			}
 		}()
 
