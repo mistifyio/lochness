@@ -105,19 +105,19 @@ func passMessage(c *etcd.Client, values chan string, key string) error {
 		return err
 	}
 
-	data := Job{}
-	if err := json.Unmarshal([]byte(resp.Node.Value), &data); err != nil {
+	req := Job{}
+	if err := json.Unmarshal([]byte(resp.Node.Value), &req); err != nil {
 		return err
 	}
 
-	if data.Request == "" {
+	if req.Request == "" {
 		return errors.New("empty request")
 	}
 
-	values <- data.Request
-	data = Job{Response: <-values}
+	values <- req.Request
+	req = Job{Response: <-values}
 
-	buf, err := json.Marshal(&data)
+	buf, err := json.Marshal(&req)
 	if err != nil {
 		log.Println(err)
 		buf = jsonMarshalError
