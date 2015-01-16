@@ -248,7 +248,7 @@ func (agent *Agent) CreateGuest(guestID string) (*client.Guest, error) {
 			}
 			return guest, nil
 		}
-		fmt.Println("Guest Create Error:", err)
+		fmt.Printf("Guest Create Error: Guest %s, Hypervisor %s: %s", g.ID, hypervisor.ID, err)
 	}
 
 	return nil, errors.New("failed to create guest")
