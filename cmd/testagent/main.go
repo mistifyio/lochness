@@ -93,7 +93,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	agent := c.NewAgent()
+	agent := c.NewMistifyAgent()
 	clientGuest, err := agent.CreateGuest(g.ID)
 	if err != nil {
 		log.Fatal(err)
