@@ -22,8 +22,7 @@ type (
 	}
 )
 
-// NewAgentStubs creates a new AgentStubs instance within the context and
-// initialies the random number generator for failures
+// NewAgent creates a new Agent instance within the context
 func (context *Context) NewAgent() *Agent {
 	return &Agent{
 		context: context,
@@ -238,13 +237,18 @@ func (agent *Agent) CreateGuest(guestID string) (*client.Guest, error) {
 		return nil, err
 	}
 
+	// Cycle through the candidates until one successfully creates. Track which
+	// one via the guest's HypervisorID
 	for _, hypervisor := range candidates {
 		guest, err = agent.guestRequest(hypervisor, guestID, "create", guest)
 		if err == nil {
+			g.HypervisorID = hypervisor.ID
+			if err := g.Save(); err != nil {
+				fmt.Printf("Guest created on Hypervisor %s, but guest info persist failed", hypervisor.ID)
+			}
 			return guest, nil
-		} else {
-			fmt.Println("Guest Create Error:", err)
 		}
+		fmt.Println("Guest Create Error:", err)
 	}
 
 	return nil, errors.New("failed to create guest")
