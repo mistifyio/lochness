@@ -16,6 +16,7 @@ var ErrStopped = errors.New("stopped by the user via stop channel")
 var jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
 
 type Job struct {
+	key      string
 	Request  string `json:"request"`
 	Response string `json:"response"`
 }
