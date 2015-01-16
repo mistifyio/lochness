@@ -63,6 +63,11 @@ func isKeyExists(err error) bool {
 	return ok && e.ErrorCode == etcdErr.EcodeNodeExist
 }
 
+func isEventIndexCleared(err error) bool {
+	e, ok := err.(*etcd.EtcdError)
+	return ok && e.ErrorCode == etcdErr.EcodeEventIndexCleared
+}
+
 // Q represents the opened queue
 type Q struct {
 	// C is a blocking chan used to deliver requests as they are inserted
@@ -155,19 +160,28 @@ func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64,
 }
 
 func watch(c *etcd.Client, dir string, index uint64, keys chan string, stop chan bool) {
-	resps := make(chan *etcd.Response)
-	go func() {
-		for resp := range resps {
-			switch resp.Action {
-			case "create", "set":
-			default:
-				continue
+	for {
+		resps := make(chan *etcd.Response)
+		go func() {
+			for resp := range resps {
+				switch resp.Action {
+				case "create", "set":
+				default:
+					continue
+				}
+				passMessage(c, keys, resp.Node.Key)
 			}
-			passMessage(c, keys, resp.Node.Key)
+		}()
+
+		_, err := c.Watch(dir, index, true, resps, stop)
+		if err == nil || err == etcd.ErrWatchStoppedByUser {
+			break
 		}
-	}()
-	_, err := c.Watch(dir, index, true, resps, stop)
-	if err != nil {
-		log.Println(err)
+		if !isEventIndexCleared(err) {
+			log.Printf("%#v\n", err)
+			break
+		}
+		index++
+		continue
 	}
 }
