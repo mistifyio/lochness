@@ -15,7 +15,7 @@ var ErrStopped = errors.New("stopped by the user via stop channel")
 // TODO unique error with json error return?
 var jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
 
-type queued struct {
+type Job struct {
 	Request  string `json:"request,omitempty"`
 	Response string `json:"response,omitempty"`
 }
@@ -33,7 +33,7 @@ func Connect(c *etcd.Client, dir string) *Conn {
 // Put enqueues the value, and wait for the response. Once the response has been
 // received, the node is deleted.
 func (conn *Conn) Put(value string) (string, error) {
-	Req := queued{Request: value}
+	Req := Job{Request: value}
 	data, err := json.Marshal(&Req)
 	if err != nil {
 		return "", err
@@ -49,7 +49,7 @@ func (conn *Conn) Put(value string) (string, error) {
 		return "", err
 	}
 
-	Resp := queued{}
+	Resp := Job{}
 	if err := json.Unmarshal([]byte(resp.Node.Value), &Resp); err != nil {
 		return "", err
 	}
@@ -105,7 +105,7 @@ func passMessage(c *etcd.Client, values chan string, key string) error {
 		return err
 	}
 
-	data := queued{}
+	data := Job{}
 	if err := json.Unmarshal([]byte(resp.Node.Value), &data); err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func passMessage(c *etcd.Client, values chan string, key string) error {
 	}
 
 	values <- data.Request
-	data = queued{Response: <-values}
+	data = Job{Response: <-values}
 
 	buf, err := json.Marshal(&data)
 	if err != nil {

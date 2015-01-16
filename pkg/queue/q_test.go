@@ -113,7 +113,7 @@ func TestPoll(t *testing.T) {
 	n := "/test/" + uuid.New()
 	vals := []string{"1", "2", "3", "4", "5"}
 	for i := range vals {
-		req := queued{Request: vals[i]}
+		req := Job{Request: vals[i]}
 		data, err := json.Marshal(&req)
 		if err != nil {
 			t.Fatal(err)
@@ -145,7 +145,7 @@ func TestStopMidPoll(t *testing.T) {
 	n := "/test/" + uuid.New()
 	vals := []string{"1", "2", "3", "4", "5"}
 	for i := range vals {
-		req := queued{Request: vals[i]}
+		req := Job{Request: vals[i]}
 		data, err := json.Marshal(&req)
 		if err != nil {
 			t.Fatal(err)
