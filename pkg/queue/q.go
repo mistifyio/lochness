@@ -103,16 +103,14 @@ func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
 	return q, nil
 }
 
-// passMessage will Marshal the job, post it, wait for a response (forever),
-// unmarshal the response and then return the data.
-func passMessage(c *etcd.Client, values chan string, req *Job) {
+func sendMessage(c *etcd.Client, values chan string, req *Job) {
 	resp, err := c.Get(req.key, false, false)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	if err := json.Unmarshal([]byte(resp.Node.Value), req); err != nil {
+	if err := json.Unmarshal([]byte(resp.Node.Value), &req); err != nil {
 		log.Println(err)
 		return
 	}
@@ -128,15 +126,17 @@ func passMessage(c *etcd.Client, values chan string, req *Job) {
 	}
 
 	values <- req.Request
-	req.Response = <-values
+}
 
-	buf, err := json.Marshal(req)
+func receiveMessage(c *etcd.Client, values chan string, j Job) {
+	j.Response = <-values
+	buf, err := json.Marshal(&j)
 	if err != nil {
 		log.Println(err)
 		buf = jsonMarshalError
 	}
 
-	_, err = c.Update(req.key, string(buf), 0)
+	_, err = c.Update(j.key, string(buf), 0)
 	if err != nil {
 		// retry?
 		log.Println(err)
@@ -159,7 +159,8 @@ func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64,
 		default:
 			index = node.ModifiedIndex + 1
 			j := Job{key: node.Key}
-			passMessage(c, keys, &j)
+			sendMessage(c, keys, &j)
+			receiveMessage(c, keys, j)
 		}
 	}
 	return index, nil
@@ -176,7 +177,8 @@ func watch(c *etcd.Client, dir string, index uint64, keys chan string, stop chan
 					continue
 				}
 				j := Job{key: resp.Node.Key}
-				passMessage(c, keys, &j)
+				sendMessage(c, keys, &j)
+				receiveMessage(c, keys, j)
 			}
 		}()
 
