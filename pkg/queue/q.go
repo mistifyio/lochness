@@ -10,8 +10,6 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 )
 
-var ErrStopped = errors.New("stopped by the user via stop channel")
-
 // TODO unique error with json error return?
 var jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
 
@@ -162,7 +160,7 @@ func poll(c *etcd.Client, dir string, reqs chan Job, stop chan bool) (uint64, er
 	for _, node := range resp.Node.Nodes {
 		select {
 		case <-stop:
-			return 0, ErrStopped
+			return 0, etcd.ErrWatchStoppedByUser
 		default:
 			index = node.ModifiedIndex + 1
 			sendMessage(c, reqs, node.Key)

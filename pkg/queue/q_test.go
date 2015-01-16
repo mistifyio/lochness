@@ -25,7 +25,7 @@ type q struct {
 
 func newQNamed(t *testing.T, name string, stop chan bool) q {
 	_q, err := Open(c, name, stop)
-	if err != nil && err != ErrStopped {
+	if err != nil && err != etcd.ErrWatchStoppedByUser {
 		t.Fatal(err)
 	}
 
