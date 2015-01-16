@@ -9,18 +9,18 @@ import (
 )
 
 type (
-	// AgentStubs is an Agenter with stubbed methods for testing
-	AgentStubs struct {
+	// StubAgent is an Agenter with stubbed methods for testing
+	StubAgent struct {
 		context     *Context
 		rand        *rand.Rand
 		failPercent int
 	}
 )
 
-// NewAgentStubs creates a new AgentStubs instance within the context and
+// NewStubAgent creates a new StubAgent instance within the context and
 // initialies the random number generator for failures
-func (context *Context) NewAgentStubs(failPercent int) *AgentStubs {
-	return &AgentStubs{
+func (context *Context) NewStubAgent(failPercent int) *StubAgent {
+	return &StubAgent{
 		context:     context,
 		rand:        rand.New(rand.NewSource(time.Now().UnixNano())),
 		failPercent: failPercent,
@@ -28,7 +28,7 @@ func (context *Context) NewAgentStubs(failPercent int) *AgentStubs {
 }
 
 // randomError simulates failure for a given percent of the time
-func (agent *AgentStubs) randomError() error {
+func (agent *StubAgent) randomError() error {
 	if agent.rand.Intn(100) < agent.failPercent {
 		return errors.New("Random Error")
 	}
@@ -36,7 +36,7 @@ func (agent *AgentStubs) randomError() error {
 }
 
 // guestFromID creates a *client.Guest from a guestID using the datastore
-func (agent *AgentStubs) guestFromID(guestID string) (*client.Guest, error) {
+func (agent *StubAgent) guestFromID(guestID string) (*client.Guest, error) {
 	g, err := agent.context.Guest(guestID)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (agent *AgentStubs) guestFromID(guestID string) (*client.Guest, error) {
 }
 
 // GetGuest is a stub for retrieving a guest via request to the agent.
-func (agent *AgentStubs) GetGuest(guestID string) (*client.Guest, error) {
+func (agent *StubAgent) GetGuest(guestID string) (*client.Guest, error) {
 	if err := agent.randomError(); err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (agent *AgentStubs) GetGuest(guestID string) (*client.Guest, error) {
 }
 
 // CreateGuest is a stub for creating a guest via request to the agent.
-func (agent *AgentStubs) CreateGuest(guestID string) (*client.Guest, error) {
+func (agent *StubAgent) CreateGuest(guestID string) (*client.Guest, error) {
 	if err := agent.randomError(); err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (agent *AgentStubs) CreateGuest(guestID string) (*client.Guest, error) {
 }
 
 // DeleteGuest is a stub for deleting a guest via request to the agent.
-func (agent *AgentStubs) DeleteGuest(guestID string) (*client.Guest, error) {
+func (agent *StubAgent) DeleteGuest(guestID string) (*client.Guest, error) {
 	if err := agent.randomError(); err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (agent *AgentStubs) DeleteGuest(guestID string) (*client.Guest, error) {
 
 // GuestAction is a stub for issuing other basic guest actions via request to
 // the agent
-func (agent *AgentStubs) GuestAction(guestID, actionName string) (*client.Guest, error) {
+func (agent *StubAgent) GuestAction(guestID, actionName string) (*client.Guest, error) {
 	if err := agent.randomError(); err != nil {
 		return nil, err
 	}
