@@ -244,11 +244,11 @@ func (agent *Agent) CreateGuest(guestID string) (*client.Guest, error) {
 		if err == nil {
 			g.HypervisorID = hypervisor.ID
 			if err := g.Save(); err != nil {
-				fmt.Printf("Guest created on Hypervisor %s, but guest info persist failed", hypervisor.ID)
+				fmt.Printf("Guest created on Hypervisor %s, but guest info persist failed\n", hypervisor.ID)
 			}
 			return guest, nil
 		}
-		fmt.Printf("Guest Create Error: Guest %s, Hypervisor %s: %s", g.ID, hypervisor.ID, err)
+		fmt.Printf("Guest Create Error: Guest %s, Hypervisor %s: %s\n", g.ID, hypervisor.ID, err)
 	}
 
 	return nil, errors.New("failed to create guest")
