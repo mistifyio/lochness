@@ -87,15 +87,13 @@ func main() {
 		log.Fatal("no non-mocked agenters yet")
 	}
 
-	log.Println("waiting for jobs")
-	for value := range q.C {
+	for queued := range q.Requests {
 		job := Job{}
-		err := json.Unmarshal([]byte(value), &job)
+		err := json.Unmarshal([]byte(queued.Request), &job)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		log.Println("got new job:", job)
 		switch job.Action {
 		case "create":
 			err = create(agent, job.Guest)
@@ -112,6 +110,7 @@ func main() {
 		if err != nil {
 			resp = err.Error()
 		}
-		q.C <- resp
+		queued.Response = resp
+		q.Responses <- queued
 	}
 }
