@@ -2,4 +2,5 @@ heartbeat/heartbeat
 lock/lock
 locker/locker
 placerd/placerd
+placerd-tester/placerd-tester
 test/test
