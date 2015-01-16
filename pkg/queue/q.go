@@ -91,14 +91,20 @@ func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
 	resps := make(chan Job)
 	q := &Q{Requests: reqs, Responses: resps, dir: dir, c: c}
 	go func() {
+		for resp := range resps {
+			receiveMessage(c, resp)
+		}
+	}()
+	go func() {
 		defer close(reqs)
+		// closing responses could cause panics when shutting down!
 
-		index, err := poll(c, dir, reqs, resps, stop)
+		index, err := poll(c, dir, reqs, stop)
 		if err != nil {
 			return
 		}
 
-		watch(c, dir, index, reqs, resps, stop)
+		watch(c, dir, index, reqs, stop)
 	}()
 
 	return q, nil
@@ -131,8 +137,7 @@ func sendMessage(c *etcd.Client, reqs chan Job, key string) {
 	reqs <- req
 }
 
-func receiveMessage(c *etcd.Client, resps chan Job) {
-	j := <-resps
+func receiveMessage(c *etcd.Client, j Job) {
 	buf, err := json.Marshal(&j)
 	if err != nil {
 		log.Println(err)
@@ -141,12 +146,11 @@ func receiveMessage(c *etcd.Client, resps chan Job) {
 
 	_, err = c.Update(j.key, string(buf), 0)
 	if err != nil {
-		// retry?
 		log.Println(err)
 	}
 }
 
-func poll(c *etcd.Client, dir string, reqs, resps chan Job, stop chan bool) (uint64, error) {
+func poll(c *etcd.Client, dir string, reqs chan Job, stop chan bool) (uint64, error) {
 	resp, err := c.Get(dir, true, true)
 	if err != nil {
 		return 0, err
@@ -162,13 +166,12 @@ func poll(c *etcd.Client, dir string, reqs, resps chan Job, stop chan bool) (uin
 		default:
 			index = node.ModifiedIndex + 1
 			sendMessage(c, reqs, node.Key)
-			receiveMessage(c, resps)
 		}
 	}
 	return index, nil
 }
 
-func watch(c *etcd.Client, dir string, index uint64, reqs, jresps chan Job, stop chan bool) {
+func watch(c *etcd.Client, dir string, index uint64, reqs chan Job, stop chan bool) {
 	for {
 		resps := make(chan *etcd.Response)
 		go func() {
@@ -179,7 +182,6 @@ func watch(c *etcd.Client, dir string, index uint64, reqs, jresps chan Job, stop
 					continue
 				}
 				sendMessage(c, reqs, resp.Node.Key)
-				receiveMessage(c, jresps)
 			}
 		}()
 

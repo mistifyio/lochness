@@ -64,8 +64,9 @@ func TestOpenClose(t *testing.T) {
 }
 
 func TestStopPrePoll(t *testing.T) {
-	stop := make(chan bool)
-	close(stop)
+	stop := make(chan bool, 1)
+	stop <- true
+	defer close(stop)
 
 	q := newQ(t, stop)
 	defer delQ(t, q, false)
@@ -76,16 +77,18 @@ func TestStopPrePoll(t *testing.T) {
 	}
 }
 
+func handler(reqs <-chan Job, resps chan<- Job) {
+	for req := range reqs {
+		req.Response = req.Request + req.Request
+		resps <- req
+	}
+}
+
 func TestPut(t *testing.T) {
 	q := newQ(t, nil)
 	defer delQ(t, q, true)
 
-	go func() {
-		for r := range q.Requests {
-			r.Response = r.Request + r.Request
-			q.Responses <- r
-		}
-	}()
+	go handler(q.Requests, q.Responses)
 
 	conn := Connect(c, q.k)
 
@@ -112,9 +115,15 @@ func TestPut(t *testing.T) {
 
 func TestPoll(t *testing.T) {
 	n := "/test/" + uuid.New()
-	vals := []string{"1", "2", "3", "4", "5"}
-	for i := range vals {
-		req := Job{Request: vals[i]}
+	vals := map[string]struct{}{
+		"1": struct{}{},
+		"2": struct{}{},
+		"3": struct{}{},
+		"4": struct{}{},
+		"5": struct{}{},
+	}
+	for k := range vals {
+		req := Job{Request: k}
 		data, err := json.Marshal(&req)
 		if err != nil {
 			t.Fatal(err)
@@ -128,14 +137,16 @@ func TestPoll(t *testing.T) {
 	q := newQNamed(t, n, stop)
 	defer delQ(t, q, true)
 
-	for i := 0; i < len(vals); i++ {
-		got := <-q.Requests
-		if vals[i] != got.Request {
-			t.Fatal("wanted:", vals[i], "got:", got.Request)
+	i := 0
+	for resp := range q.Requests {
+		i++
+		if _, ok := vals[resp.Request]; !ok {
+			t.Fatal("unknown request:", resp.Request)
 		}
-		q.Responses <- got
+		if i == len(vals) {
+			stop <- true
+		}
 	}
-	close(stop)
 	v, ok := <-q.Requests
 	if ok {
 		t.Fatal("unexpected chan receive:", v, ok)
@@ -144,7 +155,7 @@ func TestPoll(t *testing.T) {
 
 func TestStopMidPoll(t *testing.T) {
 	n := "/test/" + uuid.New()
-	vals := []string{"1", "2", "3", "4", "5"}
+	vals := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}
 	for i := range vals {
 		req := Job{Request: vals[i]}
 		data, err := json.Marshal(&req)
@@ -165,12 +176,17 @@ func TestStopMidPoll(t *testing.T) {
 		if vals[i] != v.Request {
 			t.Fatal("wanted:", vals[i], "v:", v.Request)
 		}
+		if i == 0 {
+			// done here so we are sure to not go further than poll
+			go handler(q.Requests, q.Responses)
+			stop <- true
+		}
 		i++
+		v.Response = v.Request
 		q.Responses <- v
-		close(stop)
 	}
-	if i != 1 {
-		t.Fatal("wanted 1 value, got:", i)
+	if i == len(vals) {
+		t.Fatal("stopped after poll finished")
 	}
 
 	v, ok := <-q.Requests
