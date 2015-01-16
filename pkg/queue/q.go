@@ -65,6 +65,11 @@ func isKeyExists(err error) bool {
 	return ok && e.ErrorCode == etcdErr.EcodeNodeExist
 }
 
+func isEtcdNotReachable(err error) bool {
+	e, ok := err.(*etcd.EtcdError)
+	return ok && e.ErrorCode == etcd.ErrCodeEtcdNotReachable
+}
+
 func isEventIndexCleared(err error) bool {
 	e, ok := err.(*etcd.EtcdError)
 	return ok && e.ErrorCode == etcdErr.EcodeEventIndexCleared
@@ -114,6 +119,9 @@ func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
 func sendMessage(c *etcd.Client, reqs chan Job, key string) {
 	resp, err := c.Get(key, false, false)
 	if err != nil {
+		if isEtcdNotReachable(err) {
+			log.Fatal(err)
+		}
 		log.Println(err)
 		return
 	}
@@ -147,6 +155,9 @@ func receiveMessage(c *etcd.Client, j Job) {
 
 	_, err = c.Update(j.key, string(buf), 0)
 	if err != nil {
+		if isEtcdNotReachable(err) {
+			log.Fatal(err)
+		}
 		log.Println(err)
 	}
 }
