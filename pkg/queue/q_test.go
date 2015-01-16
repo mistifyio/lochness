@@ -70,7 +70,7 @@ func TestStopPrePoll(t *testing.T) {
 	q := newQ(t, stop)
 	defer delQ(t, q, false)
 
-	v, ok := <-q.C
+	v, ok := <-q.Requests
 	if ok {
 		t.Fatal("unexpected chan receive:", v, ok)
 	}
@@ -81,9 +81,9 @@ func TestPut(t *testing.T) {
 	defer delQ(t, q, true)
 
 	go func() {
-		for r := range q.C {
+		for r := range q.Requests {
 			r.Response = r.Request + r.Request
-			q.C <- r
+			q.Responses <- r
 		}
 	}()
 
@@ -129,14 +129,14 @@ func TestPoll(t *testing.T) {
 	defer delQ(t, q, true)
 
 	for i := 0; i < len(vals); i++ {
-		got := <-q.C
+		got := <-q.Requests
 		if vals[i] != got.Request {
 			t.Fatal("wanted:", vals[i], "got:", got.Request)
 		}
-		q.C <- got
+		q.Responses <- got
 	}
 	close(stop)
-	v, ok := <-q.C
+	v, ok := <-q.Requests
 	if ok {
 		t.Fatal("unexpected chan receive:", v, ok)
 	}
@@ -161,19 +161,19 @@ func TestStopMidPoll(t *testing.T) {
 	defer delQ(t, q, true)
 
 	i := 0
-	for v := range q.C {
+	for v := range q.Requests {
 		if vals[i] != v.Request {
 			t.Fatal("wanted:", vals[i], "v:", v.Request)
 		}
 		i++
-		q.C <- v
+		q.Responses <- v
 		close(stop)
 	}
 	if i != 1 {
 		t.Fatal("wanted 1 value, got:", i)
 	}
 
-	v, ok := <-q.C
+	v, ok := <-q.Requests
 	if ok {
 		t.Fatal("unexpected chan receive:", v, ok)
 	}
