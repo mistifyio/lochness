@@ -13,12 +13,15 @@ import (
 // TODO unique error with json error return?
 var jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
 
+// Job describes and enqueued job, both the job request and the
+// subsequent resonse
 type Job struct {
 	key      string
 	Request  string `json:"request"`
 	Response string `json:"response"`
 }
 
+// Conn contains the reference to the queue which was connected to
 type Conn struct {
 	dir string
 	c   *etcd.Client
