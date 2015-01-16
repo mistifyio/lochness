@@ -14,7 +14,7 @@ import (
 	"github.com/mistifyio/lochness/pkg/queue"
 )
 
-type Job struct {
+type job struct {
 	Action string `json:"action"`
 	Guest  string `json:"guest"`
 }
@@ -88,7 +88,7 @@ func main() {
 	}
 
 	for queued := range q.Requests {
-		job := Job{}
+		job := job{}
 		err := json.Unmarshal([]byte(queued.Request), &job)
 		if err != nil {
 			log.Println(err)
