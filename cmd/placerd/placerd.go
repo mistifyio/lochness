@@ -44,7 +44,7 @@ func main() {
 
 	interval := flag.Duration("interval", 30, "Interval in seconds to refresh lock")
 	ttl := flag.Uint64("ttl", 0, "TTL for key in seconds, leave 0 to keep default (2 * interval)")
-	dir := flag.String("queue", "/queue", "etcd directory to use for queue")
+	prefix := flag.String("queue", "/queue", "etcd prefix to use as the queue")
 	eaddr := flag.String("etcd", "http://localhost:4001", "address of etcd machine")
 	mock := flag.Bool("mocked", true, "use fake agenter")
 	failrate := flag.Int("fail-rate", 0, "percentage of api calls to artificially fail, ignored if mock==false")
@@ -66,7 +66,7 @@ func main() {
 	}
 
 	queueStop := make(chan bool)
-	q, err := queue.Open(e, *dir, queueStop)
+	q, err := queue.Open(e, *prefix, queueStop)
 	if err != nil {
 		panic(err)
 	}
