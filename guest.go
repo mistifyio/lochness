@@ -310,3 +310,42 @@ var DefaultCadidateFuctions = []CandidateFunction{
 	CandidateHasSubnet,
 	CandidateHasResources,
 }
+
+// FirstGuest will return the first guest for which the function returns true.
+func (c *Context) FirstGuest(f func(*Guest) bool) (*Guest, error) {
+	// we could get this recursively, but we may want to change how refresh works just a bit
+	resp, err := c.etcd.Get(GuestPath, false, false)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range resp.Node.Nodes {
+		h, err := c.Guest(filepath.Base(n.Key))
+		if err != nil {
+			return nil, err
+		}
+
+		if f(h) {
+			return h, nil
+		}
+	}
+	return nil, nil
+}
+
+// ForEachGuest will run f on each Guest. It will stop iteration if f returns an error.
+func (c *Context) ForEachGuest(f func(*Guest) error) error {
+	resp, err := c.etcd.Get(GuestPath, false, false)
+	if err != nil {
+		return err
+	}
+	for _, n := range resp.Node.Nodes {
+		g, err := c.Guest(filepath.Base(n.Key))
+		if err != nil {
+			return err
+		}
+
+		if err := f(g); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -1,6 +1,7 @@
 package lochness_test
 
 import (
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -86,4 +87,39 @@ func TestGuestCandidates(t *testing.T) {
 
 func TestGuestsAlias(t *testing.T) {
 	_ = lochness.Guests([]*lochness.Guest{})
+}
+
+func TestFirstGuest(t *testing.T) {
+	c := newContext(t)
+
+	g := newGuest(t)
+	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e0")
+	h.Ok(t, g.Save())
+
+	g = newGuest(t)
+	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e1")
+	h.Ok(t, g.Save())
+
+	g = newGuest(t)
+	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e2")
+	h.Ok(t, g.Save())
+
+	defer contextCleanup(t)
+
+	found, err := c.FirstGuest(func(g *lochness.Guest) bool {
+		return g.ID == "foo"
+	})
+
+	h.Ok(t, err)
+
+	h.Assert(t, found == nil, "unexpected value")
+
+	found, err = c.FirstGuest(func(g2 *lochness.Guest) bool {
+		return g.ID == g2.ID
+	})
+
+	h.Ok(t, err)
+
+	h.Assert(t, found != nil, "unexpected nil")
+
 }
