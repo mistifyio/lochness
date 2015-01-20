@@ -28,13 +28,13 @@ type Conn struct {
 }
 
 // Connect returns a new connection to the queue
-func Connect(c *etcd.Client, dir string) *Conn {
-	return &Conn{dir: dir, c: c}
+func Connect(c *etcd.Client, dir string) Conn {
+	return Conn{dir: dir, c: c}
 }
 
 // Put enqueues the value, and wait for the response. Once the response has been
 // received, the node is deleted.
-func (conn *Conn) Put(value string) (string, error) {
+func (conn Conn) Put(value string) (string, error) {
 	Req := Job{Request: value}
 	data, err := json.Marshal(&Req)
 	if err != nil {
@@ -87,15 +87,15 @@ type Q struct {
 // Open will use the dir argument as a queue. Only one queue may be opened per
 // directory, bad things happen if not ensured, it is up to the caller to
 // ensure.
-func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
+func Open(c *etcd.Client, dir string, stop chan bool) (Q, error) {
 	_, err := c.CreateDir(dir, 0)
 	if err != nil && !isKeyExists(err) {
-		return nil, err
+		return Q{}, err
 	}
 
 	reqs := make(chan Job)
 	resps := make(chan Job)
-	q := &Q{Requests: reqs, Responses: resps, dir: dir, c: c}
+	q := Q{Requests: reqs, Responses: resps, dir: dir, c: c}
 	go func() {
 		for resp := range resps {
 			receiveMessage(c, resp)
