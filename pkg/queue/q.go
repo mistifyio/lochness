@@ -206,6 +206,5 @@ func watch(c *etcd.Client, dir string, index uint64, reqs chan Job, stop chan bo
 			break
 		}
 		index++
-		continue
 	}
 }
