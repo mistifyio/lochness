@@ -38,12 +38,16 @@ func main() {
 
 	for i := 0; i < n; i++ {
 		go func(i int) {
-			resp, err := q.Put(data)
+			cookie, err := q.Put(data)
 			if err != nil {
 				panic(err)
-				//fmt.Println(err)
 			}
-			log.Println(i, "resp:", resp)
+			fmt.Println(cookie)
+			resp, err := q.Get(cookie, true)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("%s %s\n", cookie, resp)
 			wg.Done()
 		}(i)
 	}
