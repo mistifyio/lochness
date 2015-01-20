@@ -2,6 +2,7 @@
 package queue
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 
@@ -9,22 +10,84 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 )
 
-var ErrStopped = errors.New("stopped by the user via stop channel")
+var (
+	// ErrWouldBlock is returned when a non-blocking Get is issued, but the
+	// response is not yet available
+	ErrWouldBlock = errors.New("the operation would block")
 
+	// TODO unique error with json error return?
+	jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
+)
+
+// Job describes and enqueued job, both the job request and the
+// subsequent resonse
+type Job struct {
+	key      string
+	Request  string `json:"request"`
+	Response string `json:"response"`
+}
+
+// Conn contains the reference to the queue which was connected to
 type Conn struct {
 	dir string
 	c   *etcd.Client
 }
 
 // Connect returns a new connection to the queue
-func Connect(c *etcd.Client, dir string) *Conn {
-	return &Conn{dir: dir, c: c}
+func Connect(c *etcd.Client, dir string) Conn {
+	return Conn{dir: dir, c: c}
 }
 
-// Put enqueues the value
-func (conn *Conn) Put(value string) error {
-	_, err := conn.c.CreateInOrder(conn.dir, value, 0)
-	return err
+// Put enqueues the value and returns a cookie that can be used to retreive the
+// response at a later time.
+func (conn Conn) Put(value string) (string, error) {
+	Req := Job{Request: value}
+	data, err := json.Marshal(&Req)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := conn.c.CreateInOrder(conn.dir, string(data), 0)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Node.Key, nil
+}
+
+// Get dequeues the response of a previous request. If blocking is set to true
+// the call will block until the response is posted, otherwise ErrWouldBlock is
+// returned.
+func (conn Conn) Get(cookie string, blocking bool) (string, error) {
+	resp, err := conn.c.Get(cookie, false, false)
+	if err != nil {
+		return "", err
+	}
+
+	job := Job{}
+	if err = json.Unmarshal([]byte(resp.Node.Value), &job); err != nil {
+		return "", err
+	}
+
+	if job.Response == "" && !blocking {
+		return "", ErrWouldBlock
+	}
+	defer conn.c.Delete(cookie, false)
+
+	if job.Response != "" {
+		return job.Response, nil
+	}
+
+	resp, err = conn.c.Watch(cookie, resp.Node.ModifiedIndex+1, false, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if err := json.Unmarshal([]byte(resp.Node.Value), &job); err != nil {
+		return "", err
+	}
+
+	return job.Response, err
 }
 
 func isKeyExists(err error) bool {
@@ -32,42 +95,104 @@ func isKeyExists(err error) bool {
 	return ok && e.ErrorCode == etcdErr.EcodeNodeExist
 }
 
+func isEtcdNotReachable(err error) bool {
+	e, ok := err.(*etcd.EtcdError)
+	return ok && e.ErrorCode == etcd.ErrCodeEtcdNotReachable
+}
+
+func isEventIndexCleared(err error) bool {
+	e, ok := err.(*etcd.EtcdError)
+	return ok && e.ErrorCode == etcdErr.EcodeEventIndexCleared
+}
+
 // Q represents the opened queue
 type Q struct {
-	// C is a blocking chan used to deliver values as they are inserted into
-	// the queue. Once the value is delivered the object is deleted from
-	// the etcd directory.
-	C   <-chan string
-	dir string
-	c   *etcd.Client
+	// Requests and Responses are both blocking channels
+	Requests  <-chan Job
+	Responses chan<- Job
+	dir       string
+	c         *etcd.Client
 }
 
 // Open will use the dir argument as a queue. Only one queue may be opened per
 // directory, bad things happen if not ensured, it is up to the caller to
 // ensure.
-func Open(c *etcd.Client, dir string, stop chan bool) (*Q, error) {
+func Open(c *etcd.Client, dir string, stop chan bool) (Q, error) {
 	_, err := c.CreateDir(dir, 0)
 	if err != nil && !isKeyExists(err) {
-		return nil, err
+		return Q{}, err
 	}
 
-	keys := make(chan string)
-	q := &Q{C: keys, dir: dir, c: c}
+	reqs := make(chan Job)
+	resps := make(chan Job)
+	q := Q{Requests: reqs, Responses: resps, dir: dir, c: c}
 	go func() {
-		defer close(keys)
+		for resp := range resps {
+			receiveMessage(c, resp)
+		}
+	}()
+	go func() {
+		defer close(reqs)
+		// closing responses could cause panics when shutting down!
 
-		index, err := poll(c, dir, keys, stop)
+		index, err := poll(c, dir, reqs, stop)
 		if err != nil {
 			return
 		}
 
-		watch(c, dir, index, keys, stop)
+		watch(c, dir, index, reqs, stop)
 	}()
 
 	return q, nil
 }
 
-func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64, error) {
+func sendMessage(c *etcd.Client, reqs chan Job, key string) {
+	resp, err := c.Get(key, false, false)
+	if err != nil {
+		if isEtcdNotReachable(err) {
+			log.Fatal(err)
+		}
+		log.Println(err)
+		return
+	}
+
+	req := Job{}
+	if err := json.Unmarshal([]byte(resp.Node.Value), &req); err != nil {
+		log.Println(err)
+		return
+	}
+
+	if req.Request == "" {
+		log.Println("empty request")
+		return
+	}
+
+	if req.Response != "" {
+		log.Println("message already handled")
+		return
+	}
+
+	req.key = key
+	reqs <- req
+}
+
+func receiveMessage(c *etcd.Client, j Job) {
+	buf, err := json.Marshal(&j)
+	if err != nil {
+		log.Println(err)
+		buf = jsonMarshalError
+	}
+
+	_, err = c.Update(j.key, string(buf), 0)
+	if err != nil {
+		if isEtcdNotReachable(err) {
+			log.Fatal(err)
+		}
+		log.Println(err)
+	}
+}
+
+func poll(c *etcd.Client, dir string, reqs chan Job, stop chan bool) (uint64, error) {
 	resp, err := c.Get(dir, true, true)
 	if err != nil {
 		return 0, err
@@ -79,54 +204,37 @@ func poll(c *etcd.Client, dir string, keys chan string, stop chan bool) (uint64,
 	for _, node := range resp.Node.Nodes {
 		select {
 		case <-stop:
-			return 0, ErrStopped
+			return 0, etcd.ErrWatchStoppedByUser
 		default:
-			resp, err := c.Get(node.Key, false, false)
-			if err != nil {
-				log.Println(err)
-				return 0, err
-			}
-
-			keys <- resp.Node.Value
-
-			_, err = c.Delete(node.Key, false)
-			if err != nil {
-				log.Println(err)
-				return 0, err
-			}
 			index = node.ModifiedIndex + 1
+			sendMessage(c, reqs, node.Key)
 		}
 	}
 	return index, nil
 }
 
-func watch(c *etcd.Client, dir string, index uint64, keys chan string, stop chan bool) {
-	resps := make(chan *etcd.Response)
-	go func() {
-		for resp := range resps {
-			switch resp.Action {
-			case "create", "set":
-			default:
-				continue
+func watch(c *etcd.Client, dir string, index uint64, reqs chan Job, stop chan bool) {
+	for {
+		resps := make(chan *etcd.Response)
+		go func() {
+			for resp := range resps {
+				switch resp.Action {
+				case "create", "set":
+				default:
+					continue
+				}
+				sendMessage(c, reqs, resp.Node.Key)
 			}
+		}()
 
-			r, err := c.Get(resp.Node.Key, false, false)
-			if err != nil {
-				log.Println(err)
-				break
-			}
-
-			keys <- r.Node.Value
-
-			_, err = c.Delete(r.Node.Key, false)
-			if err != nil {
-				log.Println(err)
-				break
-			}
+		_, err := c.Watch(dir, index, true, resps, stop)
+		if err == nil || err == etcd.ErrWatchStoppedByUser {
+			break
 		}
-	}()
-	_, err := c.Watch(dir, index, true, resps, stop)
-	if err != nil {
-		log.Println(err)
+		if !isEventIndexCleared(err) {
+			log.Printf("%#v\n", err)
+			break
+		}
+		index++
 	}
 }
