@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"sync"
+	"time"
 
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/go-etcd/etcd"
@@ -17,6 +20,18 @@ func main() {
 	data := `{"action":"` + actions[rand.Intn(len(actions))] + `","guest":"` + uuid.New() + `"}`
 	q := queue.Connect(etcd.NewClient([]string{"http://localhost:4001"}), "/queue")
 
+	if os.Getenv("RAND_SEED") == "" {
+		rand.Seed(time.Now().UnixNano())
+	} else {
+		seed := int64(0)
+		n, err := fmt.Sscan(os.Getenv("RAND_SEED"), &seed)
+		if err != nil {
+			panic(err)
+		} else if n != 1 {
+			panic("incorrect number of args scanned")
+		}
+		rand.Seed(seed)
+	}
 	n := rand.Intn(100)
 	wg := sync.WaitGroup{}
 	wg.Add(n)
