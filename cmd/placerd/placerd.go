@@ -106,7 +106,7 @@ func main() {
 		default:
 			err = errors.New("unknown job type")
 		}
-		resp := ""
+		resp := "ok"
 		if err != nil {
 			resp = err.Error()
 		}
