@@ -10,8 +10,14 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 )
 
-// TODO unique error with json error return?
-var jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
+var (
+	// ErrWouldBlock is returned when a non-blocking Get is issued, but the
+	// response is not yet available
+	ErrWouldBlock = errors.New("the operation would block")
+
+	// TODO unique error with json error return?
+	jsonMarshalError = []byte(`{"response":"internal error unmarshalling response"}`)
+)
 
 // Job describes and enqueued job, both the job request and the
 // subsequent resonse
@@ -32,8 +38,8 @@ func Connect(c *etcd.Client, dir string) Conn {
 	return Conn{dir: dir, c: c}
 }
 
-// Put enqueues the value, and wait for the response. Once the response has been
-// received, the node is deleted.
+// Put enqueues the value and returns a cookie that can be used to retreive the
+// response at a later time.
 func (conn Conn) Put(value string) (string, error) {
 	Req := Job{Request: value}
 	data, err := json.Marshal(&Req)
@@ -46,18 +52,42 @@ func (conn Conn) Put(value string) (string, error) {
 		return "", err
 	}
 
-	resp, err = conn.c.Watch(resp.Node.Key, resp.Node.CreatedIndex+1, false, nil, nil)
+	return resp.Node.Key, nil
+}
+
+// Get dequeues the response of a previous request. If blocking is set to true
+// the call will block until the response is posted, otherwise ErrWouldBlock is
+// returned.
+func (conn Conn) Get(cookie string, blocking bool) (string, error) {
+	resp, err := conn.c.Get(cookie, false, false)
 	if err != nil {
 		return "", err
 	}
 
-	Resp := Job{}
-	if err := json.Unmarshal([]byte(resp.Node.Value), &Resp); err != nil {
+	job := Job{}
+	if err = json.Unmarshal([]byte(resp.Node.Value), &job); err != nil {
 		return "", err
 	}
 
-	_, err = conn.c.Delete(resp.Node.Key, false)
-	return Resp.Response, err
+	if job.Response == "" && !blocking {
+		return "", ErrWouldBlock
+	}
+	defer conn.c.Delete(cookie, false)
+
+	if job.Response != "" {
+		return job.Response, nil
+	}
+
+	resp, err = conn.c.Watch(cookie, resp.Node.ModifiedIndex+1, false, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if err := json.Unmarshal([]byte(resp.Node.Value), &job); err != nil {
+		return "", err
+	}
+
+	return job.Response, err
 }
 
 func isKeyExists(err error) bool {
