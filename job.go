@@ -18,6 +18,7 @@ var (
 // TODO: we need a ttl?
 
 type (
+	// Job is a single job for a guest such as create, delete, etc.
 	Job struct {
 		ID            string `json:"id"`
 		Action        string `json:"action"`
@@ -29,6 +30,7 @@ type (
 	}
 )
 
+// NewJob creates a new job.
 func (c *Context) NewJob() *Job {
 	return &Job{
 		ID:      uuid.New(),
@@ -37,6 +39,7 @@ func (c *Context) NewJob() *Job {
 	}
 }
 
+// Validate ensures required fields are populated.
 func (j *Job) Validate() error {
 	if j.ID == "" {
 		return errors.New("ID is required")
@@ -62,6 +65,7 @@ func (j *Job) key() string {
 	return filepath.Join(JobPath, j.ID)
 }
 
+// Save persists a job.
 func (j *Job) Save(ttl time.Duration) error {
 
 	if err := j.Validate(); err != nil {
@@ -106,6 +110,7 @@ func (j *Job) Refresh() error {
 	return nil
 }
 
+// Job retrieves a single job from the data store.
 func (c *Context) Job(id string) (*Job, error) {
 	j := &Job{
 		ID:      id,
