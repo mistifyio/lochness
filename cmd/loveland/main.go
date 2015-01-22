@@ -21,6 +21,8 @@ const (
 
 type TaskFunc func(*Task) (bool, error)
 
+// Task is a "helper" struct to pull together information from
+// beanstalk and etcd
 type Task struct {
 	ID    uint64 //id from beanstalkd
 	Body  []byte // body from beanstalkd
@@ -59,6 +61,7 @@ func main() {
 	log.Infof("using etcd %s", *addr)
 	etcdClient := etcd.NewClient([]string{*addr})
 
+	// make sure we can actually talk to etcd
 	if !etcdClient.SyncCluster() {
 		log.Fatal("unable to sync etcd at %s", *addr)
 	}
@@ -95,7 +98,7 @@ func main() {
 		task := &Task{
 			ID:   id,
 			Body: body,
-			Conn: conn,
+			conn: conn,
 			ctx:  c,
 		}
 
@@ -103,20 +106,37 @@ func main() {
 			rm, err := f(task)
 
 			if err != nil {
-				log.Errorf("task error for %d: %s", id, err)
-				if t.Job {
-					t.Job.Status = "Error"
-					t.Job.Error = err.Error()
-					if err := t.Job.Save(); err != nil {
-						log.Errorf("unable to save job %s - %s", t.Job.ID, err)
+				fields := log.Fields{
+					"task": task.ID,
+					"body": string(task.Body),
+				}
+
+				if task.Job != nil {
+					fields["job"] = task.Job.ID
+				}
+
+				log.WithFields(fields).Errorf("task error: %s", err)
+
+				if task.Job != nil {
+					task.Job.Status = "Error"
+					task.Job.Error = err.Error()
+					if err := task.Job.Save(24 * time.Hour); err != nil {
+						log.WithFields(log.Fields{
+							"job":  task.Job.ID,
+							"task": task.ID,
+						}).Errorf("unable to save: %s", err)
 					}
 				}
+				break
 			}
 
 			if rm {
 				if err := conn.Delete(id); err != nil {
-					log.Errorf("delete error for %d: %s", id, err)
+					log.WithFields(log.Fields{
+						"task": task.ID,
+					}).Errorf("unable to delete: %s", err)
 				}
+				break
 			}
 		}
 
@@ -126,13 +146,15 @@ func main() {
 // these funcs return bool if task in beanstalk should be deleted (and loop stopped). loop also stops on error
 
 func getJob(t *Task) (bool, error) {
-	j, err := t.ctx.Job(t.ID)
+	id := string(t.Body)
+	j, err := t.ctx.Job(id)
 
 	if err != nil {
-		log.Errorf("unable to get job %s: %s", t.ID, err)
-		if lochness.IsKeyNotFound(err) {
-			return true, nil
-		}
+		//log.Errorf("unable to get job %s: %s", id, err)
+		//if lochness.IsKeyNotFound(err) {
+		//	return true, nil
+		//}
+		return true, err
 	}
 
 	t.Job = j
@@ -152,9 +174,9 @@ func checkJobStatus(t *Task) (bool, error) {
 }
 
 func getGuest(t *Task) (bool, error) {
-	g, err := c.Guest(j.Guest)
+	g, err := t.ctx.Guest(t.Job.Guest)
 	if err != nil {
-		return true, fmt.Errorf("unable to get guest %s - %s", j.Guest, err)
+		return true, fmt.Errorf("unable to get guest %s - %s", t.Job.Guest, err)
 	}
 	t.Guest = g
 	return false, nil
@@ -179,7 +201,9 @@ func selectHypervisor(t *Task) (bool, error) {
 	}
 
 	h := candidates[0]
-	if err := h.AddGuest(g); err != nil {
+
+	// the API for selecting a candidate and then adding to a hypervisor is clunky
+	if err := h.AddGuest(t.Guest); err != nil {
 		return true, fmt.Errorf("unable to add guest %s to %s - %s", t.Guest.ID, h.ID, err)
 	}
 
@@ -188,7 +212,7 @@ func selectHypervisor(t *Task) (bool, error) {
 
 func changeJobStatus(t *Task) (bool, error) {
 	t.Job.Action = "hypervisor-create"
-	if err := t.Job.Save(); err != nil {
+	if err := t.Job.Save(24 * time.Hour); err != nil {
 		return true, fmt.Errorf("unable to change job action - %s", err)
 	}
 	return false, nil
@@ -201,12 +225,12 @@ func addJobToWorker(t *Task) (bool, error) {
 	}
 
 	// TODO: should ttr be configurable?
-	id, err := tube.Put([]byte(t.Job.Id), 0, 5*time.Minute)
+	id, err := tube.Put([]byte(t.Job.ID), 0, 5*time.Second, 5*time.Minute)
 	if err != nil {
 		return true, fmt.Errorf("unable to put to work queue %s", err)
 	}
 
-	log.Debugf("added %d to work queue for %s", id, t.Job.Id)
+	log.Debugf("added %d to work queue for %s", id, t.Job.ID)
 
 	return false, nil
 }
