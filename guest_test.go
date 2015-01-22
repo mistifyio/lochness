@@ -123,3 +123,20 @@ func TestFirstGuest(t *testing.T) {
 	h.Assert(t, found != nil, "unexpected nil")
 
 }
+
+func TestGuestWithoutMAC(t *testing.T) {
+	c := newContext(t)
+	defer contextCleanup(t)
+
+	g := c.NewGuest()
+
+	err := g.Save()
+
+	h.Ok(t, err)
+
+	g, err = c.Guest(g.ID)
+
+	h.Ok(t, err)
+
+	h.Equals(t, net.HardwareAddr(nil), g.MAC)
+}
