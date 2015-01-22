@@ -5,6 +5,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"reflect"
+	"runtime"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -77,8 +79,9 @@ func main() {
 		checkJobStatus,
 		getGuest,
 		checkGuestStatus,
-		selectHypervisor,
 		changeJobStatus,
+		selectHypervisor,
+		changeJobAction,
 		addJobToWorker,
 		deleteTask,
 	}
@@ -88,6 +91,10 @@ func main() {
 		if err != nil {
 			if err.(beanstalk.ConnError).Err == beanstalk.ErrTimeout {
 				// nothing queued, so just retry
+				continue
+			} else if err.(beanstalk.ConnError).Err == beanstalk.ErrDeadline {
+				fmt.Println("beanstalk.ErrDeadline => ", id)
+				time.Sleep(5 * time.Second)
 				continue
 			} else {
 				// take a dirt nap
@@ -103,22 +110,30 @@ func main() {
 		}
 
 		for _, f := range funcs {
+
+			fname := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+			fields := log.Fields{
+				"task": task.ID,
+				"body": string(task.Body),
+				"func": fname,
+			}
+
+			if task.Job != nil {
+				fields["job"] = task.Job.ID
+			}
+
+			log.WithFields(fields).Debugf("running")
+
+			start := time.Now()
 			rm, err := f(task)
 
+			log.WithFields(fields).Infof("duration: %d", int(time.Since(start).Seconds()*1000))
 			if err != nil {
-				fields := log.Fields{
-					"task": task.ID,
-					"body": string(task.Body),
-				}
-
-				if task.Job != nil {
-					fields["job"] = task.Job.ID
-				}
 
 				log.WithFields(fields).Errorf("task error: %s", err)
 
 				if task.Job != nil {
-					task.Job.Status = "Error"
+					task.Job.Status = lochness.JOB_STATUS_ERROR
 					task.Job.Error = err.Error()
 					if err := task.Job.Save(24 * time.Hour); err != nil {
 						log.WithFields(log.Fields{
@@ -139,7 +154,6 @@ func main() {
 				break
 			}
 		}
-
 	}
 }
 
@@ -150,10 +164,6 @@ func getJob(t *Task) (bool, error) {
 	j, err := t.ctx.Job(id)
 
 	if err != nil {
-		//log.Errorf("unable to get job %s: %s", id, err)
-		//if lochness.IsKeyNotFound(err) {
-		//	return true, nil
-		//}
 		return true, err
 	}
 
@@ -163,12 +173,20 @@ func getJob(t *Task) (bool, error) {
 }
 
 func checkJobStatus(t *Task) (bool, error) {
-	if t.Job.Status != "new" {
-		//?? should we care?
+	if t.Job.Status != lochness.JOB_STATUS_NEW {
 		return true, fmt.Errorf("bad job status: %s", t.Job.Status)
 	}
 	if t.Job.Action != "select-hypervisor" {
 		return true, fmt.Errorf("bad action: %s", t.Job.Action)
+	}
+	return false, nil
+}
+
+func changeJobStatus(t *Task) (bool, error) {
+	t.Job.Status = lochness.JOB_STATUS_WORKING
+
+	if err := t.Job.Save(24 * time.Hour); err != nil {
+		return true, fmt.Errorf("job save failed: %s", err)
 	}
 	return false, nil
 }
@@ -197,7 +215,7 @@ func selectHypervisor(t *Task) (bool, error) {
 	}
 
 	if len(candidates) == 0 {
-		return true, fmt.Errorf("no candidates found for  %s", t.Guest.ID)
+		return true, fmt.Errorf("no candidates found for %s", t.Guest.ID)
 	}
 
 	h := candidates[0]
@@ -210,7 +228,7 @@ func selectHypervisor(t *Task) (bool, error) {
 	return false, nil
 }
 
-func changeJobStatus(t *Task) (bool, error) {
+func changeJobAction(t *Task) (bool, error) {
 	t.Job.Action = "hypervisor-create"
 	if err := t.Job.Save(24 * time.Hour); err != nil {
 		return true, fmt.Errorf("unable to change job action - %s", err)
