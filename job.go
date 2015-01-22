@@ -15,6 +15,13 @@ var (
 	JobPath = "lochness/jobs/"
 )
 
+const (
+	JOB_STATUS_NEW     = "new"
+	JOB_STATUS_WORKING = "working"
+	JOB_STATUS_DONE    = "done"
+	JOB_STATUS_ERROR   = "error"
+)
+
 // TODO: we need a ttl?
 
 type (
@@ -41,6 +48,9 @@ func (c *Context) NewJob() *Job {
 
 // Validate ensures required fields are populated.
 func (j *Job) Validate() error {
+
+	//XXX: use global error definitions for these?
+
 	if j.ID == "" {
 		return errors.New("ID is required")
 	}
