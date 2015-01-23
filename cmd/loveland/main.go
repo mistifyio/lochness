@@ -3,13 +3,20 @@ package main
 // TODO: multiple beanstalkd servers
 
 import (
+	"encoding/json"
+	_ "expvar"
 	"flag"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/armon/go-metrics"
+	"github.com/bakins/go-metrics-map"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
@@ -41,6 +48,7 @@ func main() {
 	bstalk := flag.String("beanstalk", "127.0.0.1:11300", "address of beanstalkd server")
 	logLevel := flag.String("log-level", "warn", "log level")
 	addr := flag.String("etcd", "http://127.0.0.1:4001", "address of etcd server")
+	haddr := flag.String("http", ":27543", "address for http interface. set to blank to disable")
 	flag.Parse()
 
 	// set with flag?
@@ -66,6 +74,26 @@ func main() {
 	// make sure we can actually talk to etcd
 	if !etcdClient.SyncCluster() {
 		log.Fatal("unable to sync etcd at %s", *addr)
+	}
+
+	//inm := metrics.NewInmemSink(10*time.Second, 5*time.Minute)
+	ms := mapsink.New()
+	conf := metrics.DefaultConfig("loveland")
+	conf.EnableHostname = false
+	m, _ := metrics.New(conf, ms)
+
+	if *haddr != "" {
+
+		http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(200)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(ms)
+		}))
+
+		go func() {
+			log.Fatal(http.ListenAndServe(*haddr, nil))
+		}()
+
 	}
 
 	c := lochness.NewContext(etcdClient)
@@ -111,7 +139,7 @@ func main() {
 
 		for _, f := range funcs {
 
-			fname := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+			fname := strings.Split(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), ".")[1]
 			fields := log.Fields{
 				"task": task.ID,
 				"body": string(task.Body),
@@ -127,8 +155,13 @@ func main() {
 			start := time.Now()
 			rm, err := f(task)
 
+			m.MeasureSince([]string{fname, "time"}, start)
+			m.IncrCounter([]string{fname, "count"}, 1)
+
 			log.WithFields(fields).Infof("duration: %d", int(time.Since(start).Seconds()*1000))
 			if err != nil {
+
+				m.IncrCounter([]string{fname, "error"}, 1)
 
 				log.WithFields(fields).Errorf("task error: %s", err)
 
