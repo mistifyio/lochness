@@ -24,8 +24,8 @@ import (
 
 // XXX: allow different tube names?
 const (
-	CREATE_TUBE = "create"
-	WORK_TUBE   = "work"
+	CreateTube = "create"
+	WorkTube   = "work"
 )
 
 type TaskFunc func(*Task) (bool, error)
@@ -98,7 +98,7 @@ func main() {
 
 	c := lochness.NewContext(etcdClient)
 
-	ts := beanstalk.NewTubeSet(conn, CREATE_TUBE)
+	ts := beanstalk.NewTubeSet(conn, CreateTube)
 
 	// XXX: we want to try to keep track of where a job is
 	// in this pipeline? would have to persist in the job
@@ -166,7 +166,7 @@ func main() {
 				log.WithFields(fields).Errorf("task error: %s", err)
 
 				if task.Job != nil {
-					task.Job.Status = lochness.JOB_STATUS_ERROR
+					task.Job.Status = lochness.JobStatusError
 					task.Job.Error = err.Error()
 					if err := task.Job.Save(24 * time.Hour); err != nil {
 						log.WithFields(log.Fields{
@@ -206,7 +206,7 @@ func getJob(t *Task) (bool, error) {
 }
 
 func checkJobStatus(t *Task) (bool, error) {
-	if t.Job.Status != lochness.JOB_STATUS_NEW {
+	if t.Job.Status != lochness.JobStatusNew {
 		return true, fmt.Errorf("bad job status: %s", t.Job.Status)
 	}
 	if t.Job.Action != "select-hypervisor" {
@@ -216,7 +216,7 @@ func checkJobStatus(t *Task) (bool, error) {
 }
 
 func changeJobStatus(t *Task) (bool, error) {
-	t.Job.Status = lochness.JOB_STATUS_WORKING
+	t.Job.Status = lochness.JobStatusWorking
 
 	if err := t.Job.Save(24 * time.Hour); err != nil {
 		return true, fmt.Errorf("job save failed: %s", err)
@@ -272,7 +272,7 @@ func changeJobAction(t *Task) (bool, error) {
 func addJobToWorker(t *Task) (bool, error) {
 	tube := beanstalk.Tube{
 		Conn: t.conn,
-		Name: WORK_TUBE,
+		Name: WorkTube,
 	}
 
 	// TODO: should ttr be configurable?

@@ -15,11 +15,12 @@ var (
 	JobPath = "lochness/jobs/"
 )
 
+// Job Status
 const (
-	JOB_STATUS_NEW     = "new"
-	JOB_STATUS_WORKING = "working"
-	JOB_STATUS_DONE    = "done"
-	JOB_STATUS_ERROR   = "error"
+	JobStatusNew     = "new"
+	JobStatusWorking = "working"
+	JobStatusDone    = "done"
+	JobStatusError   = "error"
 )
 
 // TODO: we need a ttl?
