@@ -148,12 +148,11 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 
 	options := map[string]string{
 		"uuid": found.ID,
-		"":     s.addOpts,
 	}
 
 	data := map[string]string{
 		"BaseUrl": s.baseUrl,
-		"Options": mapToOptions(options),
+		"Options": mapToOptions(options) + " " + s.addOpts,
 		"Version": version,
 	}
 	err = s.t.Execute(w, data)
