@@ -94,12 +94,14 @@ func (g *Guest) UnmarshalJSON(input []byte) error {
 	g.IP = data.IP
 	g.Bridge = data.Bridge
 
-	a, err := net.ParseMAC(data.MAC)
-	if err != nil {
-		return err
-	}
+	if data.MAC != "" {
+		a, err := net.ParseMAC(data.MAC)
+		if err != nil {
+			return err
+		}
 
-	g.MAC = a
+		g.MAC = a
+	}
 	return nil
 
 }
