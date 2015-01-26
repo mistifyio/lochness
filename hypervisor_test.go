@@ -85,3 +85,12 @@ func TestFirstHypervisor(t *testing.T) {
 	h.Assert(t, found != nil, "unexpected nil")
 
 }
+
+func TestHypervisorDestroy(t *testing.T) {
+	defer contextCleanup(t)
+	hv := newHypervisor(t)
+
+	err := hv.Destroy()
+	h.Ok(t, err)
+	// need a test with a guest
+}

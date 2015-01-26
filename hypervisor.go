@@ -516,3 +516,27 @@ func (h *Hypervisor) SetConfig(key, value string) error {
 	}
 	return nil
 }
+
+// Destroy removes a hypervisor.  The Hypervisor must not have any guests.
+func (h *Hypervisor) Destroy() error {
+	if len(h.guests) != 0 {
+		// XXX: should use an error var?
+		return errors.New("not empty")
+	}
+
+	if h.modifiedIndex == 0 {
+		// it has not been saved?
+		return errors.New("not persisted")
+	}
+
+	// XXX: another instance where transactions would be helpful
+	if _, err := h.context.etcd.CompareAndDelete(h.key(), "", h.modifiedIndex); err != nil {
+		return err
+	}
+
+	if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID), true); err != nil {
+		return err
+	}
+
+	return nil
+}
