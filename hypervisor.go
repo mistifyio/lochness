@@ -82,13 +82,27 @@ func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 		return err
 	}
 
-	h.ID = data.ID
-	h.Metadata = data.Metadata
-	h.IP = data.IP
-	h.Netmask = data.Netmask
-	h.Gateway = data.Gateway
-	h.TotalResources = data.TotalResources
-	h.AvailableResources = data.AvailableResources
+	if data.ID != "" {
+		h.ID = data.ID
+	}
+	if data.Metadata != nil {
+		h.Metadata = data.Metadata
+	}
+	if data.IP != nil {
+		h.IP = data.IP
+	}
+	if data.Netmask != nil {
+		h.Netmask = data.Netmask
+	}
+	if data.Gateway != nil {
+		h.Gateway = data.Gateway
+	}
+	if &data.TotalResources != nil {
+		h.TotalResources = data.TotalResources
+	}
+	if &data.AvailableResources != nil {
+		h.AvailableResources = data.AvailableResources
+	}
 
 	if data.MAC != "" {
 		a, err := net.ParseMAC(data.MAC)
