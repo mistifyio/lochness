@@ -44,6 +44,8 @@ func main() {
 	baseUrl := flag.String("base", "http://ipxe.mistify.local:8888", "base address of bits request")
 	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
 	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
+	statsd := flag.String("statsd", "", "statsd address")
+
 	flag.Parse()
 
 	e := etcd.NewClient([]string{*eaddr})
@@ -70,9 +72,16 @@ func main() {
 	)
 
 	sink := mapsink.New()
+	fanout := metrics.FanoutSink{sink}
+
+	if *statsd != "" {
+		ss, _ := metrics.NewStatsdSink(*statsd)
+		fanout = append(fanout, ss)
+	}
+
 	conf := metrics.DefaultConfig("enfield")
 	conf.EnableHostname = false
-	m, _ := metrics.New(conf, sink)
+	m, _ := metrics.New(conf, fanout)
 	mw := mmw.New(m)
 
 	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then((http.DefaultServeMux)))
