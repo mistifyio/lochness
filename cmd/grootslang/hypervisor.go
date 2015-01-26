@@ -18,6 +18,8 @@ func RegisterHypervisorRoutes(prefix string, router *mux.Router) {
 	sub.HandleFunc("/{hypervisorID}", GetHypervisor).Methods("GET")
 	sub.HandleFunc("/{hypervisorID}", UpdateHypervisor).Methods("PATCH")
 	sub.HandleFunc("/{hypervisorID}", DestroyHypervisor).Methods("DELETE")
+	sub.HandleFunc("/{hypervisorID}/config", GetHypervisorConfig).Methods("GET")
+	sub.HandleFunc("/{hypervisorID}/config", UpdateHypervisorConfig).Methods("PATCH")
 }
 
 // ListHypervisors gets a list of all hypervisors
@@ -96,6 +98,38 @@ func DestroyHypervisor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hr.JSON(http.StatusOK, hypervisor)
+}
+
+// GetHypervisorConfig gets the set of key/value config options
+func GetHypervisorConfig(w http.ResponseWriter, r *http.Request) {
+	hr := HTTPResponse{w}
+	hypervisor, ok := getHypervisorHelper(hr, r)
+	if !ok {
+		return
+	}
+
+	hr.JSON(http.StatusOK, hypervisor.Config)
+}
+
+// UpdateHypervisorConfig sets key/value config options
+func UpdateHypervisorConfig(w http.ResponseWriter, r *http.Request) {
+	hr := HTTPResponse{w}
+	hypervisor, ok := getHypervisorHelper(hr, r)
+	if !ok {
+		return
+	}
+	var newConf map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&newConf); err != nil {
+		hr.JSONError(http.StatusBadRequest, err)
+		return
+	}
+	for k, v := range newConf {
+		if err := hypervisor.SetConfig(k, v); err != nil {
+			hr.JSONError(http.StatusInternalServerError, err)
+			return
+		}
+	}
+	hr.JSON(http.StatusOK, hypervisor.Config)
 }
 
 // getHypervisorHelper gets the hypervisor object and handles sending a response
