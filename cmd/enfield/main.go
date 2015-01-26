@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	_ "expvar"
 	"flag"
 	"fmt"
@@ -12,6 +13,9 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/armon/go-metrics"
+	"github.com/bakins/go-metrics-map"
+	"github.com/bakins/go-metrics-middleware"
 	"github.com/bakins/net-http-recover"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/gorilla/context"
@@ -40,6 +44,8 @@ func main() {
 	baseUrl := flag.String("base", "http://ipxe.mistify.local:8888", "base address of bits request")
 	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
 	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
+	statsd := flag.String("statsd", "", "statsd address")
+
 	flag.Parse()
 
 	e := etcd.NewClient([]string{*eaddr})
@@ -65,8 +71,21 @@ func main() {
 		handlers.CompressHandler,
 	)
 
-	router.PathPrefix("/debug/").Handler(chain.Then((http.DefaultServeMux)))
-	router.PathPrefix("/images").Handler(chain.Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
+	sink := mapsink.New()
+	fanout := metrics.FanoutSink{sink}
+
+	if *statsd != "" {
+		ss, _ := metrics.NewStatsdSink(*statsd)
+		fanout = append(fanout, ss)
+	}
+
+	conf := metrics.DefaultConfig("enfield")
+	conf.EnableHostname = false
+	m, _ := metrics.New(conf, fanout)
+	mw := mmw.New(m)
+
+	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then((http.DefaultServeMux)))
+	router.PathPrefix("/images").Handler(chain.Append(mw.HandlerWrapper("images")).Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
 
 	router.Handle("/ipxe/{ip}", chain.Append(
 		func(h http.Handler) http.Handler {
@@ -75,7 +94,13 @@ func main() {
 				h.ServeHTTP(w, r)
 			})
 		},
-	).ThenFunc(ipxeHandler))
+	).Append(mw.HandlerWrapper("ipxe")).ThenFunc(ipxeHandler))
+
+	router.Handle("/metrics", chain.Append(mw.HandlerWrapper("metrics")).ThenFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			json.NewEncoder(w).Encode(sink)
+		}))
 
 	log.Fatal(http.ListenAndServe(*address, router))
 }
