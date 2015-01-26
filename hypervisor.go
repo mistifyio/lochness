@@ -314,7 +314,13 @@ func (h *Hypervisor) UpdateResources() error {
 
 // Validate ensures a Hypervisor has reasonable data. It currently does nothing.
 func (h *Hypervisor) Validate() error {
-	// do validation stuff...
+	// TODO: do validation stuff...
+	if h.ID == "" {
+		return errors.New("no id")
+	}
+	if uuid.Parse(h.ID) == nil {
+		return errors.New("invalid id")
+	}
 	return nil
 }
 
