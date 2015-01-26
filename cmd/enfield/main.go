@@ -30,6 +30,7 @@ type Server struct {
 	t              *template.Template
 	defaultVersion string
 	baseUrl        string
+	addOpts        string
 }
 
 const ipxeTemplate = `#!ipxe
@@ -44,6 +45,7 @@ func main() {
 	baseUrl := flag.String("base", "http://ipxe.mistify.local:8888", "base address of bits request")
 	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
 	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
+	addOpts := flag.String("options", "", "additional options to add to boot kernel")
 	statsd := flag.String("statsd", "", "statsd address")
 
 	flag.Parse()
@@ -59,6 +61,7 @@ func main() {
 		t:              template.Must(template.New("ipxe").Parse(ipxeTemplate)),
 		defaultVersion: *defaultVersion,
 		baseUrl:        *baseUrl,
+		addOpts:        *addOpts,
 	}
 
 	chain := alice.New(
@@ -145,6 +148,7 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 
 	options := map[string]string{
 		"uuid": found.ID,
+		"":     s.addOpts,
 	}
 
 	data := map[string]string{
