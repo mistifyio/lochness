@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -26,18 +27,26 @@ var (
 	hv   *lochness.Hypervisor
 )
 
+type group struct {
+	Name int
+	ID   string
+	IPs  []string
+}
+
 type templateData struct {
 	IP      string
 	Rules   []string
-	Sources map[string][]string
+	Sources []group
 }
 
 func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
 	tData := templateData{
-		IP:      hv.IP.String(),
-		Rules:   nil,
-		Sources: map[string][]string{},
+		IP: hv.IP.String(),
 	}
+
+	// map of FWGroupID -> set name a.k.a g0,g1,g2
+	groups := map[string]int{}
+	max := len(groups)
 
 	fwgroups := map[string]*lochness.FWGroup{}
 	err := hv.ForEachGuest(func(guest *lochness.Guest) error {
@@ -59,10 +68,13 @@ func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
 		for _, rule := range group.Rules {
 			source := ""
 			if rule.Group != "" {
-				source = " ip saddr @g" + rule.Group
-				if _, ok := tData.Sources[rule.Group]; !ok {
-					tData.Sources[rule.Group] = nil
+				i, ok := groups[rule.Group]
+				if !ok {
+					i = max
+					max++
+					groups[rule.Group] = i
 				}
+				source = " ip saddr @g" + strconv.Itoa(i)
 			}
 			if rule.Source != nil && rule.Source.String() != "" {
 				source += " ip saddr " + rule.Source.String()
@@ -98,11 +110,21 @@ func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
 		return templateData{}, err
 	}
 
+	// prebuild Sources slice
+	tData.Sources = make([]group, len(groups))
+	for id, i := range groups {
+		tData.Sources[i] = group{Name: i, ID: id}
+	}
+
 	err = c.ForEachGuest(func(guest *lochness.Guest) error {
-		if s, ok := tData.Sources[guest.FWGroupID]; ok {
-			s = append(s, guest.IP.String())
-			tData.Sources[guest.FWGroupID] = s
+		i, ok := groups[guest.FWGroupID]
+		if !ok {
+			return nil
 		}
+
+		ips := tData.Sources[i].IPs
+		ips = append(ips, guest.IP.String())
+		tData.Sources[i].IPs = ips
 		return nil
 	})
 	if err != nil {

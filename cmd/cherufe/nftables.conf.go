@@ -29,8 +29,9 @@ table inet filter {
     {{end}}# everything else
     reject with icmp type port-unreachable
   }{{with $.Sources}}
-  {{range $group, $ip := .}}
-  set g{{$group}} {
+  {{range .}}
+  # FWGroupID={{.ID}}
+  set g{{.Name}} {
     type ipv4_addr
     elements = {{{range .IPs}}{{.}},{{end}}}
   }
