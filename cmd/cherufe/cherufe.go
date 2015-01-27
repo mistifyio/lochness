@@ -178,12 +178,16 @@ func main() {
 	e := etcd.NewClient([]string{*eaddr})
 	c := lochness.NewContext(e)
 
-	hn, err := os.Hostname()
-	if err != nil {
+	var err error
+	hn := os.Getenv("TEST_HOSTNAME")
+	if hn == "" {
+		hn, err = os.Hostname()
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.Hostname",
 		}).Fatal("failed to get hostname")
+	} else {
+		log.WithField("hostname", hn).Warn("environment is overriding hostname")
 	}
 	hv, err = c.Hypervisor(hn)
 	if err != nil {
