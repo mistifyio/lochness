@@ -169,6 +169,7 @@ func saveHypervisorHelper(hr HTTPResponse, hypervisor *lochness.Hypervisor) bool
 	return true
 }
 
+// decodeHypervisor decodes request body JSON into a hypervisor object
 func decodeHypervisor(r *http.Request, hypervisor *lochness.Hypervisor) (*lochness.Hypervisor, error) {
 	if hypervisor == nil {
 		ctx := GetContext(r)
