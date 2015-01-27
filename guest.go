@@ -131,6 +131,30 @@ func (c *Context) Guest(id string) (*Guest, error) {
 	return g, nil
 }
 
+// Guests fetches the set of Guests from the config store
+func (c *Context) Guests() map[*Guest]struct{} {
+	r, err := c.etcd.Get(GuestPath, true, true)
+	if err != nil {
+		panic(err)
+	}
+	guests := map[*Guest]struct{}{}
+	for _, node := range r.Node.Nodes {
+		if node.Nodes == nil {
+			continue
+		}
+		resp := etcd.Response{
+			Node: node.Nodes[0],
+		}
+		g := Guest{}
+		err := g.fromResponse(&resp)
+		if err != nil {
+			panic(err)
+		}
+		guests[&g] = struct{}{}
+	}
+	return guests
+}
+
 // key is a helper to generate the config store key
 func (g *Guest) key() string {
 	return filepath.Join(GuestPath, g.ID, "metadata")
