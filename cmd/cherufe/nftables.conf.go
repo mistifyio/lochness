@@ -32,8 +32,8 @@ table inet filter {
   {{range .}}
   # FWGroupID={{.ID}}
   set g{{.Name}} {
-    type ipv4_addr
-    elements = {{{range .IPs}}{{.}},{{end}}}
+    type ipv4_addr{{if .IPs}}
+    elements = { {{range .IPs}}{{.}},{{end}} }{{end}}
   }
   {{end}}{{end}}
   chain forward {
