@@ -189,7 +189,7 @@ func main() {
 		}).Fatal("failed to fetch hypervisor info")
 	}
 
-	tmpl = template.Must(template.New("nft").Parse("nftables.conf.tmpl"))
+	tmpl = template.Must(template.New("nft").Parse(ruleset))
 
 	stop := make(chan bool)
 	ch := make(chan struct{})
