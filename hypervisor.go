@@ -372,6 +372,15 @@ func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 	return err
 }
 
+// RemoveSubnet removes a subnet from a Hypervisor.
+func (h *Hypervisor) RemoveSubnet(s *Subnet) error {
+	_, err := h.context.etcd.Delete(filepath.Join(h.subnetKey(s)), false)
+	if err == nil {
+		delete(h.subnets, s.ID)
+	}
+	return err
+}
+
 // Subnets returns the subnet/bridge mappings for a Hypervisor.
 func (h *Hypervisor) Subnets() map[string]string {
 	return h.subnets
