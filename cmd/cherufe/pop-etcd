@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+
+{
+#	for i in {1..10}
+#	do
+#		etcdctl set /lochness/guests/$i/metadata <<EOF
+#{"id":"$i","ip":"10.10.10.$i","fwgroup":"$i"}
+#EOF
+#
+#		etcdctl set /lochness/fwgroups/$i/metadata <<EOF
+#{"id":"$i","rules":[{"group":"$(($i+1))","portStart":0,"portEnd":80,"protocol":"tcp"}]}
+#EOF
+#	done
+
+	etcdctl set /lochness/guests/1/metadata '{"id":"1","ip":"192.168.1.1","fwgroup":"1"}'
+	etcdctl set /lochness/guests/2/metadata '{"id":"2","ip":"192.168.1.2","fwgroup":"2"}'
+	etcdctl set /lochness/guests/3/metadata '{"id":"3","ip":"192.168.1.3","fwgroup":"3"}'
+	etcdctl set /lochness/guests/4/metadata '{"id":"4","ip":"192.168.1.4","fwgroup":"4"}'
+	etcdctl set /lochness/guests/5/metadata '{"id":"5","ip":"192.168.1.112","fwgroup":"5"}'
+	etcdctl set /lochness/guests/6/metadata '{"id":"6","ip":"192.168.1.123","fwgroup":"6"}'
+	etcdctl set /lochness/guests/7/metadata '{"id":"7","ip":"192.168.1.7","fwgroup":"7"}'
+	etcdctl set /lochness/guests/8/metadata '{"id":"8","ip":"192.168.1.8","fwgroup":"8"}'
+	etcdctl set /lochness/guests/9/metadata '{"id":"9","ip":"192.168.1.9","fwgroup":"9"}'
+	etcdctl set /lochness/guests/10/metadata '{"id":"10","ip":"192.168.1.10","fwgroup":"10"}'
+
+	etcdctl set /lochness/fwgroups/1/metadata '{"id":"1","rules":[{"group":"2","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/2/metadata '{"id":"2","rules":[{"group":"3","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/3/metadata '{"id":"3","rules":[{"group":"4","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/4/metadata '{"id":"4","rules":[{"group":"5","portStart":22,"portEnd":22,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/5/metadata '{"id":"5","rules":[{"group":"6","portStart":4001,"portEnd":4002,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/6/metadata '{"id":"6","rules":[{"group":"7","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/7/metadata '{"id":"7","rules":[{"group":"8","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/8/metadata '{"id":"8","rules":[{"group":"9","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/9/metadata '{"id":"9","rules":[{"group":"10","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+	etcdctl set /lochness/fwgroups/10/metadata '{"id":"10","rules":[{"group":"11","portStart":80,"portEnd":85,"protocol":"tcp"}]}'
+
+	etcdctl set /lochness/hypervisors/1/metadata '{"id":"1","ip":"192.168.1.254"}'
+	etcdctl set /lochness/hypervisors/1/guests/1 ""
+	etcdctl set /lochness/hypervisors/1/guests/3 ""
+	etcdctl set /lochness/hypervisors/1/guests/5 ""
+	etcdctl set /lochness/hypervisors/1/guests/7 ""
+	etcdctl set /lochness/hypervisors/1/guests/9 ""
+} | sed '/^\s*$/ d'
