@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 )
 
@@ -465,7 +466,10 @@ func (h *Hypervisor) Guests() map[*Guest]struct{} {
 	for _, guest := range h.guests {
 		g, err := h.context.Guest(guest)
 		if err != nil {
-			continue
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "context.Guest",
+			}).Info("failed to instantiate guest struct")
 		}
 		guests[g] = struct{}{}
 	}
