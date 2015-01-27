@@ -16,8 +16,8 @@ import (
 	"github.com/mistifyio/lochness"
 )
 
-const nftSinglePort = "ip daddr %s %s dport %d"
-const nftPortRange = "ip daddr %s %s dport %d - %d"
+const nftSinglePort = "ip daddr %s %s dport %d %s"
+const nftPortRange = "ip daddr %s %s dport %d - %d %s"
 
 var tmpl *template.Template
 var hv *lochness.Hypervisor
