@@ -20,6 +20,10 @@ func RegisterHypervisorRoutes(prefix string, router *mux.Router) {
 	sub.HandleFunc("/{hypervisorID}", DestroyHypervisor).Methods("DELETE")
 	sub.HandleFunc("/{hypervisorID}/config", GetHypervisorConfig).Methods("GET")
 	sub.HandleFunc("/{hypervisorID}/config", UpdateHypervisorConfig).Methods("PATCH")
+	sub.HandleFunc("/{hypervisorID}/subnets", ListHypervisorSubnets).Methods("GET")
+	sub.HandleFunc("/{hypervisorID}/subnets", AddHypervisorSubnets).Methods("PATCH")
+	sub.HandleFunc("/{hypervisorID}/subnets/{subnetID}", RemoveHypervisorSubnet).Methods("DELETE")
+	sub.HandleFunc("/{hypervisorID}/guests", ListHypervisorGuests).Methods("GET")
 }
 
 // ListHypervisors gets a list of all hypervisors
@@ -130,6 +134,82 @@ func UpdateHypervisorConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	hr.JSON(http.StatusOK, hypervisor.Config)
+}
+
+// ListHypervisorSubnets lists the subnets associated with a hypervisor
+func ListHypervisorSubnets(w http.ResponseWriter, r *http.Request) {
+	hr := HTTPResponse{w}
+	hypervisor, ok := getHypervisorHelper(hr, r)
+	if !ok {
+		return
+	}
+
+	hr.JSON(http.StatusOK, hypervisor.Subnets())
+}
+
+// AddHypervisorSubnets associates subnets with a hypervisor
+func AddHypervisorSubnets(w http.ResponseWriter, r *http.Request) {
+	hr := HTTPResponse{w}
+	ctx := GetContext(r)
+	hypervisor, ok := getHypervisorHelper(hr, r)
+	if !ok {
+		return
+	}
+
+	var subnets map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&subnets); err != nil {
+		hr.JSONError(http.StatusBadRequest, err)
+		return
+	}
+
+	for subnetID, bridge := range subnets {
+		subnet, err := ctx.Subnet(subnetID)
+		if err != nil {
+			hr.JSONError(http.StatusNotFound, err)
+			return
+		}
+		if err := hypervisor.AddSubnet(subnet, bridge); err != nil {
+			hr.JSONError(http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	hr.JSON(http.StatusOK, hypervisor.Subnets())
+}
+
+// RemoveHypervisorSubnet removes a subnet from a Hypervisor
+func RemoveHypervisorSubnet(w http.ResponseWriter, r *http.Request) {
+	hr := HTTPResponse{w}
+	ctx := GetContext(r)
+	hypervisor, ok := getHypervisorHelper(hr, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	subnet, err := ctx.Subnet(vars["subnetID"])
+	if err != nil {
+		hr.JSONError(http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := hypervisor.RemoveSubnet(subnet); err != nil {
+		hr.JSONError(http.StatusInternalServerError, err)
+		return
+	}
+
+	hr.JSON(http.StatusOK, hypervisor.Subnets())
+}
+
+// ListHypervisorGuests returns a list of guests of the Hypervisor
+func ListHypervisorGuests(w http.ResponseWriter, r *http.Request) {
+	hr := HTTPResponse{w}
+	hypervisor, ok := getHypervisorHelper(hr, r)
+	if !ok {
+		return
+	}
+
+	hr.JSON(http.StatusOK, hypervisor.Guests())
 }
 
 // getHypervisorHelper gets the hypervisor object and handles sending a response
