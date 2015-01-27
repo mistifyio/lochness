@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -106,6 +107,7 @@ func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
 		return templateData{}, err
 	}
 
+	sort.Strings(rules)
 	tData := templateData{
 		IP:      hv.IP.String(),
 		Rules:   rules,
