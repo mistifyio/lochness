@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"code.google.com/p/go-uuid/uuid"
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 )
 
@@ -135,7 +136,10 @@ func (c *Context) Guest(id string) (*Guest, error) {
 func (c *Context) Guests() map[*Guest]struct{} {
 	r, err := c.etcd.Get(GuestPath, true, true)
 	if err != nil {
-		panic(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "etcd.Get",
+		}).Fatal("failed to get guests")
 	}
 	guests := map[*Guest]struct{}{}
 	for _, node := range r.Node.Nodes {
@@ -148,7 +152,10 @@ func (c *Context) Guests() map[*Guest]struct{} {
 		g := Guest{}
 		err := g.fromResponse(&resp)
 		if err != nil {
-			panic(err)
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "fromResponse",
+			}).Fatal("failed to instantiate guest struct")
 		}
 		guests[&g] = struct{}{}
 	}
