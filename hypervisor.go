@@ -459,6 +459,19 @@ func (h *Hypervisor) GuestIDs() []string {
 	return h.guests
 }
 
+// Guests returns a set of Guests assigned to the Hypervisor.
+func (h *Hypervisor) Guests() map[*Guest]struct{} {
+	guests := map[*Guest]struct{}{}
+	for _, guest := range h.guests {
+		g, err := h.context.Guest(guest)
+		if err != nil {
+			continue
+		}
+		guests[g] = struct{}{}
+	}
+	return guests
+}
+
 // FirstHypervisor will return the first hypervisor for which the function returns true.
 func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error) {
 	resp, err := c.etcd.Get(HypervisorPath, false, false)
