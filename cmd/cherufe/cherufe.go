@@ -55,10 +55,11 @@ func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
 			}
 			fwgroups[guest.FWGroupID] = group
 		}
+
 		for _, rule := range group.Rules {
 			source := ""
 			if rule.Group != "" {
-				source = " ip saddr @group_" + rule.Group
+				source = " ip saddr @g" + rule.Group
 				if _, ok := tData.Sources[rule.Group]; !ok {
 					tData.Sources[rule.Group] = nil
 				}

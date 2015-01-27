@@ -30,7 +30,7 @@ table inet filter {
     reject with icmp type port-unreachable
   }{{with $.Sources}}
   {{range $group, $ip := .}}
-  set group_{{$group}} {
+  set g{{$group}} {
     type ipv4_addr
     elements = {{{range .IPs}}{{.}},{{end}}}
   }
