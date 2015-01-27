@@ -245,19 +245,18 @@ func (h *Hypervisor) verifyOnHV() error {
 // calcGuestsUsage calculates gutes usage
 func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	usage := Resources{}
-	for _, guestID := range h.GuestIDs() {
-		guest, err := h.context.Guest(guestID)
-		if err != nil {
-			return Resources{}, err
-		}
-
+	err := h.ForEachGuest(func(guest *Guest) error {
 		// cache?
 		flavor, err := h.context.Flavor(guest.FlavorID)
 		if err != nil {
-			return Resources{}, err
+			return err
 		}
 		usage.Memory += flavor.Memory
 		usage.Disk += flavor.Disk
+		return nil
+	})
+	if err != nil {
+		return Resources{}, err
 	}
 	return usage, nil
 }
