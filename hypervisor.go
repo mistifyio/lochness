@@ -245,7 +245,7 @@ func (h *Hypervisor) verifyOnHV() error {
 // calcGuestsUsage calculates gutes usage
 func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	usage := Resources{}
-	for _, guestID := range h.Guests() {
+	for _, guestID := range h.GuestIDs() {
 		guest, err := h.context.Guest(guestID)
 		if err != nil {
 			return Resources{}, err
@@ -454,8 +454,8 @@ LOOP:
 	return nil
 }
 
-// Guests returns a slice of Guests assigned to the Hypervisor.
-func (h *Hypervisor) Guests() []string {
+// GuestIDs returns a slice of GuestIDs assigned to the Hypervisor.
+func (h *Hypervisor) GuestIDs() []string {
 	return h.guests
 }
 
