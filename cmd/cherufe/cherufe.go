@@ -40,15 +40,11 @@ type templateData struct {
 }
 
 func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
-	tData := templateData{
-		IP: hv.IP.String(),
-	}
-
+	fwgroups := map[string]*lochness.FWGroup{}
+	rules := []string{}
 	// map of FWGroupID -> set name a.k.a g0,g1,g2
 	groups := map[string]int{}
 	max := len(groups)
-
-	fwgroups := map[string]*lochness.FWGroup{}
 	err := hv.ForEachGuest(func(guest *lochness.Guest) error {
 		group, ok := fwgroups[guest.FWGroupID]
 		if !ok {
@@ -102,7 +98,7 @@ func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
 				}).Error("invalid port range specified")
 				return errors.New("invalid port range specified")
 			}
-			tData.Rules = append(tData.Rules, nftRule)
+			rules = append(rules, nftRule)
 		}
 		return nil
 	})
@@ -110,8 +106,11 @@ func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
 		return templateData{}, err
 	}
 
-	// prebuild Sources slice
-	tData.Sources = make([]group, len(groups))
+	tData := templateData{
+		IP:      hv.IP.String(),
+		Rules:   rules,
+		Sources: make([]group, len(groups)),
+	}
 	for id, i := range groups {
 		tData.Sources[i] = group{Name: i, ID: id}
 	}
