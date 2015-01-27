@@ -16,11 +16,15 @@ import (
 	"github.com/mistifyio/lochness"
 )
 
-const nftSinglePort = "ip daddr %s %s dport %d %s"
-const nftPortRange = "ip daddr %s %s dport %d - %d %s"
+const (
+	nftSinglePort = "ip daddr %s %s dport %d %s"
+	nftPortRange  = "ip daddr %s %s dport %d - %d %s"
+)
 
-var tmpl *template.Template
-var hv *lochness.Hypervisor
+var (
+	tmpl *template.Template
+	hv   *lochness.Hypervisor
+)
 
 type templateData struct {
 	IP      string
