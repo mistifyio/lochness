@@ -32,7 +32,7 @@ table inet filter {
   {{range $group, $ip := .}}
   set group_{{$group}} {
     type ipv4_addr
-    elements = { {{range $ip}}{{.}}{{end}} }
+    elements = {{{range .IPs}}{{.}},{{end}}}
   }
   {{end}}{{end}}
   chain forward {
