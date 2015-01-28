@@ -82,13 +82,27 @@ func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 		return err
 	}
 
-	h.ID = data.ID
-	h.Metadata = data.Metadata
-	h.IP = data.IP
-	h.Netmask = data.Netmask
-	h.Gateway = data.Gateway
-	h.TotalResources = data.TotalResources
-	h.AvailableResources = data.AvailableResources
+	if data.ID != "" {
+		h.ID = data.ID
+	}
+	if data.Metadata != nil {
+		h.Metadata = data.Metadata
+	}
+	if data.IP != nil {
+		h.IP = data.IP
+	}
+	if data.Netmask != nil {
+		h.Netmask = data.Netmask
+	}
+	if data.Gateway != nil {
+		h.Gateway = data.Gateway
+	}
+	if &data.TotalResources != nil {
+		h.TotalResources = data.TotalResources
+	}
+	if &data.AvailableResources != nil {
+		h.AvailableResources = data.AvailableResources
+	}
 
 	if data.MAC != "" {
 		a, err := net.ParseMAC(data.MAC)
@@ -299,7 +313,13 @@ func (h *Hypervisor) UpdateResources() error {
 
 // Validate ensures a Hypervisor has reasonable data. It currently does nothing.
 func (h *Hypervisor) Validate() error {
-	// do validation stuff...
+	// TODO: do validation stuff...
+	if h.ID == "" {
+		return errors.New("no id")
+	}
+	if uuid.Parse(h.ID) == nil {
+		return errors.New("invalid id")
+	}
 	return nil
 }
 
@@ -349,6 +369,15 @@ func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 		h.subnets[s.ID] = bridge
 	}
 	return err
+}
+
+// RemoveSubnet removes a subnet from a Hypervisor.
+func (h *Hypervisor) RemoveSubnet(s *Subnet) error {
+	if _, err := h.context.etcd.Delete(filepath.Join(h.subnetKey(s)), false); err != nil {
+		return err
+	}
+	delete(h.subnets, s.ID)
+	return nil
 }
 
 // Subnets returns the subnet/bridge mappings for a Hypervisor.
