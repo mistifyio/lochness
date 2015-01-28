@@ -245,19 +245,18 @@ func (h *Hypervisor) verifyOnHV() error {
 // calcGuestsUsage calculates gutes usage
 func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	usage := Resources{}
-	for _, guestID := range h.Guests() {
-		guest, err := h.context.Guest(guestID)
-		if err != nil {
-			return Resources{}, err
-		}
-
+	err := h.ForEachGuest(func(guest *Guest) error {
 		// cache?
 		flavor, err := h.context.Flavor(guest.FlavorID)
 		if err != nil {
-			return Resources{}, err
+			return err
 		}
 		usage.Memory += flavor.Memory
 		usage.Disk += flavor.Disk
+		return nil
+	})
+	if err != nil {
+		return Resources{}, err
 	}
 	return usage, nil
 }
@@ -454,9 +453,24 @@ LOOP:
 	return nil
 }
 
-// Guests returns a slice of Guests assigned to the Hypervisor.
+// Guests returns a slice of GuestIDs assigned to the Hypervisor.
 func (h *Hypervisor) Guests() []string {
 	return h.guests
+}
+
+// ForEachGuest will run f on each Guest. It will stop iteration if f returns an error.
+func (h *Hypervisor) ForEachGuest(f func(*Guest) error) error {
+	for _, id := range h.guests {
+		guest, err := h.context.Guest(id)
+		if err != nil {
+			return err
+		}
+
+		if err := f(guest); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // FirstHypervisor will return the first hypervisor for which the function returns true.

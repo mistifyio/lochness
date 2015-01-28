@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"reflect"
 	"time"
 
@@ -95,14 +96,23 @@ func main() {
 
 	print(n)
 
-	h := c.NewHypervisor()
-	h.IP = net.IPv4(10, 100, 101, 34)
-	h.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := h.Save(); err != nil {
-		log.Fatal(err)
+	var h *lochness.Hypervisor
+	if hv := os.Getenv("TEST_HV"); hv != "" {
+		var err error
+		h, err = c.Hypervisor(hv)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		h = c.NewHypervisor()
+		h.IP = net.IPv4(10, 100, 101, 34)
+		h.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := h.Save(); err != nil {
+			log.Fatal(err)
+		}
 	}
 	h.AddSubnet(s, "br0")
 
@@ -121,15 +131,42 @@ func main() {
 		print(s)
 	}
 
+	fw1 := c.NewFWGroup()
+	fw2 := c.NewFWGroup()
+
+	fw1.Rules = lochness.FWRules{&lochness.FWRule{
+		Group:     fw2.ID,
+		PortStart: 80,
+		PortEnd:   82,
+		Protocol:  "tcp",
+	}}
+	fw2.Rules = lochness.FWRules{&lochness.FWRule{
+		Group:     fw1.ID,
+		PortStart: 80,
+		PortEnd:   82,
+		Protocol:  "tcp",
+	}}
+
+	fw1.Save()
+	fw2.Save()
+
 	g1 := c.NewGuest()
 	g1.SubnetID = s.ID
 	g1.NetworkID = n.ID
 	g1.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
 	g1.FlavorID = f1.ID
+	g1.FWGroupID = fw1.ID
 	if err := g1.Save(); err != nil {
 		log.Fatal(err)
 	}
 	if err := h.AddGuest(g1); err != nil {
+		log.Fatal(err)
+	}
+	g1.IP, err = s.ReserveAddress(g1.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := g1.Save(); err != nil {
 		log.Fatal(err)
 	}
 	print(g1)
@@ -139,15 +176,18 @@ func main() {
 	g2.NetworkID = n.ID
 	g2.MAC, err = net.ParseMAC("01:23:45:67:89:ac")
 	g2.FlavorID = f2.ID
+	g2.FWGroupID = fw2.ID
 	if err := g2.Save(); err != nil {
 		log.Fatal(err)
 	}
 	if err := h.AddGuest(g2); err != nil {
 		log.Fatal(err)
 	}
-
 	g2.IP, err = s.ReserveAddress(g2.ID)
 	if err != nil {
+		log.Fatal(err)
+	}
+	if err := g2.Save(); err != nil {
 		log.Fatal(err)
 	}
 	print(g2)
