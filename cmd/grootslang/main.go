@@ -5,8 +5,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
-	flag "github.com/docker/docker/pkg/mflag"
 	"github.com/mistifyio/lochness"
+	flag "github.com/ogier/pflag"
 )
 
 const defaultEtcdAddr = "http://localhost:4001"
@@ -16,10 +16,10 @@ func main() {
 	var etcdAddr, logLevel string
 	var h bool
 
-	flag.BoolVar(&h, []string{"h", "#help", "-help"}, false, "display the help")
-	flag.UintVar(&port, []string{"p", "#port", "-port"}, 15000, "listen port")
-	flag.StringVar(&etcdAddr, []string{"e", "#etcd", "-etcd"}, defaultEtcdAddr, "address of etcd machine")
-	flag.StringVar(&logLevel, []string{"l", "#log-level", "-log-level"}, "warn", "log level")
+	flag.BoolVarP(&h, "help", "h", false, "display the help")
+	flag.UintVarP(&port, "port", "p", 17000, "listen port")
+	flag.StringVarP(&etcdAddr, "etcd", "e", defaultEtcdAddr, "address of etcd machine")
+	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.Parse()
 
 	if h {
