@@ -83,16 +83,36 @@ func (g *Guest) UnmarshalJSON(input []byte) error {
 		return err
 	}
 
-	g.ID = data.ID
-	g.Metadata = data.Metadata
-	g.Type = data.Type
-	g.FlavorID = data.FlavorID
-	g.NetworkID = data.NetworkID
-	g.SubnetID = data.SubnetID
-	g.FWGroupID = data.FWGroupID
-	g.HypervisorID = data.HypervisorID
-	g.IP = data.IP
-	g.Bridge = data.Bridge
+	if data.ID != "" {
+		g.ID = data.ID
+	}
+	if data.Metadata != nil {
+		g.Metadata = data.Metadata
+	}
+	if data.Type != "" {
+		g.Type = data.Type
+	}
+	if data.FlavorID != "" {
+		g.FlavorID = data.FlavorID
+	}
+	if data.NetworkID != "" {
+		g.NetworkID = data.NetworkID
+	}
+	if data.SubnetID != "" {
+		g.SubnetID = data.SubnetID
+	}
+	if data.FWGroupID != "" {
+		g.FWGroupID = data.FWGroupID
+	}
+	if data.HypervisorID != "" {
+		g.HypervisorID = data.HypervisorID
+	}
+	if data.IP != nil {
+		g.IP = data.IP
+	}
+	if data.Bridge != "" {
+		g.Bridge = data.Bridge
+	}
 
 	if data.MAC != "" {
 		a, err := net.ParseMAC(data.MAC)
