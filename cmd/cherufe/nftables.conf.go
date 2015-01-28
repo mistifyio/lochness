@@ -27,7 +27,7 @@ table inet filter {
 
     # allow lochness hv traffic
     # ssh, http, beanstalk, etcd
-    ip daddr {{ $.IP }} tcp dport {22, 80, 11300, 7001} accept
+    ip daddr {{ $.IP }} accept
 
     {{with $.Rules}}# allow traffic to guests as specified by FWGroup{{range .}}
     {{.}} accept{{end}}
