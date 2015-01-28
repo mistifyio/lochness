@@ -41,6 +41,15 @@ type templateData struct {
 }
 
 func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
+	if err := hv.Refresh(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "Hypervisor.Refresh",
+			"id":    hv.ID,
+		}).Error("could not refresh hypervisor")
+		return templateData{}, err
+	}
+
 	fwgroups := map[string]*lochness.FWGroup{}
 	rules := []string{}
 	// map of FWGroupID -> set name a.k.a g0,g1,g2
