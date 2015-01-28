@@ -5,7 +5,6 @@ package main
 import (
 	"encoding/json"
 	_ "expvar"
-	"flag"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -20,6 +19,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
+	flag "github.com/ogier/pflag"
 )
 
 // XXX: allow different tube names?
@@ -50,10 +50,10 @@ type Task struct {
 // as we almost always delete the tube id, wrap in function and delete it?
 
 func main() {
-	bstalk := flag.String("beanstalk", "127.0.0.1:11300", "address of beanstalkd server")
-	logLevel := flag.String("log-level", "warn", "log level")
-	addr := flag.String("etcd", "http://127.0.0.1:4001", "address of etcd server")
-	haddr := flag.String("http", ":27543", "address for http interface. set to blank to disable")
+	bstalk := flag.StringP("beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
+	logLevel := flag.StringP("log-level", "l", "warn", "log level")
+	addr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	haddr := flag.StringP("http", "p", ":27543", "address for http interface. set to blank to disable")
 	flag.Parse()
 
 	// set with flag?
