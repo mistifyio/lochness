@@ -35,6 +35,11 @@ func main() {
 	log.SetLevel(level)
 
 	etcdClient := etcd.NewClient([]string{etcdAddr})
+
+	if !etcdClient.SyncCluster() {
+		log.Fatal("unable to sync etcd at $s", etcdAddr)
+	}
+
 	ctx := lochness.NewContext(etcdClient)
 
 	_ = Run(port, ctx)
