@@ -193,12 +193,7 @@ func main() {
 			m.MeasureSince([]string{f.label, "time"}, start)
 			m.IncrCounter([]string{f.label, "count"}, 1)
 
-			// yuck
-			f2 := log.Fields{}
-			for k, v := range fields {
-				f2[k] = v
-			}
-
+			f2 := copyFields(fields)
 			f2["duration"] = int(time.Since(start).Seconds() * 1000)
 			log.WithFields(f2).Info("done")
 
@@ -206,16 +201,19 @@ func main() {
 
 				m.IncrCounter([]string{f.label, "error"}, 1)
 
-				log.WithFields(fields).Errorf("task error: %s", err)
+				f3 := copyFields(fields)
+				f3["error"] = err
+				log.WithFields(f3).Errorf("task error")
 
 				if task.Job != nil {
 					task.Job.Status = lochness.JobStatusError
 					task.Job.Error = err.Error()
 					if err := task.Job.Save(24 * time.Hour); err != nil {
 						log.WithFields(log.Fields{
-							"job":  task.Job.ID,
-							"task": task.ID,
-						}).Errorf("unable to save: %s", err)
+							"job":   task.Job.ID,
+							"task":  task.ID,
+							"error": err,
+						}).Errorf("unable to save")
 					}
 				}
 				break
@@ -224,8 +222,9 @@ func main() {
 			if rm {
 				if err := conn.Delete(id); err != nil {
 					log.WithFields(log.Fields{
-						"task": task.ID,
-					}).Errorf("unable to delete: %s", err)
+						"task":  task.ID,
+						"error": err,
+					}).Errorf("unable to delete")
 				}
 				break
 			}
@@ -329,6 +328,17 @@ func addJobToWorker(t *Task) (bool, error) {
 	return false, nil
 }
 
+// HACK: returning true trigegrs a task deletion in main
 func deleteTask(t *Task) (bool, error) {
 	return true, nil
+}
+
+// hacky helper
+func copyFields(fields log.Fields) log.Fields {
+	f := log.Fields{}
+	for k, v := range fields {
+		f[k] = v
+	}
+
+	return f
 }
