@@ -311,6 +311,7 @@ var DefaultCadidateFuctions = []CandidateFunction{
 	CandidateIsAlive,
 	CandidateHasSubnet,
 	CandidateHasResources,
+	CandidateRandomize,
 }
 
 // FirstGuest will return the first guest for which the function returns true.
