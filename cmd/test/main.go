@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"reflect"
 	"time"
 
@@ -95,14 +96,23 @@ func main() {
 
 	print(n)
 
-	h := c.NewHypervisor()
-	h.IP = net.IPv4(10, 100, 101, 34)
-	h.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := h.Save(); err != nil {
-		log.Fatal(err)
+	var h *lochness.Hypervisor
+	if hv := os.Getenv("TEST_HV"); hv != "" {
+		var err error
+		h, err = c.Hypervisor(hv)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		h = c.NewHypervisor()
+		h.IP = net.IPv4(10, 100, 101, 34)
+		h.MAC, err = net.ParseMAC("01:23:45:67:89:ab")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := h.Save(); err != nil {
+			log.Fatal(err)
+		}
 	}
 	h.AddSubnet(s, "br0")
 
