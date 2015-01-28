@@ -3,7 +3,13 @@ package main
 const ruleset = `flush ruleset
 
 table inet filter {
-  chain input {
+  {{with $.Sources}}{{range .}}# FWGroupID={{.ID}}
+  set g{{.Name}} {
+    type ipv4_addr{{if .IPs}}
+    elements = { {{range .IPs}}{{.}},{{end}} }{{end}}
+  }
+
+  {{end}}{{end}}chain input {
     type filter hook input priority 0;
 
     # allow established/related connections
@@ -28,14 +34,8 @@ table inet filter {
 
     {{end}}# everything else
     reject with icmp type port-unreachable
-  }{{with $.Sources}}
-  {{range .}}
-  # FWGroupID={{.ID}}
-  set g{{.Name}} {
-    type ipv4_addr{{if .IPs}}
-    elements = { {{range .IPs}}{{.}},{{end}} }{{end}}
   }
-  {{end}}{{end}}
+
   chain forward {
     type filter hook forward priority 0;
     drop
