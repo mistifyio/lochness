@@ -163,12 +163,12 @@ func (h *Hypervisor) Refresh() error {
 		case "heartbeat":
 			//if exists, then its alive
 			h.alive = true
-
 		case "subnets":
 			for _, n := range n.Nodes {
 				h.subnets[filepath.Base(n.Key)] = n.Value
 			}
 		case "guests":
+			h.guests = nil
 			for _, n := range n.Nodes {
 				h.guests = append(h.guests, filepath.Base(n.Key))
 			}
