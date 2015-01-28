@@ -28,7 +28,12 @@ const (
 	WorkTube   = "work"
 )
 
-type TaskFunc func(*Task) (bool, error)
+// TaskFunc is a convenience wrapper for function calls on tasks
+type TaskFunc struct {
+	name     string
+	function func(*Task) (bool, error)
+	label    string // label for metrics
+}
 
 // Task is a "helper" struct to pull together information from
 // beanstalk and etcd
@@ -103,15 +108,46 @@ func main() {
 	// XXX: we want to try to keep track of where a job is
 	// in this pipeline? would have to persist in the job
 	funcs := []TaskFunc{
-		getJob,
-		checkJobStatus,
-		getGuest,
-		checkGuestStatus,
-		changeJobStatus,
-		selectHypervisor,
-		changeJobAction,
-		addJobToWorker,
-		deleteTask,
+		TaskFunc{
+			name:     "get a job",
+			function: getJob,
+		},
+		TaskFunc{
+			name:     "check job status",
+			function: checkJobStatus,
+		},
+		TaskFunc{
+			name:     "get guest",
+			function: getGuest,
+		},
+		TaskFunc{
+			name:     "check guest status",
+			function: checkGuestStatus,
+		},
+		TaskFunc{
+			name:     "change job status",
+			function: changeJobStatus,
+		},
+		TaskFunc{
+			name:     "select hypervisor candidate",
+			function: selectHypervisor,
+		},
+		TaskFunc{
+			name:     "update job action",
+			function: changeJobAction,
+		},
+		TaskFunc{
+			name:     "add task to worker",
+			function: addJobToWorker,
+		},
+		TaskFunc{
+			name:     "make task for deletion",
+			function: deleteTask,
+		},
+	}
+
+	for _, f := range funcs {
+		f.label = strings.Split(runtime.FuncForPC(reflect.ValueOf(f.function).Pointer()).Name(), ".")[1]
 	}
 
 	for {
@@ -139,11 +175,10 @@ func main() {
 
 		for _, f := range funcs {
 
-			fname := strings.Split(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), ".")[1]
 			fields := log.Fields{
 				"task": task.ID,
 				"body": string(task.Body),
-				"func": fname,
+				"func": f.name,
 			}
 
 			if task.Job != nil {
@@ -153,15 +188,23 @@ func main() {
 			log.WithFields(fields).Debugf("running")
 
 			start := time.Now()
-			rm, err := f(task)
+			rm, err := f.function(task)
 
-			m.MeasureSince([]string{fname, "time"}, start)
-			m.IncrCounter([]string{fname, "count"}, 1)
+			m.MeasureSince([]string{f.label, "time"}, start)
+			m.IncrCounter([]string{f.label, "count"}, 1)
 
-			log.WithFields(fields).Infof("duration: %d", int(time.Since(start).Seconds()*1000))
+			// yuck
+			f2 := log.Fields{}
+			for k, v := range fields {
+				f2[k] = v
+			}
+
+			f2["duration"] = int(time.Since(start).Seconds() * 1000)
+			log.WithFields(f2).Info("done")
+
 			if err != nil {
 
-				m.IncrCounter([]string{fname, "error"}, 1)
+				m.IncrCounter([]string{f.label, "error"}, 1)
 
 				log.WithFields(fields).Errorf("task error: %s", err)
 
