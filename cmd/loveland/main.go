@@ -157,12 +157,13 @@ func main() {
 				// nothing queued, so just retry
 				continue
 			} else if err.(beanstalk.ConnError).Err == beanstalk.ErrDeadline {
-				fmt.Println("beanstalk.ErrDeadline => ", id)
+				// this is a hack. read docs on deadline. we just sleep to try to get another job
+				log.Info(beanstalk.ErrDeadline)
 				time.Sleep(5 * time.Second)
 				continue
 			} else {
 				// take a dirt nap
-				log.Fatal(err)
+				log.WithFields(log.Fields{"error": err}).Fatal(err)
 			}
 		}
 
