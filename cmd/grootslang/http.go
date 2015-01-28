@@ -7,7 +7,6 @@ import (
 	"os"
 	"runtime"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/bakins/logrus-middleware"
 	"github.com/bakins/net-http-recover"
 	"github.com/gorilla/context"
@@ -40,12 +39,8 @@ func Run(port uint, ctx *lochness.Context) error {
 	router.StrictSlash(true)
 
 	// Common middleware applied to every request
-	logger := log.New()
-	logger.Level = log.GetLevel()
-	logger.Formatter = &log.JSONFormatter{}
 	logrusMiddleware := logrusmiddleware.Middleware{
-		Name:   "grootslang",
-		Logger: logger,
+		Name: "grootslang",
 	}
 	commonMiddleware := alice.New(
 		func(h http.Handler) http.Handler {
