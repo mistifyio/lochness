@@ -59,8 +59,8 @@ type (
 	}
 )
 
-// MarshalJSON is a helper for marshalling a Guest
-func (f *FWGroup) MarshalJSON() ([]byte, error) {
+// MarshalJSON is a helper for marshalling a FWGroup
+func (f FWGroup) MarshalJSON() ([]byte, error) {
 	data := fwGroupJSON{
 		ID:       f.ID,
 		Metadata: f.Metadata,
@@ -85,7 +85,7 @@ func (f *FWGroup) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-// UnmarshalJSON is a helper for unmarshalling a Guest
+// UnmarshalJSON is a helper for unmarshalling a FWGroup
 func (f *FWGroup) UnmarshalJSON(input []byte) error {
 	data := fwGroupJSON{}
 
