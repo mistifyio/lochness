@@ -42,7 +42,82 @@ type (
 
 	// FWGroups is an alias to FWGroup slices
 	FWGroups []*FWGroup
+
+	fwRuleJSON struct {
+		Source    string `json:"source,omitempty"`
+		Group     string `json:"group,omitempty"`
+		PortStart uint   `json:"portStart"`
+		PortEnd   uint   `json:"portEnd"`
+		Protocol  string `json:"protocol"`
+		Action    string `json:"action"`
+	}
+
+	fwGroupJSON struct {
+		ID       string            `json:"id"`
+		Metadata map[string]string `json:"metadata"`
+		Rules    []*fwRuleJSON     `json:"rules"`
+	}
 )
+
+// MarshalJSON is a helper for marshalling a Guest
+func (f *FWGroup) MarshalJSON() ([]byte, error) {
+	data := fwGroupJSON{
+		ID:       f.ID,
+		Metadata: f.Metadata,
+		Rules:    make([]*fwRuleJSON, 0, len(f.Rules)),
+	}
+
+	for _, r := range f.Rules {
+		rule := fwRuleJSON{
+			Group:     r.Group,
+			PortStart: r.PortStart,
+			PortEnd:   r.PortEnd,
+			Protocol:  r.Protocol,
+			Action:    r.Action,
+		}
+
+		if r.Source != nil {
+			rule.Source = r.Source.String()
+		}
+
+		data.Rules = append(data.Rules, &rule)
+	}
+	return json.Marshal(data)
+}
+
+// UnmarshalJSON is a helper for unmarshalling a Guest
+func (f *FWGroup) UnmarshalJSON(input []byte) error {
+	data := fwGroupJSON{}
+
+	if err := json.Unmarshal(input, &data); err != nil {
+		return err
+	}
+
+	f.ID = data.ID
+	f.Metadata = data.Metadata
+	f.Rules = make(FWRules, 0, len(data.Rules))
+
+	for _, r := range data.Rules {
+		rule := &FWRule{
+			Group:     r.Group,
+			PortStart: r.PortStart,
+			PortEnd:   r.PortEnd,
+			Protocol:  r.Protocol,
+			Action:    r.Action,
+		}
+
+		if r.Source != "" {
+			_, n, err := net.ParseCIDR(r.Source)
+			if err != nil {
+				return err
+			}
+			rule.Source = n
+		}
+		f.Rules = append(f.Rules, rule)
+	}
+	return nil
+
+}
 
 // NewFWGroup creates a new, blank FWGroup
 func (c *Context) NewFWGroup() *FWGroup {
