@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	c       = &client{addr: "http://localhost:17000/", t: "application/json"}
+	server  = "http://localhost:17000/"
 	verbose = false
 )
 
@@ -19,6 +19,13 @@ type client struct {
 	http.Client
 	t    string //type
 	addr string
+}
+
+func newClient(address string) *client {
+	if strings.HasSuffix(address, "/") {
+		return &client{addr: address, t: "application/json"}
+	}
+	return &client{addr: address + "/", t: "application/json"}
 }
 
 type hypervisor map[string]interface{}
@@ -94,6 +101,7 @@ func getHV(c *client, id string) hypervisor {
 }
 
 func list(cmd *cobra.Command, args []string) {
+	c := newClient(server)
 	hvs := []hypervisor{}
 	if len(args) == 0 {
 		hvs = getHVs(c)
@@ -112,6 +120,7 @@ func list(cmd *cobra.Command, args []string) {
 }
 
 func create(cmd *cobra.Command, specs []string) {
+	c := newClient(server)
 	for _, spec := range specs {
 		hv, err := createHV(c, spec)
 		if err != nil {
@@ -132,6 +141,7 @@ func main() {
 		Short: "hv is the cli interface to grootslang",
 	}
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "print full hv description")
+	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
 
 	cmdHVs := &cobra.Command{
 		Use:   "list [<id>...]",
