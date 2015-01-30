@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -17,12 +16,6 @@ var (
 )
 
 type (
-	client struct {
-		http.Client
-		t    string //type
-		addr string
-	}
-
 	guest map[string]interface{}
 )
 
