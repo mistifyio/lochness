@@ -145,6 +145,37 @@ func guests(cmd *cobra.Command, ids []string) {
 	}
 }
 
+func config(cmd *cobra.Command, ids []string) {
+	c := newClient(server)
+	if len(ids) == 0 {
+		for _, hv := range getHVs(c) {
+			ids = append(ids, hv["id"].(string))
+		}
+	}
+	for _, id := range ids {
+		config := c.get("config", "hypervisors/"+id+"/config")
+		if jsonout {
+			c := jmap{
+				"id": id,
+			}
+			if len(config) != 0 {
+				c["config"] = config
+			}
+			fmt.Println(c)
+		} else {
+			fmt.Println(id)
+			if len(config) == 0 {
+				continue
+			}
+			fmt.Print("└── ")
+			for k, v := range config {
+				fmt.Print(k, ":", v, " ")
+			}
+			fmt.Println()
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -182,6 +213,11 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Short: "list the guest(s) belonging to hypervisor(s)",
 		Run:   guests,
 	}
-	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests)
+	cmdConfig := &cobra.Command{
+		Use:   "config [<id>...]",
+		Short: "get hypervisor config",
+		Run:   config,
+	}
+	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests, cmdConfig)
 	root.Execute()
 }
