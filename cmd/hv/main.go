@@ -42,26 +42,24 @@ func (h hypervisor) String() string {
 	return string(buf)
 }
 
-func createHV(c *client, spec string) (hypervisor, error) {
+func createHV(c *client, spec string) hypervisor {
 	resp, err := c.Post(c.addr+"hypervisors", c.t, strings.NewReader(spec))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"spec":  spec,
-		}).Error()
-		return nil, err
+		}).Fatal("unable to create new hypervisor")
 	}
 	if resp.StatusCode != http.StatusCreated {
-		log.WithField("code", resp.StatusCode).Error("failed to create hypervisor")
+		log.WithField("code", resp.StatusCode).Fatal("failed to create hypervisor")
 	}
 	defer resp.Body.Close()
 
 	hv := hypervisor{}
 	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-		log.WithField("error", err).Error("failed to parse json")
-		return nil, err
+		log.WithField("error", err).Fatal("failed to parse json")
 	}
-	return hv, nil
+	return hv
 }
 
 func getHVs(c *client) []hypervisor {
@@ -122,10 +120,7 @@ func list(cmd *cobra.Command, args []string) {
 func create(cmd *cobra.Command, specs []string) {
 	c := newClient(server)
 	for _, spec := range specs {
-		hv, err := createHV(c, spec)
-		if err != nil {
-			return
-		}
+		hv := createHV(c, spec)
 		if verbose {
 			fmt.Println(hv)
 		} else {
