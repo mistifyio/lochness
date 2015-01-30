@@ -302,7 +302,7 @@ valid json and contain the required fields, "mac" and "ip".`,
 	}
 	cmdConfigMod := &cobra.Command{
 		Use:   "modify id=<spec>...",
-		Short: "modify hypervisor(s)",
+		Short: "modify hypervisor(s) config",
 		Long:  `Modify the config of given hypervisor(s). Where "spec" is a valid json string.`,
 		Run:   config_modify,
 	}
