@@ -14,13 +14,13 @@ var (
 	jsonout = false
 )
 
-type hypervisor map[string]interface{}
+type jmap map[string]interface{}
 
-func (h hypervisor) ID() string {
-	return h["id"].(string)
+func (j jmap) ID() string {
+	return j["id"].(string)
 }
 
-func (h hypervisor) String() string {
+func (h jmap) String() string {
 	buf, err := json.Marshal(&h)
 	if err != nil {
 		return ""
@@ -28,10 +28,10 @@ func (h hypervisor) String() string {
 	return string(buf)
 }
 
-func getHVs(c *client) []hypervisor {
+func getHVs(c *client) []jmap {
 	ret := c.getMany("hypervisors", "hypervisors")
 	// wasteful you say?
-	hvs := make([]hypervisor, len(ret))
+	hvs := make([]jmap, len(ret))
 	for i := range ret {
 		hvs[i] = ret[i]
 	}
@@ -42,25 +42,25 @@ func getGuests(c *client, id string) []string {
 	return c.getList("guests", "hypervisors/"+id+"/guests")
 }
 
-func getHV(c *client, id string) hypervisor {
+func getHV(c *client, id string) jmap {
 	return c.get("hypervisor", "hypervisors/"+id)
 }
 
-func createHV(c *client, spec string) hypervisor {
+func createHV(c *client, spec string) jmap {
 	return c.post("hypervisor", "hypervisors", spec)
 }
 
-func modifyHV(c *client, id string, spec string) hypervisor {
+func modifyHV(c *client, id string, spec string) jmap {
 	return c.put("hypervisor", "hypervisors/"+id, spec)
 }
 
-func deleteHV(c *client, id string) hypervisor {
+func deleteHV(c *client, id string) jmap {
 	return c.del("hypervisor", "hypervisors/"+id)
 }
 
 func list(cmd *cobra.Command, args []string) {
 	c := newClient(server)
-	hvs := []hypervisor{}
+	hvs := []jmap{}
 	if len(args) == 0 {
 		hvs = getHVs(c)
 	} else {
