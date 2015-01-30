@@ -62,6 +62,37 @@ func createHV(c *client, spec string) hypervisor {
 	return hv
 }
 
+func modifyHV(c *client, id string, spec string) hypervisor {
+	addr := c.addr + "hypervisors/" + id
+	req, err := http.NewRequest("PATCH", addr, strings.NewReader(spec))
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": addr,
+			"spec":    spec,
+		}).Fatal("unable to form request")
+	}
+	req.Header.Add("ContentType", c.t)
+	resp, err := c.Do(req)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": addr,
+			"spec":    spec,
+		}).Fatal("unable to complete request")
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.WithField("code", resp.StatusCode).Fatal("failed to modify hypervisor")
+	}
+	defer resp.Body.Close()
+
+	hv := hypervisor{}
+	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
+		log.WithField("error", err).Fatal("failed to parse json")
+	}
+	return hv
+}
+
 func getHVs(c *client) []hypervisor {
 	resp, err := c.Get(c.addr + "hypervisors")
 	if err != nil {
@@ -129,6 +160,26 @@ func create(cmd *cobra.Command, specs []string) {
 	}
 }
 
+func modify(cmd *cobra.Command, args []string) {
+	c := newClient(server)
+	for _, arg := range args {
+		idSpec := strings.SplitN(arg, "=", 2)
+		if len(idSpec) != 2 {
+			log.WithFields(log.Fields{
+				"arg": arg,
+			}).Fatal("invalid argument")
+		}
+		id := idSpec[0]
+		spec := idSpec[1]
+		hv := modifyHV(c, id, spec)
+		if verbose {
+			fmt.Println(hv)
+		} else {
+			fmt.Println(hv["id"])
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -143,7 +194,6 @@ func main() {
 		Short: "list the hypervisor(s)",
 		Run:   list,
 	}
-
 	cmdCreate := &cobra.Command{
 		Use:   "create <spec>...",
 		Short: "create new hypervisor(s)",
@@ -151,6 +201,12 @@ func main() {
 valid json and contain the required fields, "mac" and "ip".`,
 		Run: create,
 	}
-	root.AddCommand(cmdHVs, cmdCreate)
+	cmdMod := &cobra.Command{
+		Use:   "modify id=<spec>...",
+		Short: "modify hypervisor(s)",
+		Long:  `Modify given hypervisor(s). Where "spec" is a valid json string.`,
+		Run:   modify,
+	}
+	root.AddCommand(cmdHVs, cmdCreate, cmdMod)
 	root.Execute()
 }
