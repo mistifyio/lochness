@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -14,19 +13,6 @@ var (
 	server  = "http://localhost:17000/"
 	verbose = false
 )
-
-type client struct {
-	http.Client
-	t    string //type
-	addr string
-}
-
-func newClient(address string) *client {
-	if strings.HasSuffix(address, "/") {
-		return &client{addr: address, t: "application/json"}
-	}
-	return &client{addr: address + "/", t: "application/json"}
-}
 
 type hypervisor map[string]interface{}
 
@@ -43,134 +29,29 @@ func (h hypervisor) String() string {
 }
 
 func getHVs(c *client) []hypervisor {
-	resp, err := c.Get(c.addr + "hypervisors")
-	if err != nil {
-		log.WithField("error", err).Fatal("failed to get list of hypervisors")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to get hypervisors")
-	}
-
-	hvs := []hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
+	ret := c.getMany("hypervisors", "hypervisors")
+	// wasteful you say?
+	hvs := make([]hypervisor, len(ret))
+	for i := range ret {
+		hvs[i] = ret[i]
 	}
 	return hvs
 }
 
 func getHV(c *client, id string) hypervisor {
-	resp, err := c.Get(c.addr + "hypervisors/" + id)
-	if err != nil {
-		log.WithField("error", err).Fatal("failed to get hypervisor")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to get hypervisor")
-	}
-
-	hv := hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
-	return hv
+	return c.get("hypervisor", "hypervisors/"+id)
 }
 
 func createHV(c *client, spec string) hypervisor {
-	resp, err := c.Post(c.addr+"hypervisors", c.t, strings.NewReader(spec))
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"spec":  spec,
-		}).Fatal("unable to create new hypervisor")
-	}
-	if resp.StatusCode != http.StatusCreated {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to create hypervisor")
-	}
-	defer resp.Body.Close()
-
-	hv := hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
-	return hv
+	return c.post("hypervisor", "hypervisors", spec)
 }
 
 func modifyHV(c *client, id string, spec string) hypervisor {
-	addr := c.addr + "hypervisors/" + id
-	req, err := http.NewRequest("PATCH", addr, strings.NewReader(spec))
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error":   err,
-			"address": addr,
-			"spec":    spec,
-		}).Fatal("unable to form request")
-	}
-	req.Header.Add("ContentType", c.t)
-	resp, err := c.Do(req)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error":   err,
-			"address": addr,
-			"spec":    spec,
-		}).Fatal("unable to complete request")
-	}
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to modify hypervisor")
-	}
-	defer resp.Body.Close()
-
-	hv := hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
-	return hv
+	return c.put("hypervisor", "hypervisors/"+id, spec)
 }
 
 func deleteHV(c *client, id string) hypervisor {
-	addr := c.addr + "hypervisors/" + id
-	req, err := http.NewRequest("DELETE", addr, nil)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error":   err,
-			"address": addr,
-		}).Fatal("unable to form request")
-	}
-	req.Header.Add("ContentType", c.t)
-	resp, err := c.Do(req)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error":   err,
-			"address": addr,
-		}).Fatal("unable to complete request")
-	}
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to delete hypervisor")
-	}
-	defer resp.Body.Close()
-
-	hv := hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
-	return hv
+	return c.del("hypervisor", "hypervisors/"+id)
 }
 
 func list(cmd *cobra.Command, args []string) {
