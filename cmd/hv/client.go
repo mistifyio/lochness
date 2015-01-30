@@ -42,6 +42,27 @@ func (c *client) getMany(title, endpoint string) []map[string]interface{} {
 	return ret
 }
 
+func (c *client) getList(title, endpoint string) []string {
+	resp, err := c.Get(c.addr + endpoint)
+	if err != nil {
+		log.WithField("error", err).Fatal("failed to get " + title)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to get " + title)
+	}
+
+	ret := []string{}
+	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
+		log.WithField("error", err).Fatal("failed to parse json")
+	}
+	return ret
+}
+
 func (c *client) get(title, endpoint string) map[string]interface{} {
 	resp, err := c.Get(c.addr + endpoint)
 	if err != nil {

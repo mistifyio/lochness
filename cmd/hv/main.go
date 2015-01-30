@@ -38,6 +38,10 @@ func getHVs(c *client) []hypervisor {
 	return hvs
 }
 
+func getGuests(c *client, id string) []string {
+	return c.getList("guests", "hypervisors/"+id+"/guests")
+}
+
 func getHV(c *client, id string) hypervisor {
 	return c.get("hypervisor", "hypervisors/"+id)
 }
@@ -117,6 +121,30 @@ func del(cmd *cobra.Command, ids []string) {
 	}
 }
 
+func guests(cmd *cobra.Command, ids []string) {
+	c := newClient(server)
+	if len(ids) == 0 {
+		for _, hv := range getHVs(c) {
+			ids = append(ids, hv["id"].(string))
+		}
+	}
+	for _, id := range ids {
+		fmt.Println(id)
+		guests := getGuests(c, id)
+
+		switch len(guests) {
+		case 0:
+		default:
+			for _, guest := range guests[:len(guests)-1] {
+				fmt.Println("├──", guest)
+			}
+			fallthrough
+		case 1:
+			fmt.Println("└──", guests[len(guests)-1])
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -149,6 +177,11 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Short: "delete the hypervisor(s)",
 		Run:   del,
 	}
-	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel)
+	cmdGuests := &cobra.Command{
+		Use:   "guests [<id>...]",
+		Short: "list the guest(s) belonging to hypervisor(s)",
+		Run:   guests,
+	}
+	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests)
 	root.Execute()
 }
