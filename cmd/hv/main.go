@@ -51,7 +51,10 @@ func createHV(c *client, spec string) hypervisor {
 		}).Fatal("unable to create new hypervisor")
 	}
 	if resp.StatusCode != http.StatusCreated {
-		log.WithField("code", resp.StatusCode).Fatal("failed to create hypervisor")
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to create hypervisor")
 	}
 	defer resp.Body.Close()
 
@@ -82,7 +85,10 @@ func modifyHV(c *client, id string, spec string) hypervisor {
 		}).Fatal("unable to complete request")
 	}
 	if resp.StatusCode != http.StatusOK {
-		log.WithField("code", resp.StatusCode).Fatal("failed to modify hypervisor")
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to modify hypervisor")
 	}
 	defer resp.Body.Close()
 
@@ -101,7 +107,10 @@ func getHVs(c *client) []hypervisor {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.WithField("code", resp.StatusCode).Fatal("failed to get list of hypervisors")
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to get hypervisors")
 	}
 
 	hvs := []hypervisor{}
@@ -119,7 +128,10 @@ func getHV(c *client, id string) hypervisor {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.WithField("code", resp.StatusCode).Fatal("failed to get hypervisor")
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to get hypervisor")
 	}
 
 	hv := hypervisor{}
