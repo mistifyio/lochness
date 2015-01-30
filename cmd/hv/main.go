@@ -42,6 +42,48 @@ func (h hypervisor) String() string {
 	return string(buf)
 }
 
+func getHVs(c *client) []hypervisor {
+	resp, err := c.Get(c.addr + "hypervisors")
+	if err != nil {
+		log.WithField("error", err).Fatal("failed to get list of hypervisors")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to get hypervisors")
+	}
+
+	hvs := []hypervisor{}
+	if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
+		log.WithField("error", err).Fatal("failed to parse json")
+	}
+	return hvs
+}
+
+func getHV(c *client, id string) hypervisor {
+	resp, err := c.Get(c.addr + "hypervisors/" + id)
+	if err != nil {
+		log.WithField("error", err).Fatal("failed to get hypervisor")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to get hypervisor")
+	}
+
+	hv := hypervisor{}
+	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
+		log.WithField("error", err).Fatal("failed to parse json")
+	}
+	return hv
+}
+
 func createHV(c *client, spec string) hypervisor {
 	resp, err := c.Post(c.addr+"hypervisors", c.t, strings.NewReader(spec))
 	if err != nil {
@@ -91,48 +133,6 @@ func modifyHV(c *client, id string, spec string) hypervisor {
 		}).Fatal("failed to modify hypervisor")
 	}
 	defer resp.Body.Close()
-
-	hv := hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
-	return hv
-}
-
-func getHVs(c *client) []hypervisor {
-	resp, err := c.Get(c.addr + "hypervisors")
-	if err != nil {
-		log.WithField("error", err).Fatal("failed to get list of hypervisors")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to get hypervisors")
-	}
-
-	hvs := []hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
-	return hvs
-}
-
-func getHV(c *client, id string) hypervisor {
-	resp, err := c.Get(c.addr + "hypervisors/" + id)
-	if err != nil {
-		log.WithField("error", err).Fatal("failed to get hypervisor")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to get hypervisor")
-	}
 
 	hv := hypervisor{}
 	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
