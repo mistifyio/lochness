@@ -17,7 +17,7 @@ func main() {
 	var h bool
 
 	flag.BoolVarP(&h, "help", "h", false, "display the help")
-	flag.UintVarP(&port, "port", "p", 17000, "listen port")
+	flag.UintVarP(&port, "port", "p", 18000, "listen port")
 	flag.StringVarP(&etcdAddr, "etcd", "e", defaultEtcdAddr, "address of etcd machine")
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.Parse()
