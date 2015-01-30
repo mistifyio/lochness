@@ -253,7 +253,7 @@ valid json and contain the required fields, "mac" and "ip".`,
 	}
 	cmdDel := &cobra.Command{
 		Use:   "delete <id>...",
-		Short: "delete the hypervisor(s)",
+		Short: "delete hypervisor(s)",
 		Run:   del,
 	}
 	cmdGuests := &cobra.Command{
