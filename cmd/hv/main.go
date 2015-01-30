@@ -141,6 +141,38 @@ func modifyHV(c *client, id string, spec string) hypervisor {
 	return hv
 }
 
+func deleteHV(c *client, id string) hypervisor {
+	addr := c.addr + "hypervisors/" + id
+	req, err := http.NewRequest("DELETE", addr, nil)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": addr,
+		}).Fatal("unable to form request")
+	}
+	req.Header.Add("ContentType", c.t)
+	resp, err := c.Do(req)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": addr,
+		}).Fatal("unable to complete request")
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.WithFields(log.Fields{
+			"status": resp.Status,
+			"code":   resp.StatusCode,
+		}).Fatal("failed to delete hypervisor")
+	}
+	defer resp.Body.Close()
+
+	hv := hypervisor{}
+	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
+		log.WithField("error", err).Fatal("failed to parse json")
+	}
+	return hv
+}
+
 func list(cmd *cobra.Command, args []string) {
 	c := newClient(server)
 	hvs := []hypervisor{}
@@ -192,6 +224,18 @@ func modify(cmd *cobra.Command, args []string) {
 	}
 }
 
+func del(cmd *cobra.Command, ids []string) {
+	c := newClient(server)
+	for _, id := range ids {
+		hv := deleteHV(c, id)
+		if verbose {
+			fmt.Println(hv)
+		} else {
+			fmt.Println(hv["id"])
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -219,6 +263,11 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Long:  `Modify given hypervisor(s). Where "spec" is a valid json string.`,
 		Run:   modify,
 	}
-	root.AddCommand(cmdList, cmdCreate, cmdMod)
+	cmdDel := &cobra.Command{
+		Use:   "delete <id>...",
+		Short: "delete the hypervisor(s)",
+		Run:   del,
+	}
+	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel)
 	root.Execute()
 }
