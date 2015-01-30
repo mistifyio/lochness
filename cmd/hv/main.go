@@ -132,15 +132,25 @@ func guests(cmd *cobra.Command, ids []string) {
 		fmt.Println(id)
 		guests := getGuests(c, id)
 
-		switch len(guests) {
-		case 0:
-		default:
-			for _, guest := range guests[:len(guests)-1] {
-				fmt.Println("├──", guest)
+		if jsonout {
+			j := jmap{
+				"id": id,
 			}
-			fallthrough
-		case 1:
-			fmt.Println("└──", guests[len(guests)-1])
+			if len(guests) != 0 {
+				j["guests"] = guests
+			}
+			fmt.Println(j)
+		} else {
+			switch len(guests) {
+			case 0:
+			default:
+				for _, guest := range guests[:len(guests)-1] {
+					fmt.Println("├──", guest)
+				}
+				fallthrough
+			case 1:
+				fmt.Println("└──", guests[len(guests)-1])
+			}
 		}
 	}
 }
