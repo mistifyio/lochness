@@ -51,7 +51,7 @@ func createHV(c *client, spec string) jmap {
 }
 
 func modifyHV(c *client, id string, spec string) jmap {
-	return c.put("hypervisor", "hypervisors/"+id, spec)
+	return c.patch("hypervisor", "hypervisors/"+id, spec)
 }
 
 func deleteHV(c *client, id string) jmap {

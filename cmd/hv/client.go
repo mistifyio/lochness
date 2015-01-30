@@ -139,7 +139,7 @@ func (c *client) del(title, endpoint string) map[string]interface{} {
 	return ret
 }
 
-func (c *client) put(title, endpoint, body string) map[string]interface{} {
+func (c *client) patch(title, endpoint, body string) map[string]interface{} {
 	addr := c.addr + endpoint
 	req, err := http.NewRequest("PATCH", addr, strings.NewReader(body))
 	if err != nil {
