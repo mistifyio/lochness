@@ -224,6 +224,37 @@ func config_modify(cmd *cobra.Command, args []string) {
 	}
 }
 
+func subnets(cmd *cobra.Command, ids []string) {
+	c := newClient(server)
+	if len(ids) == 0 {
+		for _, hv := range getHVs(c) {
+			ids = append(ids, hv["id"].(string))
+		}
+	}
+	for _, id := range ids {
+		subnet := c.get("subnet", "hypervisors/"+id+"/subnets")
+		if jsonout {
+			c := jmap{
+				"id": id,
+			}
+			if len(subnet) != 0 {
+				c["subnet"] = subnet
+			}
+			fmt.Println(c)
+		} else {
+			fmt.Println(id)
+			if len(subnet) == 0 {
+				continue
+			}
+			fmt.Print("└── ")
+			for k, v := range subnet {
+				fmt.Print(k, ":", v, " ")
+			}
+			fmt.Println()
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -275,7 +306,13 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Long:  `Modify the config of given hypervisor(s). Where "spec" is a valid json string.`,
 		Run:   config_modify,
 	}
-	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests, cmdConfig)
+	cmdSubnet := &cobra.Command{
+		Use:   "subnets [<id>...]",
+		Short: "get hypervisor subnets",
+		Run:   subnets,
+	}
+
+	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests, cmdConfig, cmdSubnet)
 	cmdConfig.AddCommand(cmdConfigMod)
 	root.Execute()
 }
