@@ -17,6 +17,26 @@ type client struct {
 	addr string
 }
 
+func getHVs(c *client) ([]hypervisor, error) {
+	resp, err := c.Get(c.addr + "hypervisors")
+	if err != nil {
+		log.WithField("error", err).Error("failed to get list of hypervisors")
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.WithField("code", resp.StatusCode).Error("failed to get list of hypervisors")
+	}
+
+	hvs := []hypervisor{}
+	if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
+		log.WithField("error", err).Error("failed to parse json")
+		return nil, err
+	}
+	return hvs, nil
+}
+
 type hypervisor map[string]interface{}
 
 func (h hypervisor) ID() string {
@@ -53,6 +73,20 @@ func createHV(c *client, spec string) (hypervisor, error) {
 	return hv, nil
 }
 
+func getHV(c *client, id string) (hypervisor, error) {
+	resp, err := c.Get(c.addr + "hypervisors/" + id)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	hv := hypervisor{}
+	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
+		panic(err)
+	}
+	return hv, nil
+}
+
 func main() {
 	client := &client{addr: "http://localhost:17000/", t: "application/json"}
 	ret := 0
@@ -67,35 +101,23 @@ func main() {
 		Use:   "list [<id>...]",
 		Short: "list the hypervisor(s)",
 		Run: func(cmd *cobra.Command, args []string) {
+			hvs := []hypervisor{}
 			if len(args) > 0 {
 				for _, id := range args {
-					resp, err := client.Get(client.addr + "hypervisors/" + id)
+					hv, err := getHV(client, id)
 					if err != nil {
-						log.Fatal(err)
+						ret = 1
+						return
 					}
-					defer resp.Body.Close()
-
-					hv := hypervisor{}
-					if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-						panic(err)
-					}
-					if full {
-						fmt.Println(hv)
-					} else {
-						fmt.Println(hv.ID)
-					}
+					hvs = append(hvs, hv)
 				}
-				return
-			}
-			resp, err := client.Get(client.addr + "hypervisors")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer resp.Body.Close()
-
-			hvs := []hypervisor{}
-			if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
-				panic(err)
+			} else {
+				var err error
+				hvs, err = getHVs(client)
+				if err != nil {
+					ret = 1
+					return
+				}
 			}
 			for _, hv := range hvs {
 				if full {
