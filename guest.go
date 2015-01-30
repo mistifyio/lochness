@@ -213,6 +213,34 @@ func (g *Guest) Save() error {
 	return nil
 }
 
+// Destroy removes a guest
+func (g *Guest) Destroy() error {
+	if g.modifiedIndex == 0 {
+		// it has not been saved?
+		return errors.New("not persisted")
+	}
+
+	if g.HypervisorID != "" {
+		hypervisor, err := g.context.Hypervisor(g.HypervisorID)
+		if err != nil {
+			return err
+		}
+		if err := hypervisor.RemoveGuest(g); err != nil {
+			return err
+		}
+	}
+
+	// XXX: another instance where transactions would be helpful
+	if _, err := g.context.etcd.CompareAndDelete(g.key(), "", g.modifiedIndex); err != nil {
+		return err
+	}
+
+	if _, err := g.context.etcd.Delete(filepath.Join(GuestPath, g.ID), true); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Candidates returns a list of Hypervisors that may run this Guest.
 func (g *Guest) Candidates(f ...CandidateFunction) (Hypervisors, error) {
 	// this is not terribly effecient, but is fairly easy to understand

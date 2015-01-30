@@ -20,8 +20,7 @@ func RegisterGuestRoutes(prefix string, router *mux.Router) {
 	sub := router.PathPrefix(prefix).Subrouter()
 	sub.Handle("/{guestID}", guestMiddleware.Then(http.HandlerFunc(GetGuest))).Methods("GET")
 	sub.Handle("/{guestID}", guestMiddleware.Then(http.HandlerFunc(UpdateGuest))).Methods("PATCH")
-	// TODO: Add guest delete method
-	//sub.Handle("/{guestID}", guestMiddleware.Then(http.HandlerFunc(DeleteGuest))).Methods("DELETE")
+	sub.Handle("/{guestID}", guestMiddleware.Then(http.HandlerFunc(DestroyGuest))).Methods("DELETE")
 }
 
 // ListGuests gets a list of all guests
@@ -79,9 +78,14 @@ func UpdateGuest(w http.ResponseWriter, r *http.Request) {
 	hr.JSON(http.StatusOK, guest)
 }
 
-/*
-func DeleteGuest(w http.ResponseWriter, r *http.Request) {
+// DestroyGuest removes a guest and frees its IP
+func DestroyGuest(w http.ResponseWriter, r *http.Request) {
 	hr := HTTPResponse{w}
 	guest := GetRequestGuest(r)
+
+	if err := guest.Destroy(); err != nil {
+		hr.JSONError(http.StatusInternalServerError, err)
+		return
+	}
+	hr.JSON(http.StatusOK, guest)
 }
-*/

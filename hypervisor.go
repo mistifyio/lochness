@@ -482,6 +482,31 @@ LOOP:
 	return nil
 }
 
+// RemoveGuest removes a guest from the hypervisor. Also releases the IP
+func (h *Hypervisor) RemoveGuest(g *Guest) error {
+	subnet, err := h.context.Subnet(g.SubnetID)
+	if err != nil {
+		return err
+	}
+	if err := subnet.ReleaseAddress(g.IP); err != nil {
+		return err
+	}
+
+	if _, err := h.context.etcd.Delete(filepath.Join(h.guestKey(g)), false); err != nil {
+		return err
+	}
+
+	g.HypervisorID = ""
+	g.IP = nil
+	g.SubnetID = ""
+	g.Bridge = ""
+
+	if err := g.Save(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Guests returns a slice of GuestIDs assigned to the Hypervisor.
 func (h *Hypervisor) Guests() []string {
 	return h.guests
