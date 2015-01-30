@@ -11,6 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	full = false
+	c    = &client{addr: "http://localhost:17000/", t: "application/json"}
+)
+
 type client struct {
 	http.Client
 	t    string //type
@@ -87,68 +92,67 @@ func getHV(c *client, id string) (hypervisor, error) {
 	return hv, nil
 }
 
+func list(cmd *cobra.Command, args []string) {
+	hvs := []hypervisor{}
+	if len(args) > 0 {
+		for _, id := range args {
+			hv, err := getHV(c, id)
+			if err != nil {
+				return
+			}
+			hvs = append(hvs, hv)
+		}
+	} else {
+		var err error
+		hvs, err = getHVs(c)
+		if err != nil {
+			return
+		}
+	}
+	for _, hv := range hvs {
+		if full {
+			fmt.Println(hv)
+		} else {
+			fmt.Println(hv.ID())
+		}
+	}
+}
+
+func create(cmd *cobra.Command, specs []string) {
+	for _, spec := range specs {
+		hv, err := createHV(c, spec)
+		if err != nil {
+			return
+		}
+		if full {
+			fmt.Println(hv)
+		} else {
+			fmt.Println(hv["id"])
+		}
+	}
+}
+
 func main() {
-	client := &client{addr: "http://localhost:17000/", t: "application/json"}
 	ret := 0
 
 	root := &cobra.Command{
 		Use:   "hv",
 		Short: "hv is the cli interface to grootslang",
 	}
+	root.PersistentFlags().BoolVarP(&full, "full", "f", full, "print full hv description")
 
-	full := false
 	cmdHVs := &cobra.Command{
 		Use:   "list [<id>...]",
 		Short: "list the hypervisor(s)",
-		Run: func(cmd *cobra.Command, args []string) {
-			hvs := []hypervisor{}
-			if len(args) > 0 {
-				for _, id := range args {
-					hv, err := getHV(client, id)
-					if err != nil {
-						ret = 1
-						return
-					}
-					hvs = append(hvs, hv)
-				}
-			} else {
-				var err error
-				hvs, err = getHVs(client)
-				if err != nil {
-					ret = 1
-					return
-				}
-			}
-			for _, hv := range hvs {
-				if full {
-					fmt.Println(hv)
-				} else {
-					fmt.Println(hv.ID())
-				}
-			}
-		},
+		Run: list,
 	}
-	cmdHVs.PersistentFlags().BoolVarP(&full, "full", "f", false, "give full hv output")
 
 	cmdCreate := &cobra.Command{
 		Use:   "create <spec>...",
 		Short: "create new hypervisor(s)",
 		Long: `Create a new hypervisor using "spec" as the initial values. "spec" must be
 valid json and contain the required fields, "mac" and "ip".`,
-		Run: func(cmd *cobra.Command, specs []string) {
-			for _, spec := range specs {
-				hv, err := createHV(client, spec)
-				if err != nil {
-					ret = 1
-					return
-				}
-				if full {
-					fmt.Println(hv)
-				} else {
-					fmt.Println(hv["id"])
-				}
-			}
-		},
+		Run: create,
 	}
 	root.AddCommand(cmdHVs, cmdCreate)
 	root.Execute()
