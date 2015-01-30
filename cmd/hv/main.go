@@ -17,26 +17,6 @@ type client struct {
 	addr string
 }
 
-func getHVs(c *client) ([]hypervisor, error) {
-	resp, err := c.Get(c.addr + "hypervisors")
-	if err != nil {
-		log.WithField("error", err).Error("failed to get list of hypervisors")
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithField("code", resp.StatusCode).Error("failed to get list of hypervisors")
-	}
-
-	hvs := []hypervisor{}
-	if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
-		log.WithField("error", err).Error("failed to parse json")
-		return nil, err
-	}
-	return hvs, nil
-}
-
 type hypervisor map[string]interface{}
 
 func (h hypervisor) ID() string {
@@ -71,6 +51,26 @@ func createHV(c *client, spec string) (hypervisor, error) {
 		return nil, err
 	}
 	return hv, nil
+}
+
+func getHVs(c *client) ([]hypervisor, error) {
+	resp, err := c.Get(c.addr + "hypervisors")
+	if err != nil {
+		log.WithField("error", err).Error("failed to get list of hypervisors")
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.WithField("code", resp.StatusCode).Error("failed to get list of hypervisors")
+	}
+
+	hvs := []hypervisor{}
+	if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
+		log.WithField("error", err).Error("failed to parse json")
+		return nil, err
+	}
+	return hvs, nil
 }
 
 func getHV(c *client, id string) (hypervisor, error) {
