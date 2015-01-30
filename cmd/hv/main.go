@@ -11,7 +11,7 @@ import (
 
 var (
 	server  = "http://localhost:17000/"
-	verbose = false
+	jsonout = false
 )
 
 type hypervisor map[string]interface{}
@@ -69,7 +69,7 @@ func list(cmd *cobra.Command, args []string) {
 		}
 	}
 	for _, hv := range hvs {
-		if verbose {
+		if jsonout {
 			fmt.Println(hv)
 		} else {
 			fmt.Println(hv.ID())
@@ -81,7 +81,7 @@ func create(cmd *cobra.Command, specs []string) {
 	c := newClient(server)
 	for _, spec := range specs {
 		hv := createHV(c, spec)
-		if verbose {
+		if jsonout {
 			fmt.Println(hv)
 		} else {
 			fmt.Println(hv["id"])
@@ -101,7 +101,7 @@ func modify(cmd *cobra.Command, args []string) {
 		id := idSpec[0]
 		spec := idSpec[1]
 		hv := modifyHV(c, id, spec)
-		if verbose {
+		if jsonout {
 			fmt.Println(hv)
 		} else {
 			fmt.Println(hv["id"])
@@ -113,7 +113,7 @@ func del(cmd *cobra.Command, ids []string) {
 	c := newClient(server)
 	for _, id := range ids {
 		hv := deleteHV(c, id)
-		if verbose {
+		if jsonout {
 			fmt.Println(hv)
 		} else {
 			fmt.Println(hv["id"])
@@ -151,7 +151,7 @@ func main() {
 		Use:   "hv",
 		Short: "hv is the cli interface to grootslang",
 	}
-	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "print full hv description")
+	root.PersistentFlags().BoolVarP(&jsonout, "json", "j", jsonout, "output in json")
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
 
 	cmdList := &cobra.Command{
