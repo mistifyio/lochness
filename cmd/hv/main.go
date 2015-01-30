@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	server  = "http://localhost:17000/"
+	server  = "http://localhost:17000"
 	jsonout = false
 )
 
@@ -52,6 +52,10 @@ func createHV(c *client, spec string) jmap {
 
 func modifyHV(c *client, id string, spec string) jmap {
 	return c.patch("hypervisor", "hypervisors/"+id, spec)
+}
+
+func modifyConfig(c *client, id string, spec string) jmap {
+	return c.patch("config", "hypervisors/"+id+"/config", spec)
 }
 
 func deleteHV(c *client, id string) jmap {
@@ -186,6 +190,40 @@ func config(cmd *cobra.Command, ids []string) {
 	}
 }
 
+func config_modify(cmd *cobra.Command, args []string) {
+	c := newClient(server)
+	for _, arg := range args {
+		idSpec := strings.SplitN(arg, "=", 2)
+		if len(idSpec) != 2 {
+			log.WithFields(log.Fields{
+				"arg": arg,
+			}).Fatal("invalid argument")
+		}
+		id := idSpec[0]
+		spec := idSpec[1]
+		config := modifyConfig(c, id, spec)
+		if jsonout {
+			c := jmap{
+				"id": id,
+			}
+			if len(config) != 0 {
+				c["config"] = config
+			}
+			fmt.Println(c)
+		} else {
+			fmt.Println(id)
+			if len(config) == 0 {
+				continue
+			}
+			fmt.Print("└── ")
+			for k, v := range config {
+				fmt.Print(k, ":", v, " ")
+			}
+			fmt.Println()
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -228,6 +266,13 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Short: "get hypervisor config",
 		Run:   config,
 	}
+	cmdConfigMod := &cobra.Command{
+		Use:   "modify id=<spec>...",
+		Short: "modify hypervisor(s)",
+		Long:  `Modify the config of given hypervisor(s). Where "spec" is a valid json string.`,
+		Run:   config_modify,
+	}
 	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests, cmdConfig)
+	cmdConfig.AddCommand(cmdConfigMod)
 	root.Execute()
 }
