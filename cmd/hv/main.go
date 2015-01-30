@@ -201,7 +201,7 @@ func main() {
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "print full hv description")
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
 
-	cmdHVs := &cobra.Command{
+	cmdList := &cobra.Command{
 		Use:   "list [<id>...]",
 		Short: "list the hypervisor(s)",
 		Run:   list,
@@ -219,6 +219,6 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Long:  `Modify given hypervisor(s). Where "spec" is a valid json string.`,
 		Run:   modify,
 	}
-	root.AddCommand(cmdHVs, cmdCreate, cmdMod)
+	root.AddCommand(cmdList, cmdCreate, cmdMod)
 	root.Execute()
 }
