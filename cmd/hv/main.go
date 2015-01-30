@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	full = false
-	c    = &client{addr: "http://localhost:17000/", t: "application/json"}
+	verbose = false
+	c       = &client{addr: "http://localhost:17000/", t: "application/json"}
 )
 
 type client struct {
@@ -110,7 +110,7 @@ func list(cmd *cobra.Command, args []string) {
 		}
 	}
 	for _, hv := range hvs {
-		if full {
+		if verbose {
 			fmt.Println(hv)
 		} else {
 			fmt.Println(hv.ID())
@@ -124,7 +124,7 @@ func create(cmd *cobra.Command, specs []string) {
 		if err != nil {
 			return
 		}
-		if full {
+		if verbose {
 			fmt.Println(hv)
 		} else {
 			fmt.Println(hv["id"])
@@ -139,7 +139,7 @@ func main() {
 		Use:   "hv",
 		Short: "hv is the cli interface to grootslang",
 	}
-	root.PersistentFlags().BoolVarP(&full, "full", "f", full, "print full hv description")
+	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "print full hv description")
 
 	cmdHVs := &cobra.Command{
 		Use:   "list [<id>...]",
