@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -12,8 +11,8 @@ import (
 )
 
 var (
-	verbose = false
 	c       = &client{addr: "http://localhost:17000/", t: "application/json"}
+	verbose = false
 )
 
 type client struct {
@@ -58,55 +57,49 @@ func createHV(c *client, spec string) (hypervisor, error) {
 	return hv, nil
 }
 
-func getHVs(c *client) ([]hypervisor, error) {
+func getHVs(c *client) []hypervisor {
 	resp, err := c.Get(c.addr + "hypervisors")
 	if err != nil {
-		log.WithField("error", err).Error("failed to get list of hypervisors")
-		return nil, err
+		log.WithField("error", err).Fatal("failed to get list of hypervisors")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.WithField("code", resp.StatusCode).Error("failed to get list of hypervisors")
+		log.WithField("code", resp.StatusCode).Fatal("failed to get list of hypervisors")
 	}
 
 	hvs := []hypervisor{}
 	if err := json.NewDecoder(resp.Body).Decode(&hvs); err != nil {
-		log.WithField("error", err).Error("failed to parse json")
-		return nil, err
+		log.WithField("error", err).Fatal("failed to parse json")
 	}
-	return hvs, nil
+	return hvs
 }
 
-func getHV(c *client, id string) (hypervisor, error) {
+func getHV(c *client, id string) hypervisor {
 	resp, err := c.Get(c.addr + "hypervisors/" + id)
 	if err != nil {
-		log.Fatal(err)
+		log.WithField("error", err).Fatal("failed to get hypervisor")
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		log.WithField("code", resp.StatusCode).Fatal("failed to get hypervisor")
+	}
+
 	hv := hypervisor{}
 	if err := json.NewDecoder(resp.Body).Decode(&hv); err != nil {
-		panic(err)
+		log.WithField("error", err).Fatal("failed to parse json")
 	}
-	return hv, nil
+	return hv
 }
 
 func list(cmd *cobra.Command, args []string) {
 	hvs := []hypervisor{}
-	if len(args) > 0 {
-		for _, id := range args {
-			hv, err := getHV(c, id)
-			if err != nil {
-				return
-			}
-			hvs = append(hvs, hv)
-		}
+	if len(args) == 0 {
+		hvs = getHVs(c)
 	} else {
-		var err error
-		hvs, err = getHVs(c)
-		if err != nil {
-			return
+		for _, id := range args {
+			hvs = append(hvs, getHV(c, id))
 		}
 	}
 	for _, hv := range hvs {
@@ -133,7 +126,6 @@ func create(cmd *cobra.Command, specs []string) {
 }
 
 func main() {
-	ret := 0
 
 	root := &cobra.Command{
 		Use:   "hv",
@@ -144,7 +136,7 @@ func main() {
 	cmdHVs := &cobra.Command{
 		Use:   "list [<id>...]",
 		Short: "list the hypervisor(s)",
-		Run: list,
+		Run:   list,
 	}
 
 	cmdCreate := &cobra.Command{
@@ -156,5 +148,4 @@ valid json and contain the required fields, "mac" and "ip".`,
 	}
 	root.AddCommand(cmdHVs, cmdCreate)
 	root.Execute()
-	os.Exit(ret)
 }
