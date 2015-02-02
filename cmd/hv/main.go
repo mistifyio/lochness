@@ -77,6 +77,10 @@ func modifyConfig(c *client, id string, spec string) jmap {
 	return c.patch("config", "hypervisors/"+id+"/config", spec)
 }
 
+func modifySubnets(c *client, id string, spec string) jmap {
+	return c.patch("subnets", "hypervisors/"+id+"/subnets", spec)
+}
+
 func deleteHV(c *client, id string) jmap {
 	return c.del("hypervisor", "hypervisors/"+id)
 }
@@ -289,6 +293,40 @@ func subnets(cmd *cobra.Command, ids []string) {
 	}
 }
 
+func subnets_modify(cmd *cobra.Command, args []string) {
+	c := newClient(server)
+	if len(args)%2 != 0 {
+		log.WithField("num", len(args)).Fatal("expected an even amount of args")
+	}
+	for i := 0; i < len(args); i += 2 {
+		id := args[i]
+		assertID(id)
+		spec := args[i+1]
+		assertSpec(spec)
+
+		subnet := modifySubnets(c, id, spec)
+		if jsonout {
+			c := jmap{
+				"id": id,
+			}
+			if len(subnet) != 0 {
+				c["subnet"] = subnet
+			}
+			fmt.Println(c)
+		} else {
+			fmt.Println(id)
+			if len(subnet) == 0 {
+				continue
+			}
+			fmt.Print("└── ")
+			for k, v := range subnet {
+				fmt.Print(k, ":", v, " ")
+			}
+			fmt.Println()
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -345,8 +383,15 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Short: "get hypervisor subnets",
 		Run:   subnets,
 	}
+	cmdSubnetMod := &cobra.Command{
+		Use:   "modify (<hvid> <spec>)...",
+		Short: "modify hypervisor subnet",
+		Long:  `Modify the subnets of given hypervisor(s). Where "spec" is a valid json string.`,
+		Run:   subnets_modify,
+	}
 
 	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests, cmdConfig, cmdSubnet)
 	cmdConfig.AddCommand(cmdConfigMod)
+	cmdSubnet.AddCommand(cmdSubnetMod)
 	root.Execute()
 }
