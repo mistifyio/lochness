@@ -39,6 +39,20 @@ func (h jmap) Print() {
 	}
 }
 
+type jmapSlice []jmap
+
+func (js jmapSlice) Len() int {
+	return len(js)
+}
+
+func (js jmapSlice) Less(i, j int) bool {
+	return js[i].ID() < js[j].ID()
+}
+
+func (js jmapSlice) Swap(i, j int) {
+	js[j], js[i] = js[i], js[j]
+}
+
 func assertID(id string) {
 	if uuid := uuid.Parse(id); uuid == nil {
 		log.WithFields(log.Fields{
@@ -161,12 +175,14 @@ func list(cmd *cobra.Command, args []string) {
 	hvs := []jmap{}
 	if len(args) == 0 {
 		hvs = getHVs(c)
+		sort.Sort(jmapSlice(hvs))
 	} else {
 		for _, id := range args {
 			assertID(id)
 			hvs = append(hvs, getHV(c, id))
 		}
 	}
+
 	for _, hv := range hvs {
 		hv.Print()
 	}
@@ -186,6 +202,7 @@ func modify(cmd *cobra.Command, args []string) {
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
+
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
 		assertID(id)
@@ -212,11 +229,13 @@ func guests(cmd *cobra.Command, ids []string) {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
 		}
+		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
 			assertID(id)
 		}
 	}
+
 	for _, id := range ids {
 		guests := getGuests(c, id)
 		printTreeSlice(id, "guests", guests)
@@ -229,11 +248,13 @@ func config(cmd *cobra.Command, ids []string) {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
 		}
+		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
 			assertID(id)
 		}
 	}
+
 	for _, id := range ids {
 		config := c.Get("config", "hypervisors/"+id+"/config")
 		printTreeMap(id, "config", config)
@@ -245,6 +266,7 @@ func config_modify(cmd *cobra.Command, args []string) {
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
+
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
 		assertID(id)
@@ -262,11 +284,13 @@ func subnets(cmd *cobra.Command, ids []string) {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
 		}
+		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
 			assertID(id)
 		}
 	}
+
 	for _, id := range ids {
 		subnet := c.Get("subnet", "hypervisors/"+id+"/subnets")
 		printTreeMap(id, "subnet", subnet)
@@ -278,6 +302,7 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
+
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
 		assertID(id)
@@ -294,6 +319,7 @@ func subnets_del(cmd *cobra.Command, args []string) {
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
+
 	for i := 0; i < len(args); i += 2 {
 		hv := args[i]
 		assertID(hv)
@@ -306,7 +332,6 @@ func subnets_del(cmd *cobra.Command, args []string) {
 }
 
 func main() {
-
 	root := &cobra.Command{
 		Use:   "hv",
 		Short: "hv is the cli interface to grootslang",
