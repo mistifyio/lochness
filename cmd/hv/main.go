@@ -7,6 +7,7 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/mistifyio/lochness/pkg/internal/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -51,8 +52,8 @@ func help(cmd *cobra.Command, _ []string) {
 	cmd.Help()
 }
 
-func getHVs(c *client) []jmap {
-	ret := c.getMany("hypervisors", "hypervisors")
+func getHVs(c *cli.Client) []jmap {
+	ret := c.GetMany("hypervisors", "hypervisors")
 	// wasteful you say?
 	hvs := make([]jmap, len(ret))
 	for i := range ret {
@@ -61,40 +62,40 @@ func getHVs(c *client) []jmap {
 	return hvs
 }
 
-func getGuests(c *client, id string) []string {
-	return c.getList("guests", "hypervisors/"+id+"/guests")
+func getGuests(c *cli.Client, id string) []string {
+	return c.GetList("guests", "hypervisors/"+id+"/guests")
 }
 
-func getHV(c *client, id string) jmap {
-	return c.get("hypervisor", "hypervisors/"+id)
+func getHV(c *cli.Client, id string) jmap {
+	return c.Get("hypervisor", "hypervisors/"+id)
 }
 
-func createHV(c *client, spec string) jmap {
-	return c.post("hypervisor", "hypervisors", spec)
+func createHV(c *cli.Client, spec string) jmap {
+	return c.Post("hypervisor", "hypervisors", spec)
 }
 
-func modifyHV(c *client, id string, spec string) jmap {
-	return c.patch("hypervisor", "hypervisors/"+id, spec)
+func modifyHV(c *cli.Client, id string, spec string) jmap {
+	return c.Patch("hypervisor", "hypervisors/"+id, spec)
 }
 
-func modifyConfig(c *client, id string, spec string) jmap {
-	return c.patch("config", "hypervisors/"+id+"/config", spec)
+func modifyConfig(c *cli.Client, id string, spec string) jmap {
+	return c.Patch("config", "hypervisors/"+id+"/config", spec)
 }
 
-func modifySubnets(c *client, id string, spec string) jmap {
-	return c.patch("subnets", "hypervisors/"+id+"/subnets", spec)
+func modifySubnets(c *cli.Client, id string, spec string) jmap {
+	return c.Patch("subnets", "hypervisors/"+id+"/subnets", spec)
 }
 
-func deleteHV(c *client, id string) jmap {
-	return c.del("hypervisor", "hypervisors/"+id)
+func deleteHV(c *cli.Client, id string) jmap {
+	return c.Del("hypervisor", "hypervisors/"+id)
 }
 
-func deleteSubnet(c *client, hv, subnet string) jmap {
-	return c.del("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
+func deleteSubnet(c *cli.Client, hv, subnet string) jmap {
+	return c.Del("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
 }
 
 func list(cmd *cobra.Command, args []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	hvs := []jmap{}
 	if len(args) == 0 {
 		hvs = getHVs(c)
@@ -114,7 +115,7 @@ func list(cmd *cobra.Command, args []string) {
 }
 
 func create(cmd *cobra.Command, specs []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	for _, spec := range specs {
 		assertSpec(spec)
 		hv := createHV(c, spec)
@@ -127,7 +128,7 @@ func create(cmd *cobra.Command, specs []string) {
 }
 
 func modify(cmd *cobra.Command, args []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -147,7 +148,7 @@ func modify(cmd *cobra.Command, args []string) {
 }
 
 func del(cmd *cobra.Command, ids []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	for _, id := range ids {
 		assertID(id)
 		hv := deleteHV(c, id)
@@ -160,7 +161,7 @@ func del(cmd *cobra.Command, ids []string) {
 }
 
 func guests(cmd *cobra.Command, ids []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
@@ -198,7 +199,7 @@ func guests(cmd *cobra.Command, ids []string) {
 }
 
 func config(cmd *cobra.Command, ids []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
@@ -209,7 +210,7 @@ func config(cmd *cobra.Command, ids []string) {
 		}
 	}
 	for _, id := range ids {
-		config := c.get("config", "hypervisors/"+id+"/config")
+		config := c.Get("config", "hypervisors/"+id+"/config")
 		if jsonout {
 			c := jmap{
 				"id": id,
@@ -233,7 +234,7 @@ func config(cmd *cobra.Command, ids []string) {
 }
 
 func config_modify(cmd *cobra.Command, args []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -267,7 +268,7 @@ func config_modify(cmd *cobra.Command, args []string) {
 }
 
 func subnets(cmd *cobra.Command, ids []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
@@ -278,7 +279,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 		}
 	}
 	for _, id := range ids {
-		subnet := c.get("subnet", "hypervisors/"+id+"/subnets")
+		subnet := c.Get("subnet", "hypervisors/"+id+"/subnets")
 		if jsonout {
 			c := jmap{
 				"id": id,
@@ -302,7 +303,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 }
 
 func subnets_modify(cmd *cobra.Command, args []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -336,7 +337,7 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 }
 
 func subnets_del(cmd *cobra.Command, args []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}

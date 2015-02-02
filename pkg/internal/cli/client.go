@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/json"
@@ -8,21 +8,21 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type client struct {
-	http.Client
+type Client struct {
+	c    http.Client
 	t    string //type
 	addr string
 }
 
-func newClient(address string) *client {
-	if strings.HasSuffix(address, "/") {
-		return &client{addr: address, t: "application/json"}
+func New(address string) *Client {
+	if !strings.HasSuffix(address, "/") {
+		address += "/"
 	}
-	return &client{addr: address + "/", t: "application/json"}
+	return &Client{addr: address, t: "application/json"}
 }
 
-func (c *client) getMany(title, endpoint string) []map[string]interface{} {
-	resp, err := c.Get(c.addr + endpoint)
+func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
+	resp, err := c.c.Get(c.addr + endpoint)
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -42,8 +42,8 @@ func (c *client) getMany(title, endpoint string) []map[string]interface{} {
 	return ret
 }
 
-func (c *client) getList(title, endpoint string) []string {
-	resp, err := c.Get(c.addr + endpoint)
+func (c *Client) GetList(title, endpoint string) []string {
+	resp, err := c.c.Get(c.addr + endpoint)
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -63,8 +63,8 @@ func (c *client) getList(title, endpoint string) []string {
 	return ret
 }
 
-func (c *client) get(title, endpoint string) map[string]interface{} {
-	resp, err := c.Get(c.addr + endpoint)
+func (c *Client) Get(title, endpoint string) map[string]interface{} {
+	resp, err := c.c.Get(c.addr + endpoint)
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -84,8 +84,8 @@ func (c *client) get(title, endpoint string) map[string]interface{} {
 	return ret
 }
 
-func (c *client) post(title, endpoint, body string) map[string]interface{} {
-	resp, err := c.Post(c.addr+endpoint, c.t, strings.NewReader(body))
+func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
+	resp, err := c.c.Post(c.addr+endpoint, c.t, strings.NewReader(body))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -107,7 +107,7 @@ func (c *client) post(title, endpoint, body string) map[string]interface{} {
 	return ret
 }
 
-func (c *client) del(title, endpoint string) map[string]interface{} {
+func (c *Client) Del(title, endpoint string) map[string]interface{} {
 	addr := c.addr + endpoint
 	req, err := http.NewRequest("DELETE", addr, nil)
 	if err != nil {
@@ -117,7 +117,7 @@ func (c *client) del(title, endpoint string) map[string]interface{} {
 		}).Fatal("unable to form request")
 	}
 	req.Header.Add("ContentType", c.t)
-	resp, err := c.Do(req)
+	resp, err := c.c.Do(req)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
@@ -139,7 +139,7 @@ func (c *client) del(title, endpoint string) map[string]interface{} {
 	return ret
 }
 
-func (c *client) patch(title, endpoint, body string) map[string]interface{} {
+func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
 	addr := c.addr + endpoint
 	req, err := http.NewRequest("PATCH", addr, strings.NewReader(body))
 	if err != nil {
@@ -150,7 +150,7 @@ func (c *client) patch(title, endpoint, body string) map[string]interface{} {
 		}).Fatal("unable to form request")
 	}
 	req.Header.Add("ContentType", c.t)
-	resp, err := c.Do(req)
+	resp, err := c.c.Do(req)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
