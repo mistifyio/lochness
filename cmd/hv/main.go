@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"code.google.com/p/go-uuid/uuid"
 
@@ -118,16 +117,13 @@ func create(cmd *cobra.Command, specs []string) {
 
 func modify(cmd *cobra.Command, args []string) {
 	c := newClient(server)
-	for _, arg := range args {
-		idSpec := strings.SplitN(arg, "=", 2)
-		if len(idSpec) != 2 {
-			log.WithFields(log.Fields{
-				"arg": arg,
-			}).Fatal("invalid argument")
-		}
-		id := idSpec[0]
+	if len(args)%2 != 0 {
+		log.WithField("num", len(args)).Fatal("expected an even amount of args")
+	}
+	for i := 0; i < len(args); i += 2 {
+		id := args[i]
 		assertValidID(id)
-		spec := idSpec[1]
+		spec := args[i+1]
 		assertValidSpec(spec)
 
 		hv := modifyHV(c, id, spec)
@@ -227,16 +223,13 @@ func config(cmd *cobra.Command, ids []string) {
 
 func config_modify(cmd *cobra.Command, args []string) {
 	c := newClient(server)
-	for _, arg := range args {
-		idSpec := strings.SplitN(arg, "=", 2)
-		if len(idSpec) != 2 {
-			log.WithFields(log.Fields{
-				"arg": arg,
-			}).Fatal("invalid argument")
-		}
-		id := idSpec[0]
+	if len(args)%2 != 0 {
+		log.WithField("num", len(args)).Fatal("expected an even amount of args")
+	}
+	for i := 0; i < len(args); i += 2 {
+		id := args[i]
 		assertValidID(id)
-		spec := idSpec[1]
+		spec := args[i+1]
 		assertValidSpec(spec)
 
 		config := modifyConfig(c, id, spec)
@@ -322,7 +315,7 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Run: create,
 	}
 	cmdMod := &cobra.Command{
-		Use:   "modify id=<spec>...",
+		Use:   "modify (<id> <spec>)...",
 		Short: "modify hypervisor(s)",
 		Long:  `Modify given hypervisor(s). Where "spec" is a valid json string.`,
 		Run:   modify,
@@ -343,7 +336,7 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Run:   config,
 	}
 	cmdConfigMod := &cobra.Command{
-		Use:   "modify id=<spec>...",
+		Use:   "modify (<id> <spec>)...",
 		Short: "modify hypervisor(s) config",
 		Long:  `Modify the config of given hypervisor(s). Where "spec" is a valid json string.`,
 		Run:   config_modify,
