@@ -11,62 +11,62 @@ import (
 
 var (
 	server  = "http://localhost:18000/"
-	verbose = false
+	jsonout = false
 	t       = "application/json"
 )
 
 type (
-	guest map[string]interface{}
+	jmap map[string]interface{}
 )
 
-func (g guest) ID() string {
-	return g["id"].(string)
+func (j jmap) ID() string {
+	return j["id"].(string)
 }
 
-func (g guest) String() string {
-	buf, err := json.Marshal(&g)
+func (j jmap) String() string {
+	buf, err := json.Marshal(&j)
 	if err != nil {
 		return ""
 	}
 	return string(buf)
 }
 
-func (g guest) Print() {
-	if verbose {
+func (g jmap) Print() {
+	if jsonout {
 		fmt.Println(g)
 	} else {
 		fmt.Println(g.ID())
 	}
 }
 
-func getGuests(c *client) []guest {
+func getGuests(c *client) []jmap {
 	ret := c.getMany("guests", "guests")
-	guests := make([]guest, len(ret))
+	guests := make([]jmap, len(ret))
 	for i := range ret {
 		guests[i] = ret[i]
 	}
 	return guests
 }
 
-func getGuest(c *client, id string) guest {
+func getGuest(c *client, id string) jmap {
 	return c.get("guest", "guests/"+id)
 }
 
-func createGuest(c *client, spec string) guest {
+func createGuest(c *client, spec string) jmap {
 	return c.post("guest", "guests", spec)
 }
 
-func modifyGuest(c *client, id string, spec string) guest {
-	return c.put("guest", "guests/"+id, spec)
+func modifyGuest(c *client, id string, spec string) jmap {
+	return c.patch("guest", "guests/"+id, spec)
 }
 
-func deleteGuest(c *client, id string) guest {
+func deleteGuest(c *client, id string) jmap {
 	return c.del("hypervisor", "guests/"+id)
 }
 
 func list(cmd *cobra.Command, ids []string) {
 	c := newClient(server)
-	guests := []guest{}
+	guests := []jmap{}
 
 	if len(ids) == 0 {
 		guests = getGuests(c)
@@ -115,8 +115,11 @@ func main() {
 	root := &cobra.Command{
 		Use:   "guest",
 		Short: "guest is the cli interface to waheela",
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmd.Help()
+		},
 	}
-	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "print full guest description")
+	root.PersistentFlags().BoolVarP(&jsonout, "jsonout", "j", jsonout, "output in json")
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
 
 	cmdList := &cobra.Command{
@@ -141,7 +144,7 @@ func main() {
 
 	cmdDelete := &cobra.Command{
 		Use:   "delete <id>...",
-		Short: "delete the guest(s)",
+		Short: "delete guest(s)",
 		Run:   del,
 	}
 
