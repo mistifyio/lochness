@@ -47,6 +47,10 @@ func assertSpec(spec string) {
 	}
 }
 
+func help(cmd *cobra.Command, _ []string) {
+	cmd.Help()
+}
+
 func getHVs(c *client) []jmap {
 	ret := c.getMany("hypervisors", "hypervisors")
 	// wasteful you say?
@@ -332,9 +336,7 @@ func main() {
 	root := &cobra.Command{
 		Use:   "hv",
 		Short: "hv is the cli interface to grootslang",
-		Run: func(cmd *cobra.Command, _ []string) {
-			cmd.Help()
-		},
+		Run:   help,
 	}
 	root.PersistentFlags().BoolVarP(&jsonout, "json", "j", jsonout, "output in json")
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
