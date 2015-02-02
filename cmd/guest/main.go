@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
+	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -37,6 +37,26 @@ func (g jmap) Print() {
 	} else {
 		fmt.Println(g.ID())
 	}
+}
+
+func assertID(id string) {
+	if uuid := uuid.Parse(id); uuid == nil {
+		log.WithField("id", id).Fatal("invalid id")
+	}
+}
+
+func assertSpec(spec string) {
+	j := jmap{}
+	if err := json.Unmarshal([]byte(spec), &j); err != nil {
+		log.WithFields(log.Fields{
+			"spec":  spec,
+			"error": err,
+		}).Fatal("invalid spec")
+	}
+}
+
+func help(cmd *cobra.Command, _ []string) {
+	cmd.Help()
 }
 
 func getGuests(c *client) []jmap {
@@ -72,6 +92,7 @@ func list(cmd *cobra.Command, ids []string) {
 		guests = getGuests(c)
 	} else {
 		for _, id := range ids {
+			assertID(id)
 			guests = append(guests, getGuest(c, id))
 		}
 	}
@@ -84,6 +105,7 @@ func list(cmd *cobra.Command, ids []string) {
 func create(cmd *cobra.Command, specs []string) {
 	c := newClient(server)
 	for _, spec := range specs {
+		assertSpec(spec)
 		guest := createGuest(c, spec)
 		guest.Print()
 	}
@@ -91,13 +113,15 @@ func create(cmd *cobra.Command, specs []string) {
 
 func modify(cmd *cobra.Command, args []string) {
 	c := newClient(server)
-	for _, arg := range args {
-		idSpec := strings.SplitN(arg, "=", 2)
-		if len(idSpec) != 2 {
-			log.WithField("arg", arg).Fatal("invalid argument")
-		}
-		id := idSpec[0]
-		spec := idSpec[1]
+	if len(args)%2 != 0 {
+		log.WithField("num", len(args)).Fatal("expected an even number of args")
+	}
+	for i := 0; i < len(args); i += 2 {
+		id := args[i]
+		assertID(id)
+		spec := args[i+1]
+		assertSpec(spec)
+
 		guest := modifyGuest(c, id, spec)
 		guest.Print()
 	}
@@ -106,6 +130,7 @@ func modify(cmd *cobra.Command, args []string) {
 func del(cmd *cobra.Command, ids []string) {
 	c := newClient(server)
 	for _, id := range ids {
+		assertID(id)
 		guest := deleteGuest(c, id)
 		guest.Print()
 	}
@@ -115,36 +140,34 @@ func main() {
 	root := &cobra.Command{
 		Use:   "guest",
 		Short: "guest is the cli interface to waheela",
-		Run: func(cmd *cobra.Command, _ []string) {
-			cmd.Help()
-		},
+		Run:   help,
 	}
 	root.PersistentFlags().BoolVarP(&jsonout, "jsonout", "j", jsonout, "output in json")
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
 
 	cmdList := &cobra.Command{
 		Use:   "list [<id>...]",
-		Short: "list the guest(s)",
+		Short: "List the guests",
 		Run:   list,
 	}
 
 	cmdCreate := &cobra.Command{
 		Use:   "create <spec>...",
-		Short: "create guest(s)",
+		Short: "Create guests",
 		Long:  `Create new guest(s) using "spec"(s) as the initial values. Where "spec" is a valid json string.`,
-		Run:   modify,
+		Run:   create,
 	}
 
 	cmdModify := &cobra.Command{
-		Use:   "modify id=<spec>...",
-		Short: "modify guest(s)",
+		Use:   "modify (<id> <spec>)...",
+		Short: "Modify guests",
 		Long:  `Modify given guest(s). Where "spec" is a valid json string.`,
 		Run:   modify,
 	}
 
 	cmdDelete := &cobra.Command{
 		Use:   "delete <id>...",
-		Short: "delete guest(s)",
+		Short: "Delete guests",
 		Run:   del,
 	}
 
