@@ -342,53 +342,53 @@ func main() {
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
 
 	cmdList := &cobra.Command{
-		Use:   "list [<id>...]",
-		Short: "list the hypervisor(s)",
+		Use:   "list [<hv>...]",
+		Short: "List the hypervisors",
 		Run:   list,
 	}
 	cmdCreate := &cobra.Command{
 		Use:   "create <spec>...",
-		Short: "create new hypervisor(s)",
+		Short: "Create new hypervisors",
 		Long: `Create a new hypervisor using "spec" as the initial values. "spec" must be
 valid json and contain the required fields, "mac" and "ip".`,
 		Run: create,
 	}
 	cmdMod := &cobra.Command{
-		Use:   "modify (<id> <spec>)...",
-		Short: "modify hypervisor(s)",
-		Long:  `Modify given hypervisor(s). Where "spec" is a valid json string.`,
+		Use:   "modify (<hv> <spec>)...",
+		Short: "Modify hypervisors",
+		Long:  `Modify given hypervisor. Where "spec" is a valid json string.`,
 		Run:   modify,
 	}
 	cmdDel := &cobra.Command{
-		Use:   "delete <id>...",
-		Short: "delete hypervisor(s)",
+		Use:   "delete <hv>...",
+		Short: "Delete hypervisors",
 		Run:   del,
 	}
 	cmdGuests := &cobra.Command{
-		Use:   "guests [<id>...]",
-		Short: "list the guest(s) belonging to hypervisor(s)",
+		Use:   "guests [<hv>...]",
+		Short: "List the guests belonging to hypervisor",
 		Run:   guests,
 	}
 	cmdConfig := &cobra.Command{
-		Use:   "config [<id>...]",
-		Short: "get hypervisor config",
+		Use:   "config [<hv>...]",
+		Short: "Get hypervisor config",
 		Run:   config,
 	}
 	cmdConfigMod := &cobra.Command{
-		Use:   "modify (<id> <spec>)...",
-		Short: "modify hypervisor(s) config",
-		Long:  `Modify the config of given hypervisor(s). Where "spec" is a valid json string.`,
+		Use:   "modify (<hv> <spec>)...",
+		Short: "Modify hypervisor config",
+		Long:  `Modify the config of given hypervisor. Where "spec" is a valid json string.`,
 		Run:   config_modify,
 	}
 	cmdSubnet := &cobra.Command{
-		Use:   "subnets [<id>...]",
-		Short: "get hypervisor subnets",
+		Use:   "subnets [<hv>...]",
+		Short: "Get hypervisor subnets",
 		Run:   subnets,
 	}
 	cmdSubnetMod := &cobra.Command{
-		Use:   "modify (<hvid> <spec>)...",
-		Short: "modify hypervisor subnet",
-		Long:  `Modify the subnets of given hypervisor(s). Where "spec" is a valid json string.`,
+		Use:   "modify (<hv> <spec>)...",
+		Short: "Modify hypervisor subnets",
+		Long:  `Modify the subnets of given hypervisor. Where "spec" is a valid json string.`,
 		Run:   subnets_modify,
 	}
 
