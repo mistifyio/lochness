@@ -364,13 +364,23 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Short: "Delete hypervisors",
 		Run:   del,
 	}
-	cmdGuests := &cobra.Command{
-		Use:   "guests [<hv>...]",
+	cmdGuestsRoot := &cobra.Command{
+		Use:   "guests",
+		Short: "Operate on hypervisor guests",
+		Run:   help,
+	}
+	cmdGuestsList := &cobra.Command{
+		Use:   "list [<hv>...]",
 		Short: "List the guests belonging to hypervisor",
 		Run:   guests,
 	}
-	cmdConfig := &cobra.Command{
-		Use:   "config [<hv>...]",
+	cmdConfigRoot := &cobra.Command{
+		Use:   "config",
+		Short: "Operate on hypervisor config",
+		Run:   help,
+	}
+	cmdConfigList := &cobra.Command{
+		Use:   "list [<hv>...]",
 		Short: "Get hypervisor config",
 		Run:   config,
 	}
@@ -380,20 +390,32 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Long:  `Modify the config of given hypervisor. Where "spec" is a valid json string.`,
 		Run:   config_modify,
 	}
-	cmdSubnet := &cobra.Command{
-		Use:   "subnets [<hv>...]",
+	cmdSubnetsRoot := &cobra.Command{
+		Use:   "subnets",
+		Short: "Operate on hypervisor subnets",
+		Run:   help,
+	}
+	cmdSubnetsList := &cobra.Command{
+		Use:   "list [<hv>...]",
 		Short: "Get hypervisor subnets",
 		Run:   subnets,
 	}
-	cmdSubnetMod := &cobra.Command{
+	cmdSubnetsMod := &cobra.Command{
 		Use:   "modify (<hv> <spec>)...",
 		Short: "Modify hypervisor subnets",
 		Long:  `Modify the subnets of given hypervisor. Where "spec" is a valid json string.`,
 		Run:   subnets_modify,
 	}
 
-	root.AddCommand(cmdList, cmdCreate, cmdMod, cmdDel, cmdGuests, cmdConfig, cmdSubnet)
-	cmdConfig.AddCommand(cmdConfigMod)
-	cmdSubnet.AddCommand(cmdSubnetMod)
+	root.AddCommand(cmdList,
+		cmdCreate,
+		cmdDel,
+		cmdMod,
+		cmdGuestsRoot,
+		cmdConfigRoot,
+		cmdSubnetsRoot)
+	cmdConfigRoot.AddCommand(cmdConfigList, cmdConfigMod)
+	cmdGuestsRoot.AddCommand(cmdGuestsList)
+	cmdSubnetsRoot.AddCommand(cmdSubnetsList, cmdSubnetsMod)
 	root.Execute()
 }
