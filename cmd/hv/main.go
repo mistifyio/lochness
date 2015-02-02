@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"code.google.com/p/go-uuid/uuid"
 
@@ -30,6 +31,14 @@ func (h jmap) String() string {
 	return string(buf)
 }
 
+func (h jmap) Print() {
+	if jsonout {
+		fmt.Println(h)
+	} else {
+		fmt.Println(h.ID())
+	}
+}
+
 func assertID(id string) {
 	if uuid := uuid.Parse(id); uuid == nil {
 		log.WithFields(log.Fields{
@@ -45,6 +54,59 @@ func assertSpec(spec string) {
 			"spec":  spec,
 			"error": err,
 		}).Fatal("invalid spec")
+	}
+}
+
+func printTreeMap(id, key string, m map[string]interface{}) {
+	if jsonout {
+		c := jmap{"id": id}
+		if len(m) != 0 {
+			c[key] = m
+		}
+		fmt.Println(c)
+	} else {
+		fmt.Println(id)
+		if len(m) == 0 {
+			return
+		}
+		keys := make([]string, len(m))
+		keys = keys[0:0]
+		for key := range m {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		if len(m) > 1 {
+			for _, key := range keys[:len(keys)-1] {
+				fmt.Print("├── ", key, ":", m[key], "\n")
+			}
+		}
+		key := keys[len(keys)-1]
+		fmt.Print("└── ", key, ":", m[key], "\n")
+	}
+}
+
+func printTreeSlice(id, key string, s []string) {
+	if jsonout {
+		c := jmap{
+			"id": id,
+		}
+		if len(s) != 0 {
+			c[key] = s
+		}
+		fmt.Println(c)
+	} else {
+		fmt.Println(id)
+		if len(s) == 0 {
+			return
+		}
+		sort.Strings(s)
+		if len(s) > 1 {
+			for _, item := range s[:len(s)-1] {
+				fmt.Println("├──", item)
+			}
+		}
+		fmt.Println("└──", s[len(s)-1])
 	}
 }
 
@@ -106,11 +168,7 @@ func list(cmd *cobra.Command, args []string) {
 		}
 	}
 	for _, hv := range hvs {
-		if jsonout {
-			fmt.Println(hv)
-		} else {
-			fmt.Println(hv.ID())
-		}
+		hv.Print()
 	}
 }
 
@@ -119,11 +177,7 @@ func create(cmd *cobra.Command, specs []string) {
 	for _, spec := range specs {
 		assertSpec(spec)
 		hv := createHV(c, spec)
-		if jsonout {
-			fmt.Println(hv)
-		} else {
-			fmt.Println(hv["id"])
-		}
+		hv.Print()
 	}
 }
 
@@ -139,11 +193,7 @@ func modify(cmd *cobra.Command, args []string) {
 		assertSpec(spec)
 
 		hv := modifyHV(c, id, spec)
-		if jsonout {
-			fmt.Println(hv)
-		} else {
-			fmt.Println(hv["id"])
-		}
+		hv.Print()
 	}
 }
 
@@ -152,11 +202,7 @@ func del(cmd *cobra.Command, ids []string) {
 	for _, id := range ids {
 		assertID(id)
 		hv := deleteHV(c, id)
-		if jsonout {
-			fmt.Println(hv)
-		} else {
-			fmt.Println(hv["id"])
-		}
+		hv.Print()
 	}
 }
 
@@ -172,29 +218,8 @@ func guests(cmd *cobra.Command, ids []string) {
 		}
 	}
 	for _, id := range ids {
-		fmt.Println(id)
 		guests := getGuests(c, id)
-
-		if jsonout {
-			j := jmap{
-				"id": id,
-			}
-			if len(guests) != 0 {
-				j["guests"] = guests
-			}
-			fmt.Println(j)
-		} else {
-			switch len(guests) {
-			case 0:
-			default:
-				for _, guest := range guests[:len(guests)-1] {
-					fmt.Println("├──", guest)
-				}
-				fallthrough
-			case 1:
-				fmt.Println("└──", guests[len(guests)-1])
-			}
-		}
+		printTreeSlice(id, "guests", guests)
 	}
 }
 
@@ -211,25 +236,7 @@ func config(cmd *cobra.Command, ids []string) {
 	}
 	for _, id := range ids {
 		config := c.Get("config", "hypervisors/"+id+"/config")
-		if jsonout {
-			c := jmap{
-				"id": id,
-			}
-			if len(config) != 0 {
-				c["config"] = config
-			}
-			fmt.Println(c)
-		} else {
-			fmt.Println(id)
-			if len(config) == 0 {
-				continue
-			}
-			fmt.Print("└── ")
-			for k, v := range config {
-				fmt.Print(k, ":", v, " ")
-			}
-			fmt.Println()
-		}
+		printTreeMap(id, "config", config)
 	}
 }
 
@@ -245,25 +252,7 @@ func config_modify(cmd *cobra.Command, args []string) {
 		assertSpec(spec)
 
 		config := modifyConfig(c, id, spec)
-		if jsonout {
-			c := jmap{
-				"id": id,
-			}
-			if len(config) != 0 {
-				c["config"] = config
-			}
-			fmt.Println(c)
-		} else {
-			fmt.Println(id)
-			if len(config) == 0 {
-				continue
-			}
-			fmt.Print("└── ")
-			for k, v := range config {
-				fmt.Print(k, ":", v, " ")
-			}
-			fmt.Println()
-		}
+		printTreeMap(id, "config", config)
 	}
 }
 
@@ -280,25 +269,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 	}
 	for _, id := range ids {
 		subnet := c.Get("subnet", "hypervisors/"+id+"/subnets")
-		if jsonout {
-			c := jmap{
-				"id": id,
-			}
-			if len(subnet) != 0 {
-				c["subnet"] = subnet
-			}
-			fmt.Println(c)
-		} else {
-			fmt.Println(id)
-			if len(subnet) == 0 {
-				continue
-			}
-			fmt.Print("└── ")
-			for k, v := range subnet {
-				fmt.Print(k, ":", v, " ")
-			}
-			fmt.Println()
-		}
+		printTreeMap(id, "subnet", subnet)
 	}
 }
 
@@ -314,25 +285,7 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 		assertSpec(spec)
 
 		subnet := modifySubnets(c, id, spec)
-		if jsonout {
-			c := jmap{
-				"id": id,
-			}
-			if len(subnet) != 0 {
-				c["subnet"] = subnet
-			}
-			fmt.Println(c)
-		} else {
-			fmt.Println(id)
-			if len(subnet) == 0 {
-				continue
-			}
-			fmt.Print("└── ")
-			for k, v := range subnet {
-				fmt.Print(k, ":", v, " ")
-			}
-			fmt.Println()
-		}
+		printTreeMap(id, "subnet", subnet)
 	}
 }
 
@@ -348,11 +301,7 @@ func subnets_del(cmd *cobra.Command, args []string) {
 		assertSpec(subnet)
 
 		deleted := deleteSubnet(c, hv, subnet)
-		if jsonout {
-			fmt.Println(deleted)
-		} else {
-			fmt.Println(deleted["id"])
-		}
+		deleted.Print()
 	}
 }
 
