@@ -89,6 +89,10 @@ func deleteHV(c *client, id string) jmap {
 	return c.del("hypervisor", "hypervisors/"+id)
 }
 
+func deleteSubnet(c *client, hv, subnet string) jmap {
+	return c.del("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
+}
+
 func list(cmd *cobra.Command, args []string) {
 	c := newClient(server)
 	hvs := []jmap{}
@@ -331,6 +335,26 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 	}
 }
 
+func subnets_del(cmd *cobra.Command, args []string) {
+	c := newClient(server)
+	if len(args)%2 != 0 {
+		log.WithField("num", len(args)).Fatal("expected an even amount of args")
+	}
+	for i := 0; i < len(args); i += 2 {
+		hv := args[i]
+		assertID(hv)
+		subnet := args[i+1]
+		assertSpec(subnet)
+
+		deleted := deleteSubnet(c, hv, subnet)
+		if jsonout {
+			fmt.Println(deleted)
+		} else {
+			fmt.Println(deleted["id"])
+		}
+	}
+}
+
 func main() {
 
 	root := &cobra.Command{
@@ -406,6 +430,11 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Long:  `Modify the subnets of given hypervisor. Where "spec" is a valid json string.`,
 		Run:   subnets_modify,
 	}
+	cmdSubnetsDel := &cobra.Command{
+		Use:   "delete (<hv> <subnet>)...",
+		Short: "Delete hypervisor subnets",
+		Run:   subnets_del,
+	}
 
 	root.AddCommand(cmdList,
 		cmdCreate,
@@ -416,6 +445,6 @@ valid json and contain the required fields, "mac" and "ip".`,
 		cmdSubnetsRoot)
 	cmdConfigRoot.AddCommand(cmdConfigList, cmdConfigMod)
 	cmdGuestsRoot.AddCommand(cmdGuestsList)
-	cmdSubnetsRoot.AddCommand(cmdSubnetsList, cmdSubnetsMod)
+	cmdSubnetsRoot.AddCommand(cmdSubnetsList, cmdSubnetsMod, cmdSubnetsDel)
 	root.Execute()
 }
