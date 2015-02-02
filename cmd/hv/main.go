@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"code.google.com/p/go-uuid/uuid"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +28,25 @@ func (h jmap) String() string {
 		return ""
 	}
 	return string(buf)
+}
+
+func assertValidID(id string) {
+	if err := uuid.Parse(id); err != nil {
+		log.WithFields(log.Fields{
+			"id":    id,
+			"error": err,
+		}).Fatal("invalid id")
+	}
+}
+
+func assertValidSpec(spec string) {
+	j := jmap{}
+	if err := json.Unmarshal([]byte(spec), &j); err != nil {
+		log.WithFields(log.Fields{
+			"spec":  spec,
+			"error": err,
+		}).Fatal("invalid spec")
+	}
 }
 
 func getHVs(c *client) []jmap {
@@ -69,6 +90,7 @@ func list(cmd *cobra.Command, args []string) {
 		hvs = getHVs(c)
 	} else {
 		for _, id := range args {
+			assertValidID(id)
 			hvs = append(hvs, getHV(c, id))
 		}
 	}
@@ -84,6 +106,7 @@ func list(cmd *cobra.Command, args []string) {
 func create(cmd *cobra.Command, specs []string) {
 	c := newClient(server)
 	for _, spec := range specs {
+		assertValidSpec(spec)
 		hv := createHV(c, spec)
 		if jsonout {
 			fmt.Println(hv)
@@ -103,7 +126,10 @@ func modify(cmd *cobra.Command, args []string) {
 			}).Fatal("invalid argument")
 		}
 		id := idSpec[0]
+		assertValidID(id)
 		spec := idSpec[1]
+		assertValidSpec(spec)
+
 		hv := modifyHV(c, id, spec)
 		if jsonout {
 			fmt.Println(hv)
@@ -116,6 +142,7 @@ func modify(cmd *cobra.Command, args []string) {
 func del(cmd *cobra.Command, ids []string) {
 	c := newClient(server)
 	for _, id := range ids {
+		assertValidID(id)
 		hv := deleteHV(c, id)
 		if jsonout {
 			fmt.Println(hv)
@@ -130,6 +157,10 @@ func guests(cmd *cobra.Command, ids []string) {
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
+		}
+	} else {
+		for _, id := range ids {
+			assertValidID(id)
 		}
 	}
 	for _, id := range ids {
@@ -164,6 +195,10 @@ func config(cmd *cobra.Command, ids []string) {
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
+		}
+	} else {
+		for _, id := range ids {
+			assertValidID(id)
 		}
 	}
 	for _, id := range ids {
@@ -200,7 +235,10 @@ func config_modify(cmd *cobra.Command, args []string) {
 			}).Fatal("invalid argument")
 		}
 		id := idSpec[0]
+		assertValidID(id)
 		spec := idSpec[1]
+		assertValidSpec(spec)
+
 		config := modifyConfig(c, id, spec)
 		if jsonout {
 			c := jmap{
@@ -229,6 +267,10 @@ func subnets(cmd *cobra.Command, ids []string) {
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
+		}
+	} else {
+		for _, id := range ids {
+			assertValidID(id)
 		}
 	}
 	for _, id := range ids {
