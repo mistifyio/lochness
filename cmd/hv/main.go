@@ -29,7 +29,7 @@ func (h jmap) String() string {
 	return string(buf)
 }
 
-func assertValidID(id string) {
+func assertID(id string) {
 	if uuid := uuid.Parse(id); uuid == nil {
 		log.WithFields(log.Fields{
 			"id": id,
@@ -37,7 +37,7 @@ func assertValidID(id string) {
 	}
 }
 
-func assertValidSpec(spec string) {
+func assertSpec(spec string) {
 	j := jmap{}
 	if err := json.Unmarshal([]byte(spec), &j); err != nil {
 		log.WithFields(log.Fields{
@@ -88,7 +88,7 @@ func list(cmd *cobra.Command, args []string) {
 		hvs = getHVs(c)
 	} else {
 		for _, id := range args {
-			assertValidID(id)
+			assertID(id)
 			hvs = append(hvs, getHV(c, id))
 		}
 	}
@@ -104,7 +104,7 @@ func list(cmd *cobra.Command, args []string) {
 func create(cmd *cobra.Command, specs []string) {
 	c := newClient(server)
 	for _, spec := range specs {
-		assertValidSpec(spec)
+		assertSpec(spec)
 		hv := createHV(c, spec)
 		if jsonout {
 			fmt.Println(hv)
@@ -121,9 +121,9 @@ func modify(cmd *cobra.Command, args []string) {
 	}
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
-		assertValidID(id)
+		assertID(id)
 		spec := args[i+1]
-		assertValidSpec(spec)
+		assertSpec(spec)
 
 		hv := modifyHV(c, id, spec)
 		if jsonout {
@@ -137,7 +137,7 @@ func modify(cmd *cobra.Command, args []string) {
 func del(cmd *cobra.Command, ids []string) {
 	c := newClient(server)
 	for _, id := range ids {
-		assertValidID(id)
+		assertID(id)
 		hv := deleteHV(c, id)
 		if jsonout {
 			fmt.Println(hv)
@@ -155,7 +155,7 @@ func guests(cmd *cobra.Command, ids []string) {
 		}
 	} else {
 		for _, id := range ids {
-			assertValidID(id)
+			assertID(id)
 		}
 	}
 	for _, id := range ids {
@@ -193,7 +193,7 @@ func config(cmd *cobra.Command, ids []string) {
 		}
 	} else {
 		for _, id := range ids {
-			assertValidID(id)
+			assertID(id)
 		}
 	}
 	for _, id := range ids {
@@ -227,9 +227,9 @@ func config_modify(cmd *cobra.Command, args []string) {
 	}
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
-		assertValidID(id)
+		assertID(id)
 		spec := args[i+1]
-		assertValidSpec(spec)
+		assertSpec(spec)
 
 		config := modifyConfig(c, id, spec)
 		if jsonout {
@@ -262,7 +262,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 		}
 	} else {
 		for _, id := range ids {
-			assertValidID(id)
+			assertID(id)
 		}
 	}
 	for _, id := range ids {
