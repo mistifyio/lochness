@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
@@ -17,7 +18,8 @@ var (
 )
 
 type (
-	jmap map[string]interface{}
+	jmap      map[string]interface{}
+	jmapSlice []jmap
 )
 
 func (j jmap) ID() string {
@@ -32,12 +34,24 @@ func (j jmap) String() string {
 	return string(buf)
 }
 
-func (g jmap) Print() {
+func (j jmap) Print() {
 	if jsonout {
-		fmt.Println(g)
+		fmt.Println(j)
 	} else {
-		fmt.Println(g.ID())
+		fmt.Println(j.ID())
 	}
+}
+
+func (js jmapSlice) Len() int {
+	return len(js)
+}
+
+func (js jmapSlice) Less(i, j int) bool {
+	return js[i].ID() < js[j].ID()
+}
+
+func (js jmapSlice) Swap(i, j int) {
+	js[j], js[i] = js[i], js[j]
 }
 
 func assertID(id string) {
@@ -91,6 +105,7 @@ func list(cmd *cobra.Command, ids []string) {
 
 	if len(ids) == 0 {
 		guests = getGuests(c)
+		sort.Sort(jmapSlice(guests))
 	} else {
 		for _, id := range ids {
 			assertID(id)
