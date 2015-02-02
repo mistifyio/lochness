@@ -6,6 +6,7 @@ import (
 
 	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
+	"github.com/mistifyio/lochness/pkg/internal/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -59,8 +60,8 @@ func help(cmd *cobra.Command, _ []string) {
 	cmd.Help()
 }
 
-func getGuests(c *client) []jmap {
-	ret := c.getMany("guests", "guests")
+func getGuests(c *cli.Client) []jmap {
+	ret := c.GetMany("guests", "guests")
 	guests := make([]jmap, len(ret))
 	for i := range ret {
 		guests[i] = ret[i]
@@ -68,24 +69,24 @@ func getGuests(c *client) []jmap {
 	return guests
 }
 
-func getGuest(c *client, id string) jmap {
-	return c.get("guest", "guests/"+id)
+func getGuest(c *cli.Client, id string) jmap {
+	return c.Get("guest", "guests/"+id)
 }
 
-func createGuest(c *client, spec string) jmap {
-	return c.post("guest", "guests", spec)
+func createGuest(c *cli.Client, spec string) jmap {
+	return c.Post("guest", "guests", spec)
 }
 
-func modifyGuest(c *client, id string, spec string) jmap {
-	return c.patch("guest", "guests/"+id, spec)
+func modifyGuest(c *cli.Client, id string, spec string) jmap {
+	return c.Patch("guest", "guests/"+id, spec)
 }
 
-func deleteGuest(c *client, id string) jmap {
-	return c.del("hypervisor", "guests/"+id)
+func deleteGuest(c *cli.Client, id string) jmap {
+	return c.Del("hypervisor", "guests/"+id)
 }
 
 func list(cmd *cobra.Command, ids []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	guests := []jmap{}
 
 	if len(ids) == 0 {
@@ -103,7 +104,7 @@ func list(cmd *cobra.Command, ids []string) {
 }
 
 func create(cmd *cobra.Command, specs []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	for _, spec := range specs {
 		assertSpec(spec)
 		guest := createGuest(c, spec)
@@ -112,7 +113,7 @@ func create(cmd *cobra.Command, specs []string) {
 }
 
 func modify(cmd *cobra.Command, args []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even number of args")
 	}
@@ -128,7 +129,7 @@ func modify(cmd *cobra.Command, args []string) {
 }
 
 func del(cmd *cobra.Command, ids []string) {
-	c := newClient(server)
+	c := cli.New(server)
 	for _, id := range ids {
 		assertID(id)
 		guest := deleteGuest(c, id)
