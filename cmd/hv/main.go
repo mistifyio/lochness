@@ -30,10 +30,9 @@ func (h jmap) String() string {
 }
 
 func assertValidID(id string) {
-	if err := uuid.Parse(id); err != nil {
+	if uuid := uuid.Parse(id); uuid == nil {
 		log.WithFields(log.Fields{
-			"id":    id,
-			"error": err,
+			"id": id,
 		}).Fatal("invalid id")
 	}
 }
