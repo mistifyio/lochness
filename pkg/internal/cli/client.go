@@ -31,7 +31,7 @@ func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := []map[string]interface{}{}
-	processResponse(resp, title, http.StatusOK, &ret)
+	processResponse(resp, title, "get", http.StatusOK, &ret)
 	return ret
 }
 
@@ -41,7 +41,7 @@ func (c *Client) GetList(title, endpoint string) []string {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := []string{}
-	processResponse(resp, title, http.StatusOK, &ret)
+	processResponse(resp, title, "get", http.StatusOK, &ret)
 	return ret
 }
 
@@ -51,7 +51,7 @@ func (c *Client) Get(title, endpoint string) map[string]interface{} {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, http.StatusOK, &ret)
+	processResponse(resp, title, "get", http.StatusOK, &ret)
 	return ret
 }
 
@@ -64,7 +64,7 @@ func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
 		}).Fatal("unable to create new " + title)
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, http.StatusCreated, &ret)
+	processResponse(resp, title, "create", http.StatusCreated, &ret)
 	return ret
 }
 
@@ -86,7 +86,7 @@ func (c *Client) Del(title, endpoint string) map[string]interface{} {
 		}).Fatal("unable to complete request")
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, http.StatusOK, &ret)
+	processResponse(resp, title, "delete", http.StatusOK, &ret)
 	return ret
 }
 
@@ -110,18 +110,18 @@ func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
 		}).Fatal("unable to complete request")
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, http.StatusOK, &ret)
+	processResponse(resp, title, "update", http.StatusOK, &ret)
 	return ret
 }
 
-func processResponse(response *http.Response, title string, status int, dest interface{}) {
+func processResponse(response *http.Response, title, action string, status int, dest interface{}) {
 	defer response.Body.Close()
 
 	if response.StatusCode != status {
 		log.WithFields(log.Fields{
 			"status": response.Status,
 			"code":   response.StatusCode,
-		}).Fatal("failed to get " + title)
+		}).Fatal("failed to " + action + " " + title)
 	}
 
 	if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
