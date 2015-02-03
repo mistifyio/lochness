@@ -17,42 +17,6 @@ var (
 	jsonout = false
 )
 
-type jmap map[string]interface{}
-
-func (j jmap) ID() string {
-	return j["id"].(string)
-}
-
-func (h jmap) String() string {
-	buf, err := json.Marshal(&h)
-	if err != nil {
-		return ""
-	}
-	return string(buf)
-}
-
-func (h jmap) Print() {
-	if jsonout {
-		fmt.Println(h)
-	} else {
-		fmt.Println(h.ID())
-	}
-}
-
-type jmapSlice []jmap
-
-func (js jmapSlice) Len() int {
-	return len(js)
-}
-
-func (js jmapSlice) Less(i, j int) bool {
-	return js[i].ID() < js[j].ID()
-}
-
-func (js jmapSlice) Swap(i, j int) {
-	js[j], js[i] = js[i], js[j]
-}
-
 func assertID(id string) {
 	if uuid := uuid.Parse(id); uuid == nil {
 		log.WithFields(log.Fields{
@@ -62,7 +26,7 @@ func assertID(id string) {
 }
 
 func assertSpec(spec string) {
-	j := jmap{}
+	j := cli.JMap{}
 	if err := json.Unmarshal([]byte(spec), &j); err != nil {
 		log.WithFields(log.Fields{
 			"spec":  spec,
@@ -73,7 +37,7 @@ func assertSpec(spec string) {
 
 func printTreeMap(id, key string, m map[string]interface{}) {
 	if jsonout {
-		c := jmap{"id": id}
+		c := cli.JMap{"id": id}
 		if len(m) != 0 {
 			c[key] = m
 		}
@@ -102,7 +66,7 @@ func printTreeMap(id, key string, m map[string]interface{}) {
 
 func printTreeSlice(id, key string, s []string) {
 	if jsonout {
-		c := jmap{
+		c := cli.JMap{
 			"id": id,
 		}
 		if len(s) != 0 {
@@ -128,10 +92,10 @@ func help(cmd *cobra.Command, _ []string) {
 	cmd.Help()
 }
 
-func getHVs(c *cli.Client) []jmap {
+func getHVs(c *cli.Client) []cli.JMap {
 	ret := c.GetMany("hypervisors", "hypervisors")
 	// wasteful you say?
-	hvs := make([]jmap, len(ret))
+	hvs := make([]cli.JMap, len(ret))
 	for i := range ret {
 		hvs[i] = ret[i]
 	}
@@ -142,40 +106,40 @@ func getGuests(c *cli.Client, id string) []string {
 	return c.GetList("guests", "hypervisors/"+id+"/guests")
 }
 
-func getHV(c *cli.Client, id string) jmap {
+func getHV(c *cli.Client, id string) cli.JMap {
 	return c.Get("hypervisor", "hypervisors/"+id)
 }
 
-func createHV(c *cli.Client, spec string) jmap {
+func createHV(c *cli.Client, spec string) cli.JMap {
 	return c.Post("hypervisor", "hypervisors", spec)
 }
 
-func modifyHV(c *cli.Client, id string, spec string) jmap {
+func modifyHV(c *cli.Client, id string, spec string) cli.JMap {
 	return c.Patch("hypervisor", "hypervisors/"+id, spec)
 }
 
-func modifyConfig(c *cli.Client, id string, spec string) jmap {
+func modifyConfig(c *cli.Client, id string, spec string) cli.JMap {
 	return c.Patch("config", "hypervisors/"+id+"/config", spec)
 }
 
-func modifySubnets(c *cli.Client, id string, spec string) jmap {
+func modifySubnets(c *cli.Client, id string, spec string) cli.JMap {
 	return c.Patch("subnets", "hypervisors/"+id+"/subnets", spec)
 }
 
-func deleteHV(c *cli.Client, id string) jmap {
+func deleteHV(c *cli.Client, id string) cli.JMap {
 	return c.Del("hypervisor", "hypervisors/"+id)
 }
 
-func deleteSubnet(c *cli.Client, hv, subnet string) jmap {
+func deleteSubnet(c *cli.Client, hv, subnet string) cli.JMap {
 	return c.Del("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
 }
 
 func list(cmd *cobra.Command, args []string) {
 	c := cli.New(server)
-	hvs := []jmap{}
+	hvs := []cli.JMap{}
 	if len(args) == 0 {
 		hvs = getHVs(c)
-		sort.Sort(jmapSlice(hvs))
+		sort.Sort(cli.JMapSlice(hvs))
 	} else {
 		for _, id := range args {
 			assertID(id)
@@ -184,7 +148,7 @@ func list(cmd *cobra.Command, args []string) {
 	}
 
 	for _, hv := range hvs {
-		hv.Print()
+		hv.Print(jsonout)
 	}
 }
 
@@ -193,7 +157,7 @@ func create(cmd *cobra.Command, specs []string) {
 	for _, spec := range specs {
 		assertSpec(spec)
 		hv := createHV(c, spec)
-		hv.Print()
+		hv.Print(jsonout)
 	}
 }
 
@@ -210,7 +174,7 @@ func modify(cmd *cobra.Command, args []string) {
 		assertSpec(spec)
 
 		hv := modifyHV(c, id, spec)
-		hv.Print()
+		hv.Print(jsonout)
 	}
 }
 
@@ -219,7 +183,7 @@ func del(cmd *cobra.Command, ids []string) {
 	for _, id := range ids {
 		assertID(id)
 		hv := deleteHV(c, id)
-		hv.Print()
+		hv.Print(jsonout)
 	}
 }
 
@@ -327,7 +291,7 @@ func subnets_del(cmd *cobra.Command, args []string) {
 		assertSpec(subnet)
 
 		deleted := deleteSubnet(c, hv, subnet)
-		deleted.Print()
+		deleted.Print(jsonout)
 	}
 }
 
