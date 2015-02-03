@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"net/http"
+	"path"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -15,14 +16,11 @@ type Client struct {
 }
 
 func NewClient(address string) *Client {
-	if !strings.HasSuffix(address, "/") {
-		address += "/"
-	}
 	return &Client{addr: address, t: "application/json"}
 }
 
 func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
-	resp, err := c.c.Get(c.addr + endpoint)
+	resp, err := c.c.Get(path.Join(c.addr, endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -43,7 +41,7 @@ func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
 }
 
 func (c *Client) GetList(title, endpoint string) []string {
-	resp, err := c.c.Get(c.addr + endpoint)
+	resp, err := c.c.Get(path.Join(c.addr, endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -64,7 +62,7 @@ func (c *Client) GetList(title, endpoint string) []string {
 }
 
 func (c *Client) Get(title, endpoint string) map[string]interface{} {
-	resp, err := c.c.Get(c.addr + endpoint)
+	resp, err := c.c.Get(path.Join(c.addr, endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -108,7 +106,7 @@ func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
 }
 
 func (c *Client) Del(title, endpoint string) map[string]interface{} {
-	addr := c.addr + endpoint
+	addr := path.Join(c.addr, endpoint)
 	req, err := http.NewRequest("DELETE", addr, nil)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -140,7 +138,7 @@ func (c *Client) Del(title, endpoint string) map[string]interface{} {
 }
 
 func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
-	addr := c.addr + endpoint
+	addr := path.Join(c.addr, endpoint)
 	req, err := http.NewRequest("PATCH", addr, strings.NewReader(body))
 	if err != nil {
 		log.WithFields(log.Fields{
