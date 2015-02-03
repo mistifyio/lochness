@@ -24,19 +24,8 @@ func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to get " + title)
-	}
-
 	ret := []map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
+	processResponse(resp, title, http.StatusOK, &ret)
 	return ret
 }
 
@@ -45,19 +34,8 @@ func (c *Client) GetList(title, endpoint string) []string {
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to get " + title)
-	}
-
 	ret := []string{}
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
+	processResponse(resp, title, http.StatusOK, &ret)
 	return ret
 }
 
@@ -66,19 +44,8 @@ func (c *Client) Get(title, endpoint string) map[string]interface{} {
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to get " + title)
-	}
-
 	ret := map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
+	processResponse(resp, title, http.StatusOK, &ret)
 	return ret
 }
 
@@ -90,18 +57,8 @@ func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
 			"body":  body,
 		}).Fatal("unable to create new " + title)
 	}
-	if resp.StatusCode != http.StatusCreated {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to create " + title)
-	}
-	defer resp.Body.Close()
-
 	ret := map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
+	processResponse(resp, title, http.StatusCreated, &ret)
 	return ret
 }
 
@@ -122,18 +79,8 @@ func (c *Client) Del(title, endpoint string) map[string]interface{} {
 			"address": addr,
 		}).Fatal("unable to complete request")
 	}
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to delete " + title)
-	}
-	defer resp.Body.Close()
-
 	ret := map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
+	processResponse(resp, title, http.StatusOK, &ret)
 	return ret
 }
 
@@ -156,17 +103,22 @@ func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
 			"body":    body,
 		}).Fatal("unable to complete request")
 	}
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to modify " + title)
-	}
-	defer resp.Body.Close()
-
 	ret := map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
+	processResponse(resp, title, http.StatusOK, &ret)
+	return ret
+}
+
+func processResponse(response *http.Response, title string, status int, dest interface{}) {
+	defer response.Body.Close()
+
+	if response.StatusCode != status {
+		log.WithFields(log.Fields{
+			"status": response.Status,
+			"code":   response.StatusCode,
+		}).Fatal("failed to get " + title)
+	}
+
+	if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
 		log.WithField("error", err).Fatal("failed to parse json")
 	}
-	return ret
 }
