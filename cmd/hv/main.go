@@ -114,7 +114,7 @@ func deleteSubnet(c *cli.Client, hv, subnet string) cli.JMap {
 }
 
 func list(cmd *cobra.Command, args []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	hvs := []cli.JMap{}
 	if len(args) == 0 {
 		hvs = getHVs(c)
@@ -132,7 +132,7 @@ func list(cmd *cobra.Command, args []string) {
 }
 
 func create(cmd *cobra.Command, specs []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	for _, spec := range specs {
 		cli.AssertSpec(spec)
 		hv := createHV(c, spec)
@@ -141,7 +141,7 @@ func create(cmd *cobra.Command, specs []string) {
 }
 
 func modify(cmd *cobra.Command, args []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -158,7 +158,7 @@ func modify(cmd *cobra.Command, args []string) {
 }
 
 func del(cmd *cobra.Command, ids []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	for _, id := range ids {
 		cli.AssertID(id)
 		hv := deleteHV(c, id)
@@ -167,7 +167,7 @@ func del(cmd *cobra.Command, ids []string) {
 }
 
 func guests(cmd *cobra.Command, ids []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
@@ -186,7 +186,7 @@ func guests(cmd *cobra.Command, ids []string) {
 }
 
 func config(cmd *cobra.Command, ids []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
@@ -205,7 +205,7 @@ func config(cmd *cobra.Command, ids []string) {
 }
 
 func config_modify(cmd *cobra.Command, args []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -222,7 +222,7 @@ func config_modify(cmd *cobra.Command, args []string) {
 }
 
 func subnets(cmd *cobra.Command, ids []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(ids) == 0 {
 		for _, hv := range getHVs(c) {
 			ids = append(ids, hv["id"].(string))
@@ -241,7 +241,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 }
 
 func subnets_modify(cmd *cobra.Command, args []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -258,7 +258,7 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 }
 
 func subnets_del(cmd *cobra.Command, args []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}

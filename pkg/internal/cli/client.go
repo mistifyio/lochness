@@ -14,7 +14,7 @@ type Client struct {
 	addr string
 }
 
-func New(address string) *Client {
+func NewClient(address string) *Client {
 	if !strings.HasSuffix(address, "/") {
 		address += "/"
 	}
