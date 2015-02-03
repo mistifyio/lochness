@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
-
-	"code.google.com/p/go-uuid/uuid"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mistifyio/lochness/pkg/internal/cli"
@@ -16,24 +13,6 @@ var (
 	server  = "http://localhost:17000"
 	jsonout = false
 )
-
-func assertID(id string) {
-	if uuid := uuid.Parse(id); uuid == nil {
-		log.WithFields(log.Fields{
-			"id": id,
-		}).Fatal("invalid id")
-	}
-}
-
-func assertSpec(spec string) {
-	j := cli.JMap{}
-	if err := json.Unmarshal([]byte(spec), &j); err != nil {
-		log.WithFields(log.Fields{
-			"spec":  spec,
-			"error": err,
-		}).Fatal("invalid spec")
-	}
-}
 
 func printTreeMap(id, key string, m map[string]interface{}) {
 	if jsonout {
@@ -142,7 +121,7 @@ func list(cmd *cobra.Command, args []string) {
 		sort.Sort(cli.JMapSlice(hvs))
 	} else {
 		for _, id := range args {
-			assertID(id)
+			cli.AssertID(id)
 			hvs = append(hvs, getHV(c, id))
 		}
 	}
@@ -155,7 +134,7 @@ func list(cmd *cobra.Command, args []string) {
 func create(cmd *cobra.Command, specs []string) {
 	c := cli.New(server)
 	for _, spec := range specs {
-		assertSpec(spec)
+		cli.AssertSpec(spec)
 		hv := createHV(c, spec)
 		hv.Print(jsonout)
 	}
@@ -169,9 +148,9 @@ func modify(cmd *cobra.Command, args []string) {
 
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
-		assertID(id)
+		cli.AssertID(id)
 		spec := args[i+1]
-		assertSpec(spec)
+		cli.AssertSpec(spec)
 
 		hv := modifyHV(c, id, spec)
 		hv.Print(jsonout)
@@ -181,7 +160,7 @@ func modify(cmd *cobra.Command, args []string) {
 func del(cmd *cobra.Command, ids []string) {
 	c := cli.New(server)
 	for _, id := range ids {
-		assertID(id)
+		cli.AssertID(id)
 		hv := deleteHV(c, id)
 		hv.Print(jsonout)
 	}
@@ -196,7 +175,7 @@ func guests(cmd *cobra.Command, ids []string) {
 		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
-			assertID(id)
+			cli.AssertID(id)
 		}
 	}
 
@@ -215,7 +194,7 @@ func config(cmd *cobra.Command, ids []string) {
 		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
-			assertID(id)
+			cli.AssertID(id)
 		}
 	}
 
@@ -233,9 +212,9 @@ func config_modify(cmd *cobra.Command, args []string) {
 
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
-		assertID(id)
+		cli.AssertID(id)
 		spec := args[i+1]
-		assertSpec(spec)
+		cli.AssertSpec(spec)
 
 		config := modifyConfig(c, id, spec)
 		printTreeMap(id, "config", config)
@@ -251,7 +230,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
-			assertID(id)
+			cli.AssertID(id)
 		}
 	}
 
@@ -269,9 +248,9 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
-		assertID(id)
+		cli.AssertID(id)
 		spec := args[i+1]
-		assertSpec(spec)
+		cli.AssertSpec(spec)
 
 		subnet := modifySubnets(c, id, spec)
 		printTreeMap(id, "subnet", subnet)
@@ -286,9 +265,9 @@ func subnets_del(cmd *cobra.Command, args []string) {
 
 	for i := 0; i < len(args); i += 2 {
 		hv := args[i]
-		assertID(hv)
+		cli.AssertID(hv)
 		subnet := args[i+1]
-		assertSpec(subnet)
+		cli.AssertSpec(subnet)
 
 		deleted := deleteSubnet(c, hv, subnet)
 		deleted.Print(jsonout)
