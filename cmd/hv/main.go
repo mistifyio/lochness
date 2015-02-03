@@ -267,7 +267,7 @@ func subnets_del(cmd *cobra.Command, args []string) {
 		hv := args[i]
 		cli.AssertID(hv)
 		subnet := args[i+1]
-		cli.AssertSpec(subnet)
+		cli.AssertID(subnet)
 
 		deleted := deleteSubnet(c, hv, subnet)
 		deleted.Print(jsonout)
