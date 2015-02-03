@@ -10,17 +10,23 @@ import (
 )
 
 type Client struct {
-	c    http.Client
-	t    string //type
-	addr string
+	c      http.Client
+	t      string //type
+	scheme string
+	addr   string
 }
 
 func NewClient(address string) *Client {
-	return &Client{addr: address, t: "application/json"}
+	strings := strings.SplitN(address, "://", 2)
+	return &Client{scheme: strings[0], addr: strings[1], t: "application/json"}
+}
+
+func (c *Client) URLString(endpoint string) string {
+	return c.scheme + "://" + path.Join(c.addr, endpoint)
 }
 
 func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
-	resp, err := c.c.Get(path.Join(c.addr, endpoint))
+	resp, err := c.c.Get(c.URLString(endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -30,7 +36,7 @@ func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
 }
 
 func (c *Client) GetList(title, endpoint string) []string {
-	resp, err := c.c.Get(path.Join(c.addr, endpoint))
+	resp, err := c.c.Get(c.URLString(endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -40,7 +46,7 @@ func (c *Client) GetList(title, endpoint string) []string {
 }
 
 func (c *Client) Get(title, endpoint string) map[string]interface{} {
-	resp, err := c.c.Get(path.Join(c.addr, endpoint))
+	resp, err := c.c.Get(c.URLString(endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
@@ -63,7 +69,7 @@ func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
 }
 
 func (c *Client) Del(title, endpoint string) map[string]interface{} {
-	addr := path.Join(c.addr, endpoint)
+	addr := c.URLString(endpoint)
 	req, err := http.NewRequest("DELETE", addr, nil)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -85,7 +91,7 @@ func (c *Client) Del(title, endpoint string) map[string]interface{} {
 }
 
 func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
-	addr := path.Join(c.addr, endpoint)
+	addr := c.URLString(endpoint)
 	req, err := http.NewRequest("PATCH", addr, strings.NewReader(body))
 	if err != nil {
 		log.WithFields(log.Fields{
