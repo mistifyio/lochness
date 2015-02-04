@@ -1,5 +1,7 @@
 package main
 
+//go:generate ego -package=main -o=nftables.ego.go
+
 import (
 	"errors"
 	"flag"
