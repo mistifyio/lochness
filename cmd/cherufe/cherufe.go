@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"text/template"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
@@ -23,10 +22,7 @@ const (
 	nftPortRange  = "ip daddr %s %s dport %d - %d %s"
 )
 
-var (
-	tmpl *template.Template
-	hv   *lochness.Hypervisor
-)
+var hv *lochness.Hypervisor
 
 type group struct {
 	Name int
@@ -155,11 +151,11 @@ func applyRules(td templateData) error {
 	}
 	defer os.Remove(temp.Name())
 
-	err = tmpl.Execute(temp, td)
+	err = nftWrite(temp, td.IP, td.Sources, td.Rules)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "template.Execute",
+			"func":  "nftWrite",
 		}).Error("template returned an error")
 		temp.Close()
 		return err
@@ -231,8 +227,6 @@ func main() {
 			"func":  "context.Hypervisor",
 		}).Fatal("failed to fetch hypervisor info")
 	}
-
-	tmpl = template.Must(template.New("nft").Parse(ruleset))
 
 	stop := make(chan bool)
 	ch := make(chan struct{})

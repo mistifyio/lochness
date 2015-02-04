@@ -1,15 +1,17 @@
-package main
-
-const ruleset = `flush ruleset
+<%! func nftWrite(w io.Writer, ip string, sources []group, rules []string) error %>
+flush ruleset
 
 table inet filter {
-  {{with $.Sources}}{{range .}}# FWGroupID={{.ID}}
-  set g{{.Name}} {
-    type ipv4_addr{{if .IPs}}
-    elements = { {{range .IPs}}{{.}},{{end}} }{{end}}
+  <% for _, group := range sources { %>
+  # FWGroupID=<%= group.ID %>
+  set g<%= group.Name %> {
+    type ipv4_addr<% if len(group.IPs) > 0 { %>
+    elements = { <% for i := range group.IPs { %>
+      <%= group.IPs[i] %>, <% } %>
+    }<% } %>
   }
-
-  {{end}}{{end}}chain input {
+  <% } %>
+  chain input {
     type filter hook input priority 0;
 
     # allow established/related connections
@@ -27,12 +29,14 @@ table inet filter {
 
     # allow lochness hv traffic
     # ssh, http, beanstalk, etcd
-    ip daddr {{ $.IP }} accept
+    ip daddr <%= ip %> accept
 
-    {{with $.Rules}}# allow traffic to guests as specified by FWGroup{{range .}}
-    {{.}} accept{{end}}
-
-    {{end}}# everything else
+    <% if len(rules) > 0 { %>
+    # Allow traffic to guests as specified by FWGroups
+    <% for i := range rules { %>
+    <%= rules[i] %> accept<% } %>
+    <% } %>
+    # everything else
     reject with icmp type port-unreachable
   }
 
@@ -45,4 +49,3 @@ table inet filter {
     type filter hook output priority 0;
   }
 }
-`
