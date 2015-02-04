@@ -315,9 +315,9 @@ func subnets_del(cmd *cobra.Command, args []string) {
 
 func main() {
 	root := &cobra.Command{
-		Use:   "hv",
-		Short: "hv is the cli interface to grootslang",
-		Run:   help,
+		Use:  "hv",
+		Long: "hv is the cli interface to grootslang. All commands support arguments via command line or stdin",
+		Run:  help,
 	}
 	root.PersistentFlags().BoolVarP(&jsonout, "json", "j", jsonout, "output in json")
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
