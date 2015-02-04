@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/andrew-d/go-termutil"
 	"github.com/mistifyio/lochness/pkg/internal/cli"
 	"github.com/spf13/cobra"
 )
@@ -117,9 +119,14 @@ func list(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
 	hvs := []cli.JMap{}
 	if len(args) == 0 {
-		hvs = getHVs(c)
-		sort.Sort(cli.JMapSlice(hvs))
-	} else {
+		if termutil.Isatty(os.Stdin.Fd()) {
+			hvs = getHVs(c)
+			sort.Sort(cli.JMapSlice(hvs))
+		} else {
+			args = cli.Read(os.Stdin)
+		}
+	}
+	if len(hvs) == 0 {
 		for _, id := range args {
 			cli.AssertID(id)
 			hvs = append(hvs, getHV(c, id))
@@ -133,6 +140,10 @@ func list(cmd *cobra.Command, args []string) {
 
 func create(cmd *cobra.Command, specs []string) {
 	c := cli.NewClient(server)
+	if len(specs) == 0 {
+		specs = cli.Read(os.Stdin)
+	}
+
 	for _, spec := range specs {
 		cli.AssertSpec(spec)
 		hv := createHV(c, spec)
@@ -142,6 +153,9 @@ func create(cmd *cobra.Command, specs []string) {
 
 func modify(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
+	if len(args) == 0 {
+		args = cli.Read(os.Stdin)
+	}
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -159,6 +173,10 @@ func modify(cmd *cobra.Command, args []string) {
 
 func del(cmd *cobra.Command, ids []string) {
 	c := cli.NewClient(server)
+	if len(ids) == 0 {
+		ids = cli.Read(os.Stdin)
+	}
+
 	for _, id := range ids {
 		cli.AssertID(id)
 		hv := deleteHV(c, id)
@@ -169,10 +187,14 @@ func del(cmd *cobra.Command, ids []string) {
 func guests(cmd *cobra.Command, ids []string) {
 	c := cli.NewClient(server)
 	if len(ids) == 0 {
-		for _, hv := range getHVs(c) {
-			ids = append(ids, hv["id"].(string))
+		if termutil.Isatty(os.Stdin.Fd()) {
+			for _, hv := range getHVs(c) {
+				ids = append(ids, hv["id"].(string))
+			}
+		} else {
+			ids = cli.Read(os.Stdin)
+			sort.Strings(ids)
 		}
-		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
 			cli.AssertID(id)
@@ -188,10 +210,14 @@ func guests(cmd *cobra.Command, ids []string) {
 func config(cmd *cobra.Command, ids []string) {
 	c := cli.NewClient(server)
 	if len(ids) == 0 {
-		for _, hv := range getHVs(c) {
-			ids = append(ids, hv["id"].(string))
+		if termutil.Isatty(os.Stdin.Fd()) {
+			for _, hv := range getHVs(c) {
+				ids = append(ids, hv["id"].(string))
+			}
+		} else {
+			ids = cli.Read(os.Stdin)
+			sort.Strings(ids)
 		}
-		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
 			cli.AssertID(id)
@@ -206,6 +232,9 @@ func config(cmd *cobra.Command, ids []string) {
 
 func config_modify(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
+	if len(args) == 0 {
+		args = cli.Read(os.Stdin)
+	}
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -224,10 +253,14 @@ func config_modify(cmd *cobra.Command, args []string) {
 func subnets(cmd *cobra.Command, ids []string) {
 	c := cli.NewClient(server)
 	if len(ids) == 0 {
-		for _, hv := range getHVs(c) {
-			ids = append(ids, hv["id"].(string))
+		if termutil.Isatty(os.Stdin.Fd()) {
+			for _, hv := range getHVs(c) {
+				ids = append(ids, hv["id"].(string))
+			}
+		} else {
+			ids = cli.Read(os.Stdin)
+			sort.Strings(ids)
 		}
-		sort.Strings(ids)
 	} else {
 		for _, id := range ids {
 			cli.AssertID(id)
@@ -242,6 +275,9 @@ func subnets(cmd *cobra.Command, ids []string) {
 
 func subnets_modify(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
+	if len(args) == 0 {
+		args = cli.Read(os.Stdin)
+	}
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
@@ -259,6 +295,9 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 
 func subnets_del(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
+	if len(args) == 0 {
+		args = cli.Read(os.Stdin)
+	}
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even amount of args")
 	}
