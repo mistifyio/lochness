@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"sort"
 
-	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/mistifyio/lochness/pkg/internal/cli"
 	"github.com/spf13/cobra"
@@ -17,138 +14,85 @@ var (
 	t       = "application/json"
 )
 
-type (
-	jmap      map[string]interface{}
-	jmapSlice []jmap
-)
-
-func (j jmap) ID() string {
-	return j["id"].(string)
-}
-
-func (j jmap) String() string {
-	buf, err := json.Marshal(&j)
-	if err != nil {
-		return ""
-	}
-	return string(buf)
-}
-
-func (j jmap) Print() {
-	if jsonout {
-		fmt.Println(j)
-	} else {
-		fmt.Println(j.ID())
-	}
-}
-
-func (js jmapSlice) Len() int {
-	return len(js)
-}
-
-func (js jmapSlice) Less(i, j int) bool {
-	return js[i].ID() < js[j].ID()
-}
-
-func (js jmapSlice) Swap(i, j int) {
-	js[j], js[i] = js[i], js[j]
-}
-
-func assertID(id string) {
-	if uuid := uuid.Parse(id); uuid == nil {
-		log.WithField("id", id).Fatal("invalid id")
-	}
-}
-
-func assertSpec(spec string) {
-	j := jmap{}
-	if err := json.Unmarshal([]byte(spec), &j); err != nil {
-		log.WithFields(log.Fields{
-			"spec":  spec,
-			"error": err,
-		}).Fatal("invalid spec")
-	}
-}
-
 func help(cmd *cobra.Command, _ []string) {
 	cmd.Help()
 }
 
-func getGuests(c *cli.Client) []jmap {
+func getGuests(c *cli.Client) []cli.JMap {
 	ret := c.GetMany("guests", "guests")
-	guests := make([]jmap, len(ret))
+	guests := make([]cli.JMap, len(ret))
 	for i := range ret {
 		guests[i] = ret[i]
 	}
 	return guests
 }
 
-func getGuest(c *cli.Client, id string) jmap {
+func getGuest(c *cli.Client, id string) cli.JMap {
 	return c.Get("guest", "guests/"+id)
 }
 
-func createGuest(c *cli.Client, spec string) jmap {
+func createGuest(c *cli.Client, spec string) cli.JMap {
 	return c.Post("guest", "guests", spec)
 }
 
-func modifyGuest(c *cli.Client, id string, spec string) jmap {
+func modifyGuest(c *cli.Client, id string, spec string) cli.JMap {
 	return c.Patch("guest", "guests/"+id, spec)
 }
 
-func deleteGuest(c *cli.Client, id string) jmap {
+func deleteGuest(c *cli.Client, id string) cli.JMap {
 	return c.Del("hypervisor", "guests/"+id)
 }
 
 func list(cmd *cobra.Command, ids []string) {
-	c := cli.New(server)
-	guests := []jmap{}
+	c := cli.NewClient(server)
+	guests := []cli.JMap{}
 
 	if len(ids) == 0 {
 		guests = getGuests(c)
-		sort.Sort(jmapSlice(guests))
+		sort.Sort(cli.JMapSlice(guests))
 	} else {
 		for _, id := range ids {
-			assertID(id)
+			cli.AssertID(id)
 			guests = append(guests, getGuest(c, id))
 		}
 	}
 
 	for _, guest := range guests {
-		guest.Print()
+		guest.Print(jsonout)
 	}
 }
 
 func create(cmd *cobra.Command, specs []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	for _, spec := range specs {
-		assertSpec(spec)
+		cli.AssertSpec(spec)
 		guest := createGuest(c, spec)
-		guest.Print()
+		guest.Print(jsonout)
 	}
 }
 
 func modify(cmd *cobra.Command, args []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	if len(args)%2 != 0 {
 		log.WithField("num", len(args)).Fatal("expected an even number of args")
 	}
 	for i := 0; i < len(args); i += 2 {
 		id := args[i]
-		assertID(id)
+		cli.AssertID(id)
 		spec := args[i+1]
-		assertSpec(spec)
+		cli.AssertSpec(spec)
 
 		guest := modifyGuest(c, id, spec)
-		guest.Print()
+		guest.Print(jsonout)
 	}
 }
 
 func del(cmd *cobra.Command, ids []string) {
-	c := cli.New(server)
+	c := cli.NewClient(server)
 	for _, id := range ids {
-		assertID(id)
+		cli.AssertID(id)
 		guest := deleteGuest(c, id)
-		guest.Print()
+		guest.Print(jsonout)
 	}
 }
 
