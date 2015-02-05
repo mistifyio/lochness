@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	_ "expvar"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -23,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
+	flag "github.com/ogier/pflag"
 )
 
 type Server struct {
@@ -40,8 +40,8 @@ boot
 `
 
 func main() {
-	address := flag.String("port", ":8888", "address to listen")
-	eaddr := flag.String("etcd", "http://localhost:4001", "address of etcd machine")
+	port := flag.Uint("port", 8888, "address to listen")
+	eaddr := flag.String("etcd", "http://127.0.0.1:4001", "address of etcd machine")
 	baseUrl := flag.String("base", "http://ipxe.mistify.local:8888", "base address of bits request")
 	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
 	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
@@ -105,7 +105,7 @@ func main() {
 			json.NewEncoder(w).Encode(sink)
 		}))
 
-	log.Fatal(http.ListenAndServe(*address, router))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), router))
 }
 
 func ipxeHandler(w http.ResponseWriter, r *http.Request) {
