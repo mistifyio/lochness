@@ -53,7 +53,7 @@ func main() {
 	bstalk := flag.StringP("beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
 	logLevel := flag.StringP("log-level", "l", "warn", "log level")
 	addr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	haddr := flag.StringP("http", "p", ":27543", "address for http interface. set to blank to disable")
+	port := flag.UintP("http", "p", 7543, "address for http interface. set to 0 to disable")
 	flag.Parse()
 
 	// set with flag?
@@ -87,7 +87,7 @@ func main() {
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, ms)
 
-	if *haddr != "" {
+	if *port != 0 {
 
 		http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(200)
@@ -96,7 +96,7 @@ func main() {
 		}))
 
 		go func() {
-			log.Fatal(http.ListenAndServe(*haddr, nil))
+			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
 		}()
 
 	}
