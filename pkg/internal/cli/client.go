@@ -68,7 +68,7 @@ func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
 	return ret
 }
 
-func (c *Client) Del(title, endpoint string) map[string]interface{} {
+func (c *Client) Delete(title, endpoint string) map[string]interface{} {
 	addr := c.URLString(endpoint)
 	req, err := http.NewRequest("DELETE", addr, nil)
 	if err != nil {

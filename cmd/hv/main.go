@@ -108,11 +108,11 @@ func modifySubnets(c *cli.Client, id string, spec string) cli.JMap {
 }
 
 func deleteHV(c *cli.Client, id string) cli.JMap {
-	return c.Del("hypervisor", "hypervisors/"+id)
+	return c.Delete("hypervisor", "hypervisors/"+id)
 }
 
 func deleteSubnet(c *cli.Client, hv, subnet string) cli.JMap {
-	return c.Del("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
+	return c.Delete("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
 }
 
 func list(cmd *cobra.Command, args []string) {
