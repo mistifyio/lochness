@@ -123,6 +123,35 @@ func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
 	return ret
 }
 
+func parseError(dec *json.Decoder) (string, []interface{}) {
+	jmap := JMap{}
+	err := dec.Decode(&jmap)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "parseError",
+		}).Error("failed to parse json")
+		return "", []interface{}{}
+	}
+
+	msg := ""
+	iface, ok := jmap["message"]
+	if ok {
+		if str, ok := iface.(string); ok {
+			msg = str
+		}
+	}
+
+	stack := []interface{}{}
+	iface, ok = jmap["stack"]
+	if ok {
+		if slice, ok := iface.([]interface{}); ok {
+			stack = slice
+		}
+	}
+	return msg, stack
+}
+
 func processResponse(response *http.Response, title, action string, status int, dest interface{}) {
 	defer response.Body.Close()
 
