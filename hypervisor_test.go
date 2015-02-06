@@ -1,6 +1,7 @@
 package lochness_test
 
 import (
+	"os"
 	"testing"
 
 	h "github.com/bakins/test-helpers"
@@ -93,4 +94,57 @@ func TestHypervisorDestroy(t *testing.T) {
 	err := hv.Destroy()
 	h.Ok(t, err)
 	// need a test with a guest
+}
+
+func TestSetHypervisorID(t *testing.T) {
+	// passing test with uuid
+	uuid := "d3cac004-4d89-4f26-9776-97df74a41417"
+	id, err := lochness.SetHypervisorID(uuid)
+	h.Ok(t, err)
+	h.Equals(t, uuid, id)
+
+	id, err = lochness.SetHypervisorID("foo")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Equals(t, "", id)
+
+	// set with ENV
+	uuid = "3e0f2128-0342-49f6-8e5f-ecd401bae99e"
+	os.Setenv("HYPERVISOR_ID", uuid)
+	id, err = lochness.SetHypervisorID("")
+	h.Ok(t, err)
+	h.Equals(t, uuid, id)
+
+}
+
+func TestGetHypervisorID(t *testing.T) {
+	uuid := "d3cac004-4d89-4f26-9776-97df74a41417"
+	id, err := lochness.SetHypervisorID(uuid)
+	h.Ok(t, err)
+	h.Equals(t, uuid, id)
+
+	id = lochness.GetHypervisorID()
+	h.Equals(t, uuid, id)
+
+}
+
+func TestVerifyOnHV(t *testing.T) {
+	defer contextCleanup(t)
+	hv := newHypervisor(t)
+
+	// failing test
+	uuid := "d3cac004-4d89-4f26-9776-97df74a41417"
+	id, err := lochness.SetHypervisorID(uuid)
+	h.Ok(t, err)
+	h.Equals(t, uuid, id)
+
+	err = hv.VerifyOnHV()
+	h.Assert(t, err != nil, "should have got an error")
+
+	// passing
+	id, err = lochness.SetHypervisorID(hv.ID)
+	h.Ok(t, err)
+	h.Equals(t, hv.ID, id)
+
+	err = hv.VerifyOnHV()
+	h.Ok(t, err)
 }
