@@ -21,7 +21,7 @@ func main() {
 	c := lochness.NewContext(e)
 
 	hn, err := lochness.SetHypervisorID(*hid)
-	if err != err {
+	if err != nil {
 		log.Fatal(err)
 	}
 
