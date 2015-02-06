@@ -215,10 +215,12 @@ func main() {
 	var err error
 
 	hn, err := lochness.SetHypervisorID(*hid)
-	log.WithFields(log.Fields{
-		"error": err,
-		"func":  "lochness.SetHypervisorID",
-	}).Fatal("failed")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "lochness.SetHypervisorID",
+		}).Fatal("failed")
+	}
 
 	log.WithField("hypervisor_id", hn).Warn("using id")
 
