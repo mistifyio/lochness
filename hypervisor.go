@@ -243,13 +243,14 @@ func cpu() (uint32, error) {
 	return uint32(count - 1), scanner.Err()
 }
 
-func checkUUID(id string) (string, error) {
+// canonicalizeUUID is a helper to ensure UUID's are in a single form and case
+func canonicalizeUUID(id string) (string, error) {
 	i := uuid.Parse(id)
 	if i == nil {
 		return "", fmt.Errorf("invalid UUID: %s", id)
 	}
 
-	return i.String(), nil
+	return strings.ToLower(i.String()), nil
 }
 
 // SetHypervisorID sets the id of the current hypervisor. It should be used by all daemons
@@ -258,36 +259,38 @@ func checkUUID(id string) (string, error) {
 // "HYPERVISOR_ID" and then using the hostname.  ID must be a valid UUID.
 // ID will be lowercased.
 func SetHypervisorID(id string) (string, error) {
-	hid := id
-
 	// the if statement approach is clunky and probably needs refining
 
-	if hid == "" {
-		hid = os.Getenv("HYPERVISOR_ID")
+	var err error
+
+	if id == "" {
+		id = os.Getenv("HYPERVISOR_ID")
 	}
 
-	if hid == "" {
-		var err error
-		hid, err = os.Hostname()
-		if err != err {
+	if id == "" {
+		id, err = os.Hostname()
+		if err != nil {
 			return "", err
 		}
 	}
-	if hid == "" {
+
+	if id == "" {
 		return "", errors.New("unable to discover an id to set")
 	}
 
-	i, err := checkUUID(hid)
+	id, err = canonicalizeUUID(id)
 	if err != nil {
 		return "", err
 	}
 
-	hypervisorID = strings.ToLower(i)
+	// purposefully set here rather than above, in case, for some reason,
+	// caller knows there is a previous, usable value
+	hypervisorID = id
 	return hypervisorID, nil
 }
 
 // GetHypervisorID gets the hypervisor id as set with SetHypervisorID. It does not
-// make an attempts to dicover the id if not set.
+// make an attempt to discover the id if not set.
 func GetHypervisorID() string {
 	return hypervisorID
 }
