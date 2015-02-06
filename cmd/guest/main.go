@@ -42,7 +42,7 @@ func modifyGuest(c *cli.Client, id string, spec string) cli.JMap {
 }
 
 func deleteGuest(c *cli.Client, id string) cli.JMap {
-	return c.Del("guest", "guests/"+id)
+	return c.Delete("guest", "guests/"+id)
 }
 
 func list(cmd *cobra.Command, args []string) {
