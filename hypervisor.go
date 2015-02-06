@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -142,9 +143,14 @@ func (c *Context) NewHypervisor() *Hypervisor {
 
 // Hypervisor fetches a Hypervisor from the config store.
 func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
+	var err error
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return nil, err
+	}
 	h := c.blankHypervisor(id)
 
-	err := h.Refresh()
+	err = h.Refresh()
 	if err != nil {
 		return nil, err
 	}
@@ -238,6 +244,16 @@ func cpu() (uint32, error) {
 		}
 	}
 	return uint32(count - 1), scanner.Err()
+}
+
+// canonicalizeUUID is a helper to ensure UUID's are in a single form and case
+func canonicalizeUUID(id string) (string, error) {
+	i := uuid.Parse(id)
+	if i == nil {
+		return "", fmt.Errorf("invalid UUID: %s", id)
+	}
+
+	return strings.ToLower(i.String()), nil
 }
 
 // verifyOnHV verifies that it is being ran on hypervisor with same hostname as id.

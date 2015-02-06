@@ -139,12 +139,17 @@ func (c *Context) NewGuest() *Guest {
 
 // Guest fetches a Guest from the config store
 func (c *Context) Guest(id string) (*Guest, error) {
+	var err error
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return nil, err
+	}
 	g := &Guest{
 		context: c,
 		ID:      id,
 	}
 
-	err := g.Refresh()
+	err = g.Refresh()
 	if err != nil {
 		return nil, err
 	}

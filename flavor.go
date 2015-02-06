@@ -47,12 +47,17 @@ func (c *Context) NewFlavor() *Flavor {
 
 // Flavor fetches a single Flavor from the config store
 func (c *Context) Flavor(id string) (*Flavor, error) {
+	var err error
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return nil, err
+	}
 	f := &Flavor{
 		context: c,
 		ID:      id,
 	}
 
-	err := f.Refresh()
+	err = f.Refresh()
 	if err != nil {
 		return nil, err
 	}

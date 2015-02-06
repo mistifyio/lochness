@@ -3,6 +3,7 @@ package lochness_test
 import (
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -139,4 +140,16 @@ func TestGuestWithoutMAC(t *testing.T) {
 	h.Ok(t, err)
 
 	h.Equals(t, net.HardwareAddr(nil), g.MAC)
+}
+
+func TestGuestWithBadID(t *testing.T) {
+	c := newContext(t)
+	_, err := c.Guest("")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
+	_, err = c.Guest("foo")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
 }
