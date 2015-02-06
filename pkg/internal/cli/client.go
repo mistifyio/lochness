@@ -85,17 +85,9 @@ func (c *Client) Delete(title, endpoint string) map[string]interface{} {
 			"address": addr,
 		}).Fatal("unable to complete request")
 	}
-	if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"status": resp.Status,
-			"code":   resp.StatusCode,
-		}).Fatal("failed to delete "+title, ", perhaps it still has guests or subnets?")
-	}
 
 	ret := map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
-	}
+	processResponse(resp, title, "delete", http.StatusOK, &ret)
 	return ret
 }
 
