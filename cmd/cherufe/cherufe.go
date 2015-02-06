@@ -206,7 +206,7 @@ func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
 
 func main() {
 	eaddr := flag.String("etcd", "http://localhost:4001", "etcd cluster address")
-	hid := flag.String("hid", "", "hypervisor id")
+	id := flag.String("id", "", "hypervisor id")
 	flag.Parse()
 
 	e := etcd.NewClient([]string{*eaddr})
@@ -214,7 +214,7 @@ func main() {
 
 	var err error
 
-	hn, err := lochness.SetHypervisorID(*hid)
+	hn, err := lochness.SetHypervisorID(*id)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -222,7 +222,7 @@ func main() {
 		}).Fatal("failed")
 	}
 
-	log.WithField("hypervisor_id", hn).Warn("using id")
+	log.WithField("hypervisor_id", hn).Info("using id")
 
 	hv, err = c.Hypervisor(hn)
 	if err != nil {
