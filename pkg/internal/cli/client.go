@@ -155,14 +155,28 @@ func parseError(dec *json.Decoder) (string, []interface{}) {
 func processResponse(response *http.Response, title, action string, status int, dest interface{}) {
 	defer response.Body.Close()
 
-	if response.StatusCode != status {
-		log.WithFields(log.Fields{
-			"status": response.Status,
-			"code":   response.StatusCode,
-		}).Fatal("failed to " + action + " " + title)
+	dec := json.NewDecoder(response.Body)
+	if response.StatusCode == status {
+		if err := dec.Decode(dest); err != nil {
+			log.WithField("error", err).Fatal("failed to parse json")
+		}
+		return
 	}
 
-	if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
-		log.WithField("error", err).Fatal("failed to parse json")
+	fields := log.Fields{
+		"status": response.Status,
+		"code":   response.StatusCode,
 	}
+
+	msg, stack := parseError(dec)
+	if msg != "" {
+		fields["message"] = msg
+	}
+	if len(stack) > 0 {
+		if log.GetLevel() >= log.DebugLevel {
+			fields["stack"] = stack
+		}
+	}
+
+	log.WithFields(fields).Fatal("failed to " + action + " " + title)
 }
