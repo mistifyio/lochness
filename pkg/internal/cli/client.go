@@ -56,7 +56,7 @@ func (c *Client) Get(title, endpoint string) map[string]interface{} {
 }
 
 func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
-	resp, err := c.c.Post(c.addr+endpoint, c.t, strings.NewReader(body))
+	resp, err := c.c.Post(c.URLString(endpoint), c.t, strings.NewReader(body))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
