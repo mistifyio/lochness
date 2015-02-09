@@ -132,12 +132,17 @@ func (c *Context) NewFWGroup() *FWGroup {
 
 // FWGroup fetches a FWGroup from the config store
 func (c *Context) FWGroup(id string) (*FWGroup, error) {
+	var err error
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return nil, err
+	}
 	g := &FWGroup{
 		context: c,
 		ID:      id,
 	}
 
-	err := g.Refresh()
+	err = g.Refresh()
 	if err != nil {
 		return nil, err
 	}

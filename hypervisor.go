@@ -145,9 +145,14 @@ func (c *Context) NewHypervisor() *Hypervisor {
 
 // Hypervisor fetches a Hypervisor from the config store.
 func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
+	var err error
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return nil, err
+	}
 	h := c.blankHypervisor(id)
 
-	err := h.Refresh()
+	err = h.Refresh()
 	if err != nil {
 		return nil, err
 	}

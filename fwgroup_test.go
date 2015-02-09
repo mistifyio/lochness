@@ -32,3 +32,15 @@ func TestFWGroupJson(t *testing.T) {
 
 	h.Assert(t, strings.Contains(string(b), "192.168.1.0/24"), "incorrect source information")
 }
+
+func TestFWGroupWithBadID(t *testing.T) {
+	c := newContext(t)
+	_, err := c.FWGroup("")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
+	_, err = c.FWGroup("foo")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
+}

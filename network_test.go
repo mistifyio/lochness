@@ -1,6 +1,7 @@
 package lochness_test
 
 import (
+	"strings"
 	"testing"
 
 	h "github.com/bakins/test-helpers"
@@ -39,4 +40,16 @@ func TestNetworkAddSubnet(t *testing.T) {
 
 func TestNetworkAlias(t *testing.T) {
 	_ = lochness.Networks([]*lochness.Network{})
+}
+
+func TestNetworkWithBadID(t *testing.T) {
+	c := newContext(t)
+	_, err := c.Network("")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
+	_, err = c.Network("foo")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
 }

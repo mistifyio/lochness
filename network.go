@@ -50,8 +50,13 @@ func (c *Context) NewNetwork() *Network {
 
 // Network fetches a Network from the data store.
 func (c *Context) Network(id string) (*Network, error) {
+	var err error
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return nil, err
+	}
 	n := c.blankNetwork(id)
-	err := n.Refresh()
+	err = n.Refresh()
 	if err != nil {
 		return nil, err
 	}

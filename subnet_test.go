@@ -132,3 +132,15 @@ func TestSubnetReleaseAddress(t *testing.T) {
 func TestSubnetsAlias(t *testing.T) {
 	_ = lochness.Subnets([]*lochness.Subnet{})
 }
+
+func TestSubnetWithBadID(t *testing.T) {
+	c := newContext(t)
+	_, err := c.Subnet("")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
+	_, err = c.Subnet("foo")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
+}

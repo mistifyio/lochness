@@ -111,8 +111,13 @@ func (c *Context) NewSubnet() *Subnet {
 
 // Subnet fetches a single subnet by ID
 func (c *Context) Subnet(id string) (*Subnet, error) {
+	var err error
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return nil, err
+	}
 	s := c.blankSubnet(id)
-	err := s.Refresh()
+	err = s.Refresh()
 	if err != nil {
 		return nil, err
 	}

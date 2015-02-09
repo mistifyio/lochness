@@ -2,6 +2,7 @@ package lochness_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	h "github.com/bakins/test-helpers"
@@ -94,6 +95,18 @@ func TestHypervisorDestroy(t *testing.T) {
 	err := hv.Destroy()
 	h.Ok(t, err)
 	// need a test with a guest
+}
+
+func TestHypervisorWithBadID(t *testing.T) {
+	c := newContext(t)
+	_, err := c.Hypervisor("")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
+	_, err = c.Hypervisor("foo")
+	h.Assert(t, err != nil, "should have got an error")
+	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+
 }
 
 func TestSetHypervisorID(t *testing.T) {
