@@ -200,16 +200,9 @@ func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
 	}
 }
 
-func main() {
-	eaddr := "http://localhost:4001"
-	hn := ""
-	flag.StringVarP(&eaddr, "etcd", "e", eaddr, "etcd cluster address")
-	flag.StringVarP(&hn, "id", "i", hn, "hypervisor id")
-	flag.Parse()
 
-	e := etcd.NewClient([]string{eaddr})
-	c := lochness.NewContext(e)
 
+func getHV(hn string, e *etcd.Client, c *lochness.Context) *lochness.Hypervisor {
 	var err error
 	hn, err = lochness.SetHypervisorID(hn)
 	if err != nil {
@@ -228,6 +221,19 @@ func main() {
 			"func":  "context.Hypervisor",
 		}).Fatal("failed to fetch hypervisor info")
 	}
+	return hv
+}
+
+func main() {
+	eaddr := "http://localhost:4001"
+	hn := ""
+	flag.StringVarP(&eaddr, "etcd", "e", eaddr, "etcd cluster address")
+	flag.StringVarP(&hn, "id", "i", hn, "hypervisor id")
+	flag.Parse()
+
+	e := etcd.NewClient([]string{eaddr})
+	c := lochness.NewContext(e)
+	hv := getHV(hn, e, c)
 
 	stop := make(chan bool)
 	ch := make(chan struct{})
