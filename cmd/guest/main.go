@@ -120,7 +120,7 @@ func main() {
 		Long: "guest is the cli interface to waheela. All commands support arguments via command line or stdin.",
 		Run:  help,
 	}
-	root.PersistentFlags().BoolVarP(&jsonout, "jsonout", "j", jsonout, "output in json")
+	root.PersistentFlags().BoolVarP(&jsonout, "json", "j", jsonout, "output in json")
 	root.PersistentFlags().StringVarP(&server, "server", "s", server, "server address to connect to")
 
 	cmdList := &cobra.Command{
