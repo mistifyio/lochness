@@ -206,22 +206,24 @@ func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
 
 func main() {
 	eaddr := flag.String("etcd", "http://localhost:4001", "etcd cluster address")
+	id := flag.String("id", "", "hypervisor id")
 	flag.Parse()
 
 	e := etcd.NewClient([]string{*eaddr})
 	c := lochness.NewContext(e)
 
 	var err error
-	hn := os.Getenv("TEST_HOSTNAME")
-	if hn == "" {
-		hn, err = os.Hostname()
+
+	hn, err := lochness.SetHypervisorID(*id)
+	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "os.Hostname",
-		}).Fatal("failed to get hostname")
-	} else {
-		log.WithField("hostname", hn).Warn("environment is overriding hostname")
+			"func":  "lochness.SetHypervisorID",
+		}).Fatal("failed")
 	}
+
+	log.WithField("hypervisor_id", hn).Info("using id")
+
 	hv, err = c.Hypervisor(hn)
 	if err != nil {
 		log.WithFields(log.Fields{
