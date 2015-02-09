@@ -24,8 +24,6 @@ const (
 	nftPortRange  = "ip daddr %s %s dport %d - %d %s"
 )
 
-var hv *lochness.Hypervisor
-
 type group struct {
 	Name int
 	ID   string
@@ -38,7 +36,7 @@ type templateData struct {
 	Sources []group
 }
 
-func genRules(e *etcd.Client, c *lochness.Context) (templateData, error) {
+func genRules(hv *lochness.Hypervisor, c *lochness.Context) (templateData, error) {
 	if err := hv.Refresh(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -223,7 +221,7 @@ func main() {
 
 	log.WithField("hypervisor_id", hn).Info("using id")
 
-	hv, err = c.Hypervisor(hn)
+	hv, err := c.Hypervisor(hn)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -243,7 +241,7 @@ func main() {
 
 	// TODO: batching?
 	for range ch {
-		td, err := genRules(e, c)
+		td, err := genRules(hv, c)
 		if err != nil {
 			continue
 		}
