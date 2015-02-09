@@ -29,6 +29,7 @@ type (
 	// Job is a single job for a guest such as create, delete, etc.
 	Job struct {
 		ID            string `json:"id"`
+		RemoteID      string `json:"remote"` // ID of remote hypervisor/guest job
 		Action        string `json:"action"`
 		Guest         string `json:"guest"`
 		Error         string `json:"error,omitempty"`
