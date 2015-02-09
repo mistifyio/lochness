@@ -4,7 +4,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -17,6 +16,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	flag "github.com/ogier/pflag"
 )
 
 const (
@@ -203,16 +203,17 @@ func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
 }
 
 func main() {
-	eaddr := flag.String("etcd", "http://localhost:4001", "etcd cluster address")
-	id := flag.String("id", "", "hypervisor id")
+	eaddr := "http://localhost:4001"
+	hn := ""
+	flag.StringVarP(&eaddr, "etcd", "e", eaddr, "etcd cluster address")
+	flag.StringVarP(&hn, "id", "i", hn, "hypervisor id")
 	flag.Parse()
 
-	e := etcd.NewClient([]string{*eaddr})
+	e := etcd.NewClient([]string{eaddr})
 	c := lochness.NewContext(e)
 
 	var err error
-
-	hn, err := lochness.SetHypervisorID(*id)
+	hn, err = lochness.SetHypervisorID(hn)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
