@@ -123,76 +123,43 @@ func (agent *MistifyAgent) request(url, httpMethod string, expectedCode int, dat
 	return body, resp.Header.Get("X-Guest-Job-ID"), err
 }
 
-// guestRequest makes requests for a guest to a hypervisor agent. It wraps
-// MistifyAgent.request, generating the url, parsing the result, and handling job
-// status polling
-func (agent *MistifyAgent) guestRequest(hypervisor *Hypervisor, guestID string, actionName string, dataObj interface{}) (*client.Guest, error) {
+// getHypervisor loads the hypervisor based on guest id
+func (agent *MistifyAgent) getHypervisor(guestID string) (*Hypervisor, error) {
+	guest, err := agent.context.Guest(guestID)
+	if err != nil {
+		return nil, err
+	}
+	hypervisor, err := agent.context.Hypervisor(guest.HypervisorID)
+	if err != nil {
+		return nil, err
+	}
+	return hypervisor, nil
+}
+
+// requestGuestAction makes requests for a guest to a hypervisor agent.
+func (agent *MistifyAgent) requestGuestAction(guestID, actionName string) (string, error) {
+	hypervisor, err := agent.getHypervisor(guestID)
+	if err != nil {
+		return "", err
+	}
 	url := agent.guestActionURL(hypervisor.IP.String(), guestID, actionName)
 
-	// Determine appropriate http method and response code
-	httpCode := http.StatusAccepted
-	httpMethod := "POST"
-	if actionName == "get" {
-		httpCode = http.StatusOK
-		httpMethod = "GET"
-	}
-
 	// Make the request
-	body, jobID, err := agent.request(url, httpMethod, httpCode, dataObj)
+	_, jobID, err := agent.request(url, "POST", http.StatusAccepted, nil)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	// Parse the response
-	var guest client.Guest
-	if err := json.Unmarshal(body, &guest); err != nil {
-		return nil, err
-	}
-
-	// If there's no jobID to poll for, return now
-	if jobID == "" {
-		return &guest, nil
-	}
-
-	return &guest, agent.waitForGuestJob(hypervisor, guestID, jobID)
-}
-
-// requestGuestAction makes requests for a guest to a hypervisor agent. It wraps
-// MistifyAgent.guestRequest, looking up the hypervisor
-func (agent *MistifyAgent) requestGuestAction(guestID, actionName string) (*client.Guest, error) {
-	g, err := agent.context.Guest(guestID)
-	if err != nil {
-		return nil, err
-	}
-	hypervisor, err := agent.context.Hypervisor(g.HypervisorID)
-	if err != nil {
-		return nil, err
-	}
-
-	guest, err := agent.guestRequest(hypervisor, guestID, actionName, nil)
-	return guest, err
-}
-
-// waitForGuestJob polls the hypervisor for the job status until it errors or
-// finishes
-func (agent *MistifyAgent) waitForGuestJob(hypervisor *Hypervisor, guestID, jobID string) error {
-	url := agent.guestJobURL(hypervisor.IP.String(), guestID, jobID)
-	done := false
-	var err error
-	for !done {
-		done, err = agent.checkJobStatus(url)
-		if err != nil {
-			return err
-		}
-		time.Sleep(1 * time.Second)
-	}
-	return nil
+	return jobID, nil
 }
 
 // checkJobStatus looks up whether a guest job has been completed or not.
-// Since it is likely to be called multiple times, it takes a url rather than
-// regenerating it every time from components
-func (agent *MistifyAgent) checkJobStatus(url string) (bool, error) {
+func (agent *MistifyAgent) CheckJobStatus(guestID, jobID string) (bool, error) {
+	hypervisor, err := agent.getHypervisor(guestID)
+	if err != nil {
+		return false, err
+	}
+	url := agent.guestJobURL(hypervisor.IP.String(), guestID, jobID)
 	body, _, err := agent.request(url, "GET", http.StatusOK, nil)
 	if err != nil {
 		return false, err
@@ -207,7 +174,7 @@ func (agent *MistifyAgent) checkJobStatus(url string) (bool, error) {
 	case magent.Complete:
 		return true, nil
 	case magent.Errored:
-		return false, errors.New(job.Message)
+		return true, errors.New(job.Message)
 	default:
 		return false, nil
 	}
@@ -215,54 +182,55 @@ func (agent *MistifyAgent) checkJobStatus(url string) (bool, error) {
 
 // GetGuest retrieves information on a guest from an agent
 func (agent *MistifyAgent) GetGuest(guestID string) (*client.Guest, error) {
-	guest, err := agent.requestGuestAction(guestID, "get")
-	return guest, err
+	hypervisor, err := agent.getHypervisor(guestID)
+	if err != nil {
+		return nil, err
+	}
+	url := agent.guestActionURL(hypervisor.IP.String(), guestID, "get")
+	body, _, err := agent.request(url, "GET", http.StatusOK, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the response
+	var g client.Guest
+	if err := json.Unmarshal(body, &g); err != nil {
+		return nil, err
+	}
+	return &g, err
 }
 
 // CreateGuest tries to create a new guest on a hypervisor selected from a list
 // of viable candidates
-func (agent *MistifyAgent) CreateGuest(guestID string) (*client.Guest, error) {
-	g, err := agent.context.Guest(guestID)
+func (agent *MistifyAgent) CreateGuest(guestID string) (string, error) {
+	guest, err := agent.context.Guest(guestID)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	candidates, err := g.Candidates(DefaultCadidateFuctions...)
+	hypervisor, err := agent.context.Hypervisor(guest.HypervisorID)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	guest, err := agent.generateClientGuest(g)
+	g, err := agent.generateClientGuest(guest)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	// Cycle through the candidates until one successfully creates. Track which
-	// one via the guest's HypervisorID
-	for _, hypervisor := range candidates {
-		guest, err = agent.guestRequest(hypervisor, guestID, "create", guest)
-		if err == nil {
-			g.HypervisorID = hypervisor.ID
-			if err := g.Save(); err != nil {
-				fmt.Printf("Guest created on Hypervisor %s, but guest info persist failed\n", hypervisor.ID)
-			}
-			return guest, nil
-		}
-		fmt.Printf("Guest Create Error: Guest %s, Hypervisor %s: %s\n", g.ID, hypervisor.ID, err)
-	}
-
-	return nil, errors.New("failed to create guest")
+	url := agent.guestActionURL(hypervisor.IP.String(), guestID, "create")
+	_, jobID, err := agent.request(url, "POST", http.StatusAccepted, g)
+	return jobID, err
 }
 
 // DeleteGuest deletes a guest from a hypervisor
-func (agent *MistifyAgent) DeleteGuest(guestID string) (*client.Guest, error) {
-	guest, err := agent.requestGuestAction(guestID, "delete")
-	return guest, err
+func (agent *MistifyAgent) DeleteGuest(guestID string) (string, error) {
+	jobID, err := agent.requestGuestAction(guestID, "delete")
+	return jobID, err
 }
 
 // GuestAction is used to run various actions on a guest under a hypervisor
 // Actions: "shutdown", "reboot", "restart", "poweroff", "start", "suspend"
-func (agent *MistifyAgent) GuestAction(guestID, actionName string) (*client.Guest, error) {
-	guest, err := agent.requestGuestAction(guestID, actionName)
-	return guest, err
+func (agent *MistifyAgent) GuestAction(guestID, actionName string) (string, error) {
+	jobID, err := agent.requestGuestAction(guestID, actionName)
+	return jobID, err
 }
