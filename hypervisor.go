@@ -20,6 +20,8 @@ import (
 var (
 	// HypervisorPath is the path in the config store
 	HypervisorPath = "lochness/hypervisors/"
+	// id of currently running hypervisor
+	hypervisorID = ""
 )
 
 type (
@@ -256,18 +258,52 @@ func canonicalizeUUID(id string) (string, error) {
 	return strings.ToLower(i.String()), nil
 }
 
-// verifyOnHV verifies that it is being ran on hypervisor with same hostname as id.
-func (h *Hypervisor) verifyOnHV() error {
-	hostname := os.Getenv("TEST_HOSTNAME")
-	if hostname == "" {
-		var err error
-		hostname, err = os.Hostname()
-		if err != err {
-			return err
+// SetHypervisorID sets the id of the current hypervisor. It should be used by all daemons
+// that are ran on a hypervisor and are expected to interact with the data stores directly.
+// Passing in a blank string will fall back to first checking the environment variable
+// "HYPERVISOR_ID" and then using the hostname.  ID must be a valid UUID.
+// ID will be lowercased.
+func SetHypervisorID(id string) (string, error) {
+	// the if statement approach is clunky and probably needs refining
+
+	var err error
+
+	if id == "" {
+		id = os.Getenv("HYPERVISOR_ID")
+	}
+
+	if id == "" {
+		id, err = os.Hostname()
+		if err != nil {
+			return "", err
 		}
 	}
-	if hostname != h.ID {
-		return errors.New("Hypervisor ID does not match hostname")
+
+	if id == "" {
+		return "", errors.New("unable to discover an id to set")
+	}
+
+	id, err = canonicalizeUUID(id)
+	if err != nil {
+		return "", err
+	}
+
+	// purposefully set here rather than above, in case, for some reason,
+	// caller knows there is a previous, usable value
+	hypervisorID = id
+	return hypervisorID, nil
+}
+
+// GetHypervisorID gets the hypervisor id as set with SetHypervisorID. It does not
+// make an attempt to discover the id if not set.
+func GetHypervisorID() string {
+	return hypervisorID
+}
+
+// VerifyOnHV verifies that it is being ran on hypervisor with same hostname as id.
+func (h *Hypervisor) VerifyOnHV() error {
+	if GetHypervisorID() != h.ID {
+		return errors.New("Hypervisor ID does not match hostname/environment")
 	}
 	return nil
 }
@@ -294,7 +330,7 @@ func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 // UpdateResources syncs Hypervisor resource usage to the data store. It should only be ran on
 // the actual hypervisor.
 func (h *Hypervisor) UpdateResources() error {
-	if err := h.verifyOnHV(); err != nil {
+	if err := h.VerifyOnHV(); err != nil {
 		return err
 	}
 
@@ -409,7 +445,7 @@ func (h *Hypervisor) heartbeatKey() string {
 // Heartbeat announces the avilibility of a hypervisor.  In general, this is useful for
 // service announcement/discovery. Should be ran from the hypervisor, or something monitoring it.
 func (h *Hypervisor) Heartbeat(ttl time.Duration) error {
-	if err := h.verifyOnHV(); err != nil {
+	if err := h.VerifyOnHV(); err != nil {
 		return err
 	}
 

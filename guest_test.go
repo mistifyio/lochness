@@ -2,7 +2,6 @@ package lochness_test
 
 import (
 	"net"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -62,7 +61,10 @@ func TestGuestCandidates(t *testing.T) {
 	err = hv.Save()
 	h.Ok(t, err)
 
-	os.Setenv("TEST_HOSTNAME", hv.ID)
+	// cheesy
+	_, err = lochness.SetHypervisorID(hv.ID)
+	h.Ok(t, err)
+
 	err = hv.Heartbeat(9999 * time.Second)
 	h.Ok(t, err)
 
