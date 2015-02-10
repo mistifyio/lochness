@@ -163,23 +163,27 @@ func applyRules(filename string, td templateData) error {
 	}
 	temp.Close()
 
-	cmd := exec.Command("nft", "-f", temp.Name())
+	return checkAndReload(filename, temp.Name())
+}
+
+func checkAndReload(permanet, temporary string) error {
+	cmd := exec.Command("nft", "-f", temporary)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "cmd.Run",
-		}).Error("nft command returned an error")
+		}).Error("nft does not like the generated rules file")
 		return err
 	}
 
-	if err = os.Rename(temp.Name(), filename); err != nil {
+	if err = os.Rename(temporary, permanet); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.Rename",
-			"file":  temp.Name(),
+			"file":  temporary,
 		}).Error("failed to overwrite nftables.conf")
 	}
 	return err
