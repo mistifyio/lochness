@@ -5,7 +5,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -140,8 +139,8 @@ func genRules(hv *lochness.Hypervisor, c *lochness.Context) (templateData, error
 	return tData, nil
 }
 
-func applyRules(td templateData) error {
-	temp, err := ioutil.TempFile("", "nft-")
+func applyRules(filename string, td templateData) error {
+	file, err := os.OpenFile(filename, os.O_WRONLY, 0600)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -149,21 +148,20 @@ func applyRules(td templateData) error {
 		}).Error("failed to create temporary file")
 		return err
 	}
-	defer os.Remove(temp.Name())
 
-	err = nftWrite(temp, td.IP, td.Sources, td.Rules)
+	err = nftWrite(file, td.IP, td.Sources, td.Rules)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "nftWrite",
 		}).Error("template returned an error")
-		temp.Close()
+		file.Close()
 		return err
 	}
-	temp.Close()
+	file.Close()
 
 	// TODO: store rules file and do atomic-update/rollbacks?
-	cmd := exec.Command("nft", "-f", temp.Name())
+	cmd := exec.Command("nft", "-f", file.Name())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -200,8 +198,6 @@ func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
 	}
 }
 
-
-
 func getHV(hn string, e *etcd.Client, c *lochness.Context) *lochness.Hypervisor {
 	var err error
 	hn, err = lochness.SetHypervisorID(hn)
@@ -227,6 +223,7 @@ func getHV(hn string, e *etcd.Client, c *lochness.Context) *lochness.Hypervisor 
 func main() {
 	eaddr := "http://localhost:4001"
 	hn := ""
+	rules := "/etc/nftables.conf"
 	flag.StringVarP(&eaddr, "etcd", "e", eaddr, "etcd cluster address")
 	flag.StringVarP(&hn, "id", "i", hn, "hypervisor id")
 	flag.Parse()
@@ -251,8 +248,6 @@ func main() {
 		if err != nil {
 			continue
 		}
-		if err := applyRules(td); err != nil {
-			continue
-		}
+		applyRules(rules, td)
 	}
 }
