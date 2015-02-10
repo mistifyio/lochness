@@ -9,18 +9,22 @@ import (
 )
 
 // RegisterGuestRoutes registers the guest routes and handlers
-func RegisterGuestRoutes(prefix string, router *mux.Router) {
+func RegisterGuestRoutes(prefix string, router *mux.Router, m *metricsContext) {
 	guestMiddleware := alice.New(
 		loadGuest,
 	)
 
-	router.HandleFunc(prefix, ListGuests).Methods("GET")
-	router.HandleFunc(prefix, CreateGuest).Methods("POST")
+	router.Handle(prefix, m.mmw.HandlerFunc(ListGuests, "list")).Methods("GET")
+	router.Handle(prefix, m.mmw.HandlerFunc(CreateGuest, "create")).Methods("POST")
+
 	// TODO: Figure out a cleaner way to do middleware on the subrouter
 	sub := router.PathPrefix(prefix).Subrouter()
-	sub.Handle("/{guestID}", guestMiddleware.Then(http.HandlerFunc(GetGuest))).Methods("GET")
-	sub.Handle("/{guestID}", guestMiddleware.Then(http.HandlerFunc(UpdateGuest))).Methods("PATCH")
-	sub.Handle("/{guestID}", guestMiddleware.Then(http.HandlerFunc(DestroyGuest))).Methods("DELETE")
+
+	// XXX: could do a simple struct that had the info and range over it to set this up
+	sub.Handle("/{guestID}", guestMiddleware.Append(m.mmw.HandlerWrapper("get")).ThenFunc(GetGuest)).Methods("GET")
+	sub.Handle("/{guestID}", guestMiddleware.Append(m.mmw.HandlerWrapper("update")).ThenFunc(UpdateGuest)).Methods("PATCH")
+	sub.Handle("/{guestID}", guestMiddleware.Append(m.mmw.HandlerWrapper("destroy")).ThenFunc(DestroyGuest)).Methods("DELETE")
+
 }
 
 // ListGuests gets a list of all guests
