@@ -185,6 +185,18 @@ func checkAndReload(permanet, temporary string) error {
 			"func":  "os.Rename",
 			"file":  temporary,
 		}).Error("failed to overwrite nftables.conf")
+		return err
+	}
+
+	cmd = exec.Command("systemctl", "reload", "nftables.service")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "systemctl restart nftables.service",
+		}).Error("systemctl returned and error")
 	}
 	return err
 }
