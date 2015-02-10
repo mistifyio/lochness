@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	// WorkTube is the name of the beanstalk tube for work tasks
 	WorkTube = "work"
 )
 
@@ -121,6 +122,9 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet) {
 			} else {
 				_ = updateJobStatus(task, lochness.JobStatusDone, nil)
 			}
+			if task.Job != nil {
+				log.WithFields(logFields).Infof("job status: %s", task.Job.Status)
+			}
 			log.WithFields(logFields).Info("removing task")
 			deleteTask(task)
 		} else {
@@ -146,7 +150,7 @@ func setupMetrics(port uint) *metrics.Metrics {
 		http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(200)
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(ms)
+			_ = json.NewEncoder(w).Encode(ms)
 		}))
 
 		go func() {
@@ -215,8 +219,7 @@ func processTask(task *Task) (bool, error) {
 			return true, err
 		}
 	case lochness.JobStatusWorking:
-		if done, err := checkWorkingJob(task); done {
-
+		if done, err := checkWorkingJob(task); done || err != nil {
 			return true, err
 		}
 	}
@@ -232,6 +235,8 @@ func startJob(task *Task) error {
 	var jobID string
 	switch job.Action {
 	case "hypervisor-create":
+		jobID, err = agent.CreateGuest(task.Guest.ID)
+	case "create":
 		jobID, err = agent.CreateGuest(task.Guest.ID)
 	case "delete":
 		jobID, err = agent.DeleteGuest(task.Guest.ID)
@@ -249,7 +254,7 @@ func startJob(task *Task) error {
 
 func checkWorkingJob(task *Task) (bool, error) {
 	agent := task.ctx.NewMistifyAgent()
-	done, err := agent.CheckJobStatus(task.Guest.ID, task.Job.RemoteID)
+	done, err := agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
 	return done, err
 }
 
