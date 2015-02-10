@@ -220,13 +220,28 @@ func getHV(hn string, e *etcd.Client, c *lochness.Context) *lochness.Hypervisor 
 	return hv
 }
 
+func canonicalizeRules(rules string) string {
+	path, err := filepath.Abs(rules)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "filepath.Abs",
+			"file":  rules,
+		}).Fatal("failed to get absolute filename")
+	}
+	return path
+}
+
 func main() {
 	eaddr := "http://localhost:4001"
 	hn := ""
 	rules := "/etc/nftables.conf"
 	flag.StringVarP(&eaddr, "etcd", "e", eaddr, "etcd cluster address")
 	flag.StringVarP(&hn, "id", "i", hn, "hypervisor id")
+	flag.StringVarP(&rules, "file", "f", rules, "nft configuration file")
 	flag.Parse()
+
+	rules = canonicalizeRules(rules)
 
 	e := etcd.NewClient([]string{eaddr})
 	c := lochness.NewContext(e)
