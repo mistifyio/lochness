@@ -20,7 +20,19 @@ type (
 	MistifyAgent struct {
 		context *Context
 	}
+
+	// ErrorHTTPCode should be used for errors resulting from an http response
+	// code not matching the expected code
+	ErrorHTTPCode struct {
+		Expected int
+		Code     int
+	}
 )
+
+// Error returns a string error message
+func (e ErrorHTTPCode) Error() string {
+	return fmt.Sprintf("Unexpected HTTP Response Code: Expected %d, Received %d", e.Expected, e.Code)
+}
 
 // NewMistifyAgent creates a new MistifyAgent instance within the context
 func (context *Context) NewMistifyAgent() *MistifyAgent {
@@ -32,6 +44,9 @@ func (context *Context) NewMistifyAgent() *MistifyAgent {
 // generateClientGuest creates a client.Guest object based on the stored guest
 // properties. Used during guest creation
 func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) {
+	if err := g.Validate(); err != nil {
+		return nil, err
+	}
 	flavor, err := agent.context.Flavor(g.FlavorID)
 
 	if err != nil {
@@ -116,7 +131,7 @@ func (agent *MistifyAgent) request(url, httpMethod string, expectedCode int, dat
 	defer resp.Body.Close()
 
 	if resp.StatusCode != expectedCode {
-		return nil, "", fmt.Errorf("Unexpected HTTP Response Code: Expected %d, Received %d", expectedCode, resp.StatusCode)
+		return nil, "", ErrorHTTPCode{expectedCode, resp.StatusCode}
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -153,15 +168,21 @@ func (agent *MistifyAgent) requestGuestAction(guestID, actionName string) (strin
 	return jobID, nil
 }
 
-// checkJobStatus looks up whether a guest job has been completed or not.
-func (agent *MistifyAgent) CheckJobStatus(guestID, jobID string) (bool, error) {
+// CheckJobStatus looks up whether a guest job has been completed or not.
+func (agent *MistifyAgent) CheckJobStatus(action, guestID, jobID string) (bool, error) {
 	hypervisor, err := agent.getHypervisor(guestID)
 	if err != nil {
 		return false, err
 	}
+
 	url := agent.guestJobURL(hypervisor.IP.String(), guestID, jobID)
 	body, _, err := agent.request(url, "GET", http.StatusOK, nil)
 	if err != nil {
+		// Always expect http.StatusOK except when a delete was successful,
+		// then an http.StatusNotFound is ok
+		if e, ok := err.(ErrorHTTPCode); ok && e.Code == http.StatusNotFound && action == "delete" {
+			return true, nil
+		}
 		return false, err
 	}
 

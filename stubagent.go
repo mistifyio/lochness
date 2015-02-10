@@ -83,8 +83,8 @@ func (agent *StubAgent) guestFromID(guestID string) (*client.Guest, error) {
 	}, nil
 }
 
-// checkJobStatus looks up whether a guest job has been completed or not.
-func (agent *StubAgent) CheckJobStatus(guestID, jobID string) (bool, error) {
+// CheckJobStatus looks up whether a guest job has been completed or not.
+func (agent *StubAgent) CheckJobStatus(action, guestID, jobID string) (bool, error) {
 	if err := agent.randomError(); err != nil {
 		return true, err
 	}
