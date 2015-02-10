@@ -24,12 +24,13 @@ const (
 // Task is a "helper" struct to pull together information from
 // beanstalk and etcd
 type Task struct {
-	ID    uint64 //id from beanstalkd
-	Body  []byte // body from beanstalkd
-	Job   *lochness.Job
-	Guest *lochness.Guest
-	conn  *beanstalk.Conn
-	ctx   *lochness.Context
+	ID      uint64 //id from beanstalkd
+	Body    []byte // body from beanstalkd
+	Job     *lochness.Job
+	Guest   *lochness.Guest
+	metrics *metrics.Metrics
+	conn    *beanstalk.Conn
+	ctx     *lochness.Context
 }
 
 func main() {
@@ -72,10 +73,10 @@ func main() {
 	}
 
 	// Start consuming
-	consume(c, ts)
+	consume(c, ts, m)
 }
 
-func consume(c *lochness.Context, ts *beanstalk.TubeSet) {
+func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 	for {
 		// Wait for and reserve a job
 		id, body, err := ts.Reserve(10 * time.Hour)
@@ -97,10 +98,11 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet) {
 		}
 
 		task := &Task{
-			ID:   id,
-			Body: body,
-			conn: ts.Conn,
-			ctx:  c,
+			ID:      id,
+			Body:    body,
+			metrics: m,
+			conn:    ts.Conn,
+			ctx:     c,
 		}
 
 		logFields := log.Fields{
@@ -263,6 +265,26 @@ func updateJobStatus(task *Task, status string, e error) error {
 	if e != nil {
 		task.Job.Error = e.Error()
 	}
+	if task.Job.StartedAt == 0 {
+		task.Job.StartedAt = time.Now().Unix()
+	}
+	if status == lochness.JobStatusError || status == lochness.JobStatusDone {
+		task.Job.FinishedAt = time.Now().Unix()
+
+		// We're done with the task, so update the metrics
+		task.metrics.MeasureSince([]string{"action", task.Job.Action, "time"}, time.Unix(task.Job.StartedAt, 0))
+		task.metrics.MeasureSince([]string{"action", "time"}, time.Unix(task.Job.StartedAt, 0))
+		task.metrics.MeasureSince([]string{"action", task.Job.Action, "time"}, time.Unix(task.Job.StartedAt, 0))
+		task.metrics.MeasureSince([]string{"action", "time"}, time.Unix(task.Job.StartedAt, 0))
+		task.metrics.IncrCounter([]string{"action", task.Job.Action, "count"}, 1)
+		task.metrics.IncrCounter([]string{"action", "count"}, 1)
+		if e != nil {
+			task.metrics.IncrCounter([]string{"action", task.Job.Action, "error"}, 1)
+			task.metrics.IncrCounter([]string{"action", "error"}, 1)
+		}
+	}
+
+	// Save Job Status
 	if err := task.Job.Save(24 * time.Hour); err != nil {
 		log.WithFields(log.Fields{
 			"task":  task.ID,

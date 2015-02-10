@@ -34,6 +34,8 @@ type (
 		Guest         string `json:"guest"`
 		Error         string `json:"error,omitempty"`
 		Status        string `json:"status,omitempty"`
+		StartedAt     int64  `json:"started_at,omitempty"`
+		FinishedAt    int64  `json:"finished_at,omitempty"`
 		modifiedIndex uint64
 		context       *Context
 	}
