@@ -187,6 +187,13 @@ func (g *Guest) Refresh() error {
 // TODO: a guest needs a valid flavor, firewall group, and network
 func (g *Guest) Validate() error {
 	// do validation stuff...
+	if g.FlavorID == "" {
+		return errors.New("missing flavor id")
+	}
+	if g.SubnetID == "" {
+		return errors.New("missing subnet id")
+	}
+
 	return nil
 }
 
