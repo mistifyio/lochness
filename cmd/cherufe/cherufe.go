@@ -209,6 +209,35 @@ func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
 	}
 }
 
+func cleanStaleFiles(rulesfile string) {
+	dir := filepath.Dir(rulesfile)
+	prefix := filepath.Base(rulesfile) + ".tmp"
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "ioutil.ReadDir",
+		}).Fatal("failed to find stale temporary files")
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if !strings.HasPrefix(file.Name(), prefix) {
+			continue
+		}
+
+		name := filepath.Join(dir, file.Name())
+		log.WithField("file", name).Info("removing stale file")
+		if err := os.Remove(name); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"file":  name,
+			}).Error("failed to remove file")
+		}
+	}
+}
+
 func getHV(hn string, e *etcd.Client, c *lochness.Context) *lochness.Hypervisor {
 	var err error
 	hn, err = lochness.SetHypervisorID(hn)
@@ -253,6 +282,7 @@ func main() {
 	flag.Parse()
 
 	rules = canonicalizeRules(rules)
+	cleanStaleFiles(rules)
 
 	e := etcd.NewClient([]string{eaddr})
 	c := lochness.NewContext(e)
