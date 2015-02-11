@@ -22,7 +22,17 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
-	flag "github.com/ogier/pflag"
+	"github.com/spf13/cobra"
+)
+
+var (
+	port           uint = 8888
+	eaddr               = "http://127.0.0.1:4001"
+	baseUrl             = "http://ipxe.mistify.local:8888"
+	defaultVersion      = "0.1.0"
+	imageDir            = "/var/lib/images"
+	addOpts             = ""
+	statsd              = ""
 )
 
 type Server struct {
@@ -39,18 +49,8 @@ initrd {{.BaseUrl}}/images/{{.Version}}/initrd
 boot
 `
 
-func main() {
-	port := flag.Uint("port", 8888, "address to listen")
-	eaddr := flag.String("etcd", "http://127.0.0.1:4001", "address of etcd machine")
-	baseUrl := flag.String("base", "http://ipxe.mistify.local:8888", "base address of bits request")
-	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
-	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
-	addOpts := flag.String("options", "", "additional options to add to boot kernel")
-	statsd := flag.String("statsd", "", "statsd address")
-
-	flag.Parse()
-
-	e := etcd.NewClient([]string{*eaddr})
+func run(cmd *cobra.Command, args []string) {
+	e := etcd.NewClient([]string{eaddr})
 	c := lochness.NewContext(e)
 
 	router := mux.NewRouter()
@@ -59,9 +59,9 @@ func main() {
 	s := &Server{
 		ctx:            c,
 		t:              template.Must(template.New("ipxe").Parse(ipxeTemplate)),
-		defaultVersion: *defaultVersion,
-		baseUrl:        *baseUrl,
-		addOpts:        *addOpts,
+		defaultVersion: defaultVersion,
+		baseUrl:        baseUrl,
+		addOpts:        addOpts,
 	}
 
 	chain := alice.New(
@@ -77,8 +77,8 @@ func main() {
 	sink := mapsink.New()
 	fanout := metrics.FanoutSink{sink}
 
-	if *statsd != "" {
-		ss, _ := metrics.NewStatsdSink(*statsd)
+	if statsd != "" {
+		ss, _ := metrics.NewStatsdSink(statsd)
 		fanout = append(fanout, ss)
 	}
 
@@ -88,7 +88,7 @@ func main() {
 	mw := mmw.New(m)
 
 	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then((http.DefaultServeMux)))
-	router.PathPrefix("/images").Handler(chain.Append(mw.HandlerWrapper("images")).Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
+	router.PathPrefix("/images").Handler(chain.Append(mw.HandlerWrapper("images")).Then(http.StripPrefix("/images/", http.FileServer(http.Dir(imageDir)))))
 
 	router.Handle("/ipxe/{ip}", chain.Append(
 		func(h http.Handler) http.Handler {
@@ -105,7 +105,7 @@ func main() {
 			json.NewEncoder(w).Encode(sink)
 		}))
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), router))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), router))
 }
 
 func ipxeHandler(w http.ResponseWriter, r *http.Request) {
@@ -161,6 +161,23 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func main() {
+	root := &cobra.Command{
+		Use:  "enfield",
+		Long: "enfield is a simple web service for service ipxe configurations for LochNess",
+		Run:  run,
+	}
+	root.Flags().UintVarP(&port, "port", "p", port, "address to listen")
+	root.Flags().StringVarP(&eaddr, "etcd", "e", eaddr, "address of etcd machine")
+	root.Flags().StringVarP(&baseUrl, "base", "b", baseUrl, "base address of bits request")
+	root.Flags().StringVarP(&defaultVersion, "version", "v", defaultVersion, "If all else fails, what version to serve")
+	root.Flags().StringVarP(&imageDir, "images", "i", imageDir, "directory containing the images")
+	root.Flags().StringVarP(&addOpts, "options", "o", addOpts, "additional options to add to boot kernel")
+	root.Flags().StringVarP(&statsd, "statsd", "s", statsd, "statsd address")
+
+	root.Execute()
 }
 
 func mapToOptions(m map[string]string) string {
