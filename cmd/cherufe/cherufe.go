@@ -3,40 +3,150 @@ package main
 //go:generate ego -package=main -o=nftables.ego.go
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
-	"github.com/mistifyio/lochness"
+	ln "github.com/mistifyio/lochness"
 	flag "github.com/ogier/pflag"
 )
 
 const (
-	nftSinglePort = "ip daddr %s %s dport %d %s"
-	nftPortRange  = "ip daddr %s %s dport %d - %d %s"
+	nftSinglePort = "%s dport %d %s"
+	nftPortRange  = "%s dport %d - %d %s"
 )
 
-type group struct {
-	Name int
-	ID   string
-	IPs  []string
+type groupVal struct {
+	num   int
+	id    string
+	ips   []string
+	rules []string
 }
 
 type templateData struct {
-	IP      string
-	Rules   []string
-	Sources []group
+	ip     string
+	groups groupMap
+	guests guestMap
 }
 
-func genRules(hv *lochness.Hypervisor, c *lochness.Context) (templateData, error) {
+type groupMap map[string]groupVal
+
+// definitely not concurrent-safe
+func (g groupMap) Index(id string) int {
+	group, ok := g[id]
+	if !ok {
+		group.num = len(g)
+		group.id = id
+		g[id] = group
+	}
+	return group.num
+}
+
+type guestMap map[string]int
+
+// genNFRules iterates through each FWRule and creates the nft rule line
+func genNFRules(groups groupMap, fwrules ln.FWRules) []string {
+	var nftrules []string
+	for _, rule := range fwrules {
+		source := ""
+		if rule.Group != "" {
+			source += "ip saddr @s" + strconv.Itoa(groups.Index(rule.Group))
+		}
+		if rule.Source != nil {
+			if source != "" {
+				source += " "
+			}
+			source += "ip saddr " + rule.Source.String()
+		}
+
+		nftRule := ""
+		if rule.PortStart == rule.PortEnd {
+			nftRule = fmt.Sprintf(nftSinglePort,
+				rule.Protocol,
+				rule.PortEnd,
+				source)
+		} else if rule.PortStart < rule.PortEnd {
+			nftRule = fmt.Sprintf(nftPortRange,
+				rule.Protocol,
+				rule.PortStart,
+				rule.PortEnd,
+				source)
+		} else {
+			log.WithFields(log.Fields{
+				"start": rule.PortStart,
+				"stop":  rule.PortEnd,
+				"error": "invalid port range",
+			}).Error("invalid port range specified")
+			continue
+		}
+		nftrules = append(nftrules, nftRule)
+	}
+	return nftrules
+}
+
+func getGuestsFWGroups(c *ln.Context, hv *ln.Hypervisor) (groupMap, guestMap) {
+	guests := guestMap{}
+	groups := groupMap{}
+	n := len(groups)
+
+	hv.ForEachGuest(func(guest *ln.Guest) error {
+		// check if in cache
+		g, ok := groups[guest.FWGroupID]
+		if ok {
+			// link the guest to the FWGroup, via the FWGroup's index
+			guests[guest.IP.String()] = g.num
+			return nil
+		}
+
+		// nope not cached
+		fw, err := c.FWGroup(guest.FWGroupID)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "context.FWGroup",
+				"group": guest.FWGroupID,
+			}).Error("failed to get firewall group")
+			return err
+		}
+
+		g = groupVal{
+			num:   n,
+			id:    fw.ID,
+			rules: genNFRules(groups, fw.Rules),
+		}
+		n++
+		groups[guest.FWGroupID] = g
+
+		// link the guest to the FWGroup, via the FWGroup's index
+		guests[guest.IP.String()] = g.num
+		return nil
+	})
+	return groups, guests
+}
+
+func populateGroupMembers(c *ln.Context, groups groupMap) {
+	c.ForEachGuest(func(guest *ln.Guest) error {
+		group, ok := groups[guest.FWGroupID]
+		if !ok {
+			// not a FWGroup referenced by any guest's FWGroup
+			return nil
+		}
+
+		ips := group.ips
+		ips = append(ips, guest.IP.String())
+		group.ips = ips
+		groups[guest.FWGroupID] = group
+		return nil
+	})
+}
+
+func genRules(hv *ln.Hypervisor, c *ln.Context) (templateData, error) {
 	if err := hv.Refresh(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -46,98 +156,15 @@ func genRules(hv *lochness.Hypervisor, c *lochness.Context) (templateData, error
 		return templateData{}, err
 	}
 
-	fwgroups := map[string]*lochness.FWGroup{}
-	rules := []string{}
-	// map of FWGroupID -> set name a.k.a g0,g1,g2
-	groups := map[string]int{}
-	max := len(groups)
-	err := hv.ForEachGuest(func(guest *lochness.Guest) error {
-		group, ok := fwgroups[guest.FWGroupID]
-		if !ok {
-			var err error
-			group, err = c.FWGroup(guest.FWGroupID)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"error": err,
-					"func":  "context.FWGroup",
-					"group": guest.FWGroupID,
-				}).Error("failed to get firewall group")
-				return err
-			}
-			fwgroups[guest.FWGroupID] = group
-		}
+	groups, guests := getGuestsFWGroups(c, hv)
 
-		for _, rule := range group.Rules {
-			source := ""
-			if rule.Group != "" {
-				i, ok := groups[rule.Group]
-				if !ok {
-					i = max
-					max++
-					groups[rule.Group] = i
-				}
-				source = " ip saddr @g" + strconv.Itoa(i)
-			}
-			if rule.Source != nil && rule.Source.String() != "" {
-				source += " ip saddr " + rule.Source.String()
-			}
-
-			nftRule := ""
-			if rule.PortStart == rule.PortEnd {
-				nftRule = fmt.Sprintf(nftSinglePort,
-					guest.IP,
-					rule.Protocol,
-					rule.PortEnd,
-					source)
-			} else if rule.PortStart < rule.PortEnd {
-				nftRule = fmt.Sprintf(nftPortRange,
-					guest.IP,
-					rule.Protocol,
-					rule.PortStart,
-					rule.PortEnd,
-					source)
-			} else {
-				log.WithFields(log.Fields{
-					"start": rule.PortStart,
-					"stop":  rule.PortEnd,
-					"error": "invalid port range",
-				}).Error("invalid port range specified")
-				return errors.New("invalid port range specified")
-			}
-			rules = append(rules, nftRule)
-		}
-		return nil
-	})
-	if err != nil {
-		return templateData{}, err
+	populateGroupMembers(c, groups)
+	td := templateData{
+		ip:     hv.IP.String(),
+		groups: groups,
+		guests: guests,
 	}
-
-	sort.Strings(rules)
-	tData := templateData{
-		IP:      hv.IP.String(),
-		Rules:   rules,
-		Sources: make([]group, len(groups)),
-	}
-	for id, i := range groups {
-		tData.Sources[i] = group{Name: i, ID: id}
-	}
-
-	err = c.ForEachGuest(func(guest *lochness.Guest) error {
-		i, ok := groups[guest.FWGroupID]
-		if !ok {
-			return nil
-		}
-
-		ips := tData.Sources[i].IPs
-		ips = append(ips, guest.IP.String())
-		tData.Sources[i].IPs = ips
-		return nil
-	})
-	if err != nil {
-		return templateData{}, err
-	}
-
-	return tData, nil
+	return td, nil
 }
 
 func applyRules(filename string, td templateData) error {
@@ -152,7 +179,7 @@ func applyRules(filename string, td templateData) error {
 		return err
 	}
 
-	err = nftWrite(temp, td.IP, td.Sources, td.Rules)
+	err = nftWrite(temp, td.ip, td.groups, td.guests)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -254,9 +281,9 @@ func cleanStaleFiles(rulesfile string) {
 	}
 }
 
-func getHV(hn string, e *etcd.Client, c *lochness.Context) *lochness.Hypervisor {
+func getHV(hn string, e *etcd.Client, c *ln.Context) *ln.Hypervisor {
 	var err error
-	hn, err = lochness.SetHypervisorID(hn)
+	hn, err = ln.SetHypervisorID(hn)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -301,7 +328,7 @@ func main() {
 	cleanStaleFiles(rules)
 
 	e := etcd.NewClient([]string{eaddr})
-	c := lochness.NewContext(e)
+	c := ln.NewContext(e)
 	hv := getHV(hn, e, c)
 
 	stop := make(chan bool)
