@@ -265,17 +265,15 @@ func updateJobStatus(task *Task, status string, e error) error {
 	if e != nil {
 		task.Job.Error = e.Error()
 	}
-	if task.Job.StartedAt == 0 {
-		task.Job.StartedAt = time.Now().Unix()
+	if (task.Job.StartedAt == time.Time{}) {
+		task.Job.StartedAt = time.Now()
 	}
 	if status == lochness.JobStatusError || status == lochness.JobStatusDone {
-		task.Job.FinishedAt = time.Now().Unix()
+		task.Job.FinishedAt = time.Now()
 
 		// We're done with the task, so update the metrics
-		task.metrics.MeasureSince([]string{"action", task.Job.Action, "time"}, time.Unix(task.Job.StartedAt, 0))
-		task.metrics.MeasureSince([]string{"action", "time"}, time.Unix(task.Job.StartedAt, 0))
-		task.metrics.MeasureSince([]string{"action", task.Job.Action, "time"}, time.Unix(task.Job.StartedAt, 0))
-		task.metrics.MeasureSince([]string{"action", "time"}, time.Unix(task.Job.StartedAt, 0))
+		task.metrics.MeasureSince([]string{"action", task.Job.Action, "time"}, task.Job.StartedAt)
+		task.metrics.MeasureSince([]string{"action", "time"}, task.Job.StartedAt)
 		task.metrics.IncrCounter([]string{"action", task.Job.Action, "count"}, 1)
 		task.metrics.IncrCounter([]string{"action", "count"}, 1)
 		if e != nil {
