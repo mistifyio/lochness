@@ -38,7 +38,7 @@ func main() {
 	bstalk := flag.StringP("beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
 	logLevel := flag.StringP("log-level", "l", "warn", "log level")
 	addr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	port := flag.UintP("http", "p", 7544, "address to http interface. set to 0 to disable")
+	port := flag.UintP("http", "p", 7544, "http port to publish metrics. set to 0 to disable")
 	flag.Parse()
 
 	// Set up logger
@@ -50,7 +50,7 @@ func main() {
 	log.SetLevel(level)
 
 	// Set up beanstalk
-	log.Infof("using beanstalk %s", *bstalk)
+	log.WithField("bstalk", *bstalk).Info("connecting to beanstalk")
 	conn, err := beanstalk.Dial("tcp", *bstalk)
 	if err != nil {
 		log.Fatal(err)
@@ -58,11 +58,11 @@ func main() {
 	ts := beanstalk.NewTubeSet(conn, WorkTube)
 
 	// Set up etcd
-	log.Infof("using etcd %s", *addr)
+	log.WithField("cluster", *addr).Info("connecting to etcd")
 	etcdClient := etcd.NewClient([]string{*addr})
 	// make sure we can talk to etcd
 	if !etcdClient.SyncCluster() {
-		log.Fatalf("unable to sync etcd at %s", *addr)
+		log.WithField("cluster", *addr).Fatal("unable to sync etcd")
 	}
 
 	c := lochness.NewContext(etcdClient)
@@ -88,7 +88,8 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 			case beanstalk.ErrDeadline:
 				// See docs on beanstalkd deadline
 				// We're just going to sleep and try to get another job
-				log.Warn(beanstalk.ErrDeadline)
+				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
+				log.Debug(beanstalk.ErrDeadline)
 				time.Sleep(5 * time.Second)
 				continue
 			default:

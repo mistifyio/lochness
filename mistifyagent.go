@@ -31,7 +31,7 @@ type (
 
 // Error returns a string error message
 func (e ErrorHTTPCode) Error() string {
-	return fmt.Sprintf("Unexpected HTTP Response Code: Expected %d, Received %d", e.Expected, e.Code)
+	return fmt.Sprintf("unexpected HTTP Response Code: Expected %d, Received %d", e.Expected, e.Code)
 }
 
 // NewMistifyAgent creates a new MistifyAgent instance within the context
