@@ -214,7 +214,11 @@ func processTask(task *Task) (bool, error) {
 
 	switch task.Job.Status {
 	case lochness.JobStatusDone:
-		return true, nil
+		var err error
+		if task.Job.Action == "delete" {
+			err = postDelete(task)
+		}
+		return true, err
 	case lochness.JobStatusError:
 		return true, nil
 	case lochness.JobStatusNew:
@@ -223,6 +227,13 @@ func processTask(task *Task) (bool, error) {
 		}
 	case lochness.JobStatusWorking:
 		if done, err := checkWorkingJob(task); done || err != nil {
+			log.WithFields(log.Fields{
+				"task": task.ID,
+			}).Info("JOB DONE")
+
+			if err == nil && task.Job.Action == "delete" {
+				err = postDelete(task)
+			}
 			return true, err
 		}
 	}
@@ -293,6 +304,13 @@ func updateJobStatus(task *Task, status string, e error) error {
 		return err
 	}
 	return nil
+}
+
+func postDelete(task *Task) error {
+	log.WithFields(log.Fields{
+		"task": task.ID,
+	}).Info("post delete")
+	return task.Guest.Destroy()
 }
 
 func deleteTask(task *Task) {

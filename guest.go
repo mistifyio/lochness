@@ -190,9 +190,6 @@ func (g *Guest) Validate() error {
 	if g.FlavorID == "" {
 		return errors.New("missing flavor id")
 	}
-	if g.SubnetID == "" {
-		return errors.New("missing subnet id")
-	}
 
 	return nil
 }
