@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,6 +15,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -24,8 +24,10 @@ const (
 )
 
 var (
-	tmpl *template.Template
-	hv   *lochness.Hypervisor
+	tmpl  *template.Template
+	hv    *lochness.Hypervisor
+	eaddr = "http://localhost:4001"
+	id    = ""
 )
 
 type group struct {
@@ -204,17 +206,13 @@ func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
 	}
 }
 
-func main() {
-	eaddr := flag.String("etcd", "http://localhost:4001", "etcd cluster address")
-	id := flag.String("id", "", "hypervisor id")
-	flag.Parse()
-
-	e := etcd.NewClient([]string{*eaddr})
+func run(cmd *cobra.Command, args []string) {
+	e := etcd.NewClient([]string{eaddr})
 	c := lochness.NewContext(e)
 
 	var err error
 
-	hn, err := lochness.SetHypervisorID(*id)
+	hn, err := lochness.SetHypervisorID(id)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -254,4 +252,17 @@ func main() {
 			continue
 		}
 	}
+}
+
+func main() {
+	root := &cobra.Command{
+		Use:   "cherufe",
+		Short: "cherufe is is a simple firewall daemon",
+		Long:  "A simple firewall daemon that monitors etcd for firewall configuration. The firewall is implemented using nftables",
+		Run:   run,
+	}
+	root.Flags().StringVarP(&eaddr, "etcd", "e", eaddr, "etcd cluster address")
+	root.Flags().StringVarP(&id, "id", "i", id, "hypervisor id")
+
+	root.Execute()
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -19,9 +18,9 @@ import (
 	"github.com/coreos/go-systemd/dbus"
 	"github.com/mistifyio/lochness/pkg/deferer"
 	"github.com/mistifyio/lochness/pkg/lock"
+	"github.com/spf13/cobra"
 )
 
-const defaultAddr = "http://localhost:4001"
 const service = `[Unit]
 Description=Cluster unique %s locker
 
@@ -41,6 +40,14 @@ type params struct {
 	ID       int        `json:"id"`
 	Args     []string   `json:"args"`
 	Lock     *lock.Lock `json:"lock"`
+}
+
+var p = params{
+	Interval: 30,
+	TTL:      0,
+	Key:      "/lock",
+	Blocking: false,
+	Addr:     "http://localhost:4001",
 }
 
 func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint64, target, cmd, base, arg string) {
@@ -104,7 +111,7 @@ func resolveCommand(command string) (string, error) {
 	return filepath.Abs(command)
 }
 
-func main() {
+func run(ccmd *cobra.Command, rawArgs []string) {
 	d := deferer.NewDeferer(nil)
 	defer d.Run()
 
@@ -115,60 +122,49 @@ func main() {
 	if ID := os.Getenv("ID"); ID != "" {
 		fmt.Sscanf(ID, "%d", &id)
 	}
+	p.ID = id
 
-	params := params{ID: id}
-	flag.Uint64Var(&params.Interval, "interval", 30, "Interval in seconds to refresh lock")
-	flag.Uint64Var(&params.TTL, "ttl", 0, "TTL for key in seconds, leave 0 for (2 * interval)")
-	flag.StringVar(&params.Key, "key", "/lock", "Key to use as lock")
-	flag.BoolVar(&params.Blocking, "block", false, "Block if we failed to acquire the lock")
-	flag.StringVar(&params.Addr, "etcd", defaultAddr, "address of etcd machine")
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s: [options] -- command args\n", os.Args[0])
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\ncommand will be run with args via fork/exec not a shell\n")
-	}
-	flag.Parse()
-
-	if params.TTL == 0 {
-		params.TTL = params.Interval * 2
+	if p.TTL == 0 {
+		p.TTL = p.Interval * 2
 	}
 
-	params.Args = flag.Args()
-	if len(params.Args) < 1 {
+	p.Args = rawArgs
+	if len(p.Args) < 1 {
 		d.Fatal("command is required")
 	}
-	cmd, err := resolveCommand(params.Args[0])
+
+	cmd, err := resolveCommand(p.Args[0])
 	if err != nil {
 		d.Fatal(err)
 	}
-	params.Args[0] = cmd
+	p.Args[0] = cmd
 
 	hostname, err := os.Hostname()
 	if err != nil {
 		d.Fatal(err)
 	}
 
-	c := etcd.NewClient([]string{params.Addr})
-	l, err := lock.Acquire(c, params.Key, hostname, params.TTL, params.Blocking)
+	c := etcd.NewClient([]string{p.Addr})
+	l, err := lock.Acquire(c, p.Key, hostname, p.TTL, p.Blocking)
 	if err != nil {
-		d.Fatal("failed to get lock", params.Key, err)
+		d.Fatal("failed to get lock", p.Key, err)
 	}
 	d.Defer(func() { l.Release() })
-	params.Lock = l
+	p.Lock = l
 
-	args, err := json.Marshal(&params)
+	args, err := json.Marshal(&p)
 	if err != nil {
 		d.Fatal(err)
 	}
 
 	serviceDone := make(chan struct{})
-	base := filepath.Base(params.Args[0])
+	base := filepath.Base(p.Args[0])
 	target := fmt.Sprintf("locker-%s-%d.service", base, id)
 	locker, err := resolveCommand("locker")
 	if err != nil {
 		d.Fatal(err)
 	}
-	go runService(d, serviceDone, params.ID, params.TTL, target, locker, base, string(args))
+	go runService(d, serviceDone, p.ID, p.TTL, target, locker, base, string(args))
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
@@ -180,4 +176,19 @@ func main() {
 		log.Println("got a sig:", s)
 		killService(target, int32(s.(syscall.Signal)))
 	}
+}
+
+func main() {
+	root := &cobra.Command{
+		Use:  "lock",
+		Long: "lock provides a way to obtain a cluster wide lock for a service",
+		Run:  run,
+	}
+	root.Flags().Uint64VarP(&p.Interval, "interval", "i", p.Interval, "Interval in seconds to refresh lock")
+	root.Flags().Uint64VarP(&p.TTL, "ttl", "t", p.TTL, "TTL for key in seconds, leave 0 for (2 * interval)")
+	root.Flags().StringVarP(&p.Key, "key", "k", p.Key, "Key to use as lock")
+	root.Flags().BoolVarP(&p.Blocking, "block", "b", p.Blocking, "Block if we failed to acquire the lock")
+	root.Flags().StringVarP(&p.Addr, "etcd", "e", p.Addr, "address of etcd machine")
+
+	root.Execute()
 }

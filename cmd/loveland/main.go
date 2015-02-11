@@ -19,13 +19,16 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
-	flag "github.com/ogier/pflag"
+	"github.com/spf13/cobra"
 )
 
-// XXX: allow different tube names?
-const (
-	CreateTube = "create"
-	WorkTube   = "work"
+var (
+	bstalk          = "127.0.0.1:11300"
+	logLevel        = "warn"
+	addr            = "http://127.0.0.1:4001"
+	port       uint = 7543
+	CreateTube      = "create"
+	WorkTube        = "work"
 )
 
 // TaskFunc is a convenience wrapper for function calls on tasks
@@ -50,35 +53,45 @@ type Task struct {
 // as we almost always delete the tube id, wrap in function and delete it?
 
 func main() {
-	bstalk := flag.StringP("beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
-	logLevel := flag.StringP("log-level", "l", "warn", "log level")
-	addr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	port := flag.UintP("http", "p", 7543, "address for http interface. set to 0 to disable")
-	flag.Parse()
+	root := &cobra.Command{
+		Use:  "loveland",
+		Long: "loveland is the guest placement daemon, selecting hypervisors for new guests",
+		Run:  run,
+	}
+	root.Flags().StringVarP(&bstalk, "beanstalk", "b", bstalk, "address of beanstalkd server")
+	root.Flags().StringVarP(&logLevel, "log-level", "l", logLevel, "log level")
+	root.Flags().StringVarP(&addr, "etcd", "e", addr, "address of etcd server")
+	root.Flags().StringVarP(&CreateTube, "create-tube", "c", CreateTube, "beanstalk tube to monitor for new guest tasks")
+	root.Flags().StringVarP(&WorkTube, "work-tube", "w", WorkTube, "beanstalk tube to place guest creation tasks on")
+	root.Flags().UintVarP(&port, "http", "p", port, "address for http interface. set to 0 to disable")
 
+	root.Execute()
+}
+
+func run(cmd *cobra.Command, args []string) {
 	// set with flag?
 	log.SetFormatter(&log.JSONFormatter{})
 
-	level, err := log.ParseLevel(*logLevel)
+	level, err := log.ParseLevel(logLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.SetLevel(level)
 
-	log.Infof("using beanstalk %s", *bstalk)
+	log.Infof("using beanstalk %s", bstalk)
 
-	conn, err := beanstalk.Dial("tcp", *bstalk)
+	conn, err := beanstalk.Dial("tcp", bstalk)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Infof("using etcd %s", *addr)
-	etcdClient := etcd.NewClient([]string{*addr})
+	log.Infof("using etcd %s", addr)
+	etcdClient := etcd.NewClient([]string{addr})
 
 	// make sure we can actually talk to etcd
 	if !etcdClient.SyncCluster() {
-		log.Fatal("unable to sync etcd at %s", *addr)
+		log.Fatal("unable to sync etcd at %s", addr)
 	}
 
 	//inm := metrics.NewInmemSink(10*time.Second, 5*time.Minute)
@@ -87,7 +100,7 @@ func main() {
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, ms)
 
-	if *port != 0 {
+	if port != 0 {
 
 		http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(200)
@@ -96,7 +109,7 @@ func main() {
 		}))
 
 		go func() {
-			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
+			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 		}()
 
 	}
@@ -231,6 +244,7 @@ func main() {
 			}
 		}
 	}
+
 }
 
 // these funcs return bool if task in beanstalk should be deleted (and loop stopped). loop also stops on error
