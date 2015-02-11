@@ -5,6 +5,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -140,7 +141,9 @@ func genRules(hv *lochness.Hypervisor, c *lochness.Context) (templateData, error
 }
 
 func applyRules(filename string, td templateData) error {
-	file, err := os.OpenFile(filename, os.O_WRONLY, 0600)
+	dir := filepath.Dir(filename)
+	prefix := filepath.Base(filename) + ".tmp"
+	temp, err := ioutil.TempFile(dir, prefix)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -149,19 +152,18 @@ func applyRules(filename string, td templateData) error {
 		return err
 	}
 
-	err = nftWrite(file, td.IP, td.Sources, td.Rules)
+	err = nftWrite(temp, td.IP, td.Sources, td.Rules)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "nftWrite",
 		}).Error("template returned an error")
-		file.Close()
+		temp.Close()
 		return err
 	}
-	file.Close()
+	temp.Close()
 
-	// TODO: store rules file and do atomic-update/rollbacks?
-	cmd := exec.Command("nft", "-f", file.Name())
+	cmd := exec.Command("nft", "-f", temp.Name())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -170,6 +172,15 @@ func applyRules(filename string, td templateData) error {
 			"error": err,
 			"func":  "cmd.Run",
 		}).Error("nft command returned an error")
+		return err
+	}
+
+	if err = os.Rename(temp.Name(), filename); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.Rename",
+			"file":  temp.Name(),
+		}).Error("failed to overwrite nftables.conf")
 	}
 	return err
 }
