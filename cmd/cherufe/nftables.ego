@@ -1,7 +1,7 @@
 <%! func nftWrite(w io.Writer, ip string, groups groupMap, guests guestMap) error %>
 flush ruleset
 
-table inet filter {
+table ip filter {
   <% for id, fwg := range groups { %>
   # FWGroupID=<%= id %>
   chain g<%= fwg.num %> {<% for _, rule := range fwg.rules { %>
@@ -28,19 +28,10 @@ table inet filter {
 
     # allow icmp
     ip protocol icmp accept
-    ip6 nexthdr icmpv6 accept
 
     # allow lochness hv traffic
     ip daddr <%= ip %> accept
 
-    <% if len(guests) > 0 { %>
-    # Allow traffic to guests as specified by FWGroups
-    ip daddr vmap { <% for ip, fwgIndex := range guests { %>
-	    <%= ip %> : jump g<%= fwgIndex %>, <% } %>
-    }
-    <% } %>
-    # everything else
-    reject with icmp type port-unreachable
   }
 
   chain forward {
@@ -52,3 +43,13 @@ table inet filter {
     type filter hook output priority 0;
   }
 }
+
+<% if len(guests) > 0 { %>
+# Allow traffic to guests as specified by FWGroups
+add rule filter input ip daddr vmap { <% for ip, fwgIndex := range guests { %>
+    <%= ip %> : jump g<%= fwgIndex %>, <% } %>
+}
+<% } %>
+
+# reject everything else
+add rule filter input reject with icmp type port-unreachable
