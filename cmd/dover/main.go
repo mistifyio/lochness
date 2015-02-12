@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/mistify-agent/config"
 	flag "github.com/ogier/pflag"
 )
 
@@ -256,6 +257,9 @@ func startJob(task *Task) error {
 	case "delete":
 		jobID, err = agent.DeleteGuest(task.Guest.ID)
 	default:
+		if _, ok := config.ValidActions[job.Action]; !ok {
+			return errors.New("invalid action")
+		}
 		jobID, err = agent.GuestAction(task.Guest.ID, job.Action)
 	}
 
