@@ -83,6 +83,14 @@ func (agent *StubAgent) guestFromID(guestID string) (*client.Guest, error) {
 	}, nil
 }
 
+// CheckJobStatus looks up whether a guest job has been completed or not.
+func (agent *StubAgent) CheckJobStatus(action, guestID, jobID string) (bool, error) {
+	if err := agent.randomError(); err != nil {
+		return true, err
+	}
+	return true, nil
+}
+
 // GetGuest is a stub for retrieving a guest via request to the agent.
 func (agent *StubAgent) GetGuest(guestID string) (*client.Guest, error) {
 	if err := agent.randomError(); err != nil {
@@ -93,38 +101,26 @@ func (agent *StubAgent) GetGuest(guestID string) (*client.Guest, error) {
 }
 
 // CreateGuest is a stub for creating a guest via request to the agent.
-func (agent *StubAgent) CreateGuest(guestID string) (*client.Guest, error) {
+func (agent *StubAgent) CreateGuest(guestID string) (string, error) {
 	if err := agent.randomError(); err != nil {
-		return nil, err
+		return "", err
 	}
-	guest, err := agent.guestFromID(guestID)
-	return guest, err
+	return "1234abcd-1234-abcd-1234-abcd1324abcd", nil
 }
 
 // DeleteGuest is a stub for deleting a guest via request to the agent.
-func (agent *StubAgent) DeleteGuest(guestID string) (*client.Guest, error) {
+func (agent *StubAgent) DeleteGuest(guestID string) (string, error) {
 	if err := agent.randomError(); err != nil {
-		return nil, err
+		return "", err
 	}
-	guest, err := agent.guestFromID(guestID)
-	return guest, err
+	return "1234abcd-1234-abcd-1234-abcd1324abcd", nil
 }
 
 // GuestAction is a stub for issuing other basic guest actions via request to
 // the agent
-func (agent *StubAgent) GuestAction(guestID, actionName string) (*client.Guest, error) {
+func (agent *StubAgent) GuestAction(guestID, actionName string) (string, error) {
 	if err := agent.randomError(); err != nil {
-		return nil, err
+		return "", err
 	}
-	guest, err := agent.guestFromID(guestID)
-	if err != nil {
-		return nil, err
-	}
-	for _, action := range []string{"shutdown", "poweroff", "suspend"} {
-		if actionName == action {
-			guest.State = "shutdown"
-			continue
-		}
-	}
-	return guest, nil
+	return "1234abcd-1234-abcd-1234-abcd1324abcd", nil
 }

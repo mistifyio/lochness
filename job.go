@@ -28,11 +28,14 @@ const (
 type (
 	// Job is a single job for a guest such as create, delete, etc.
 	Job struct {
-		ID            string `json:"id"`
-		Action        string `json:"action"`
-		Guest         string `json:"guest"`
-		Error         string `json:"error,omitempty"`
-		Status        string `json:"status,omitempty"`
+		ID            string    `json:"id"`
+		RemoteID      string    `json:"remote"` // ID of remote hypervisor/guest job
+		Action        string    `json:"action"`
+		Guest         string    `json:"guest"`
+		Error         string    `json:"error,omitempty"`
+		Status        string    `json:"status,omitempty"`
+		StartedAt     time.Time `json:"started_at,omitempty"`
+		FinishedAt    time.Time `json:"finished_at,omitempty"`
 		modifiedIndex uint64
 		context       *Context
 	}
