@@ -87,7 +87,8 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 				continue
 			case beanstalk.ErrDeadline:
 				// See docs on beanstalkd deadline
-				// We're just going to sleep and try to get another job
+				// We're just going to sleep to let the deadline'd job expire
+				// and try to get another job
 				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
 				log.Debug(beanstalk.ErrDeadline)
 				time.Sleep(5 * time.Second)
