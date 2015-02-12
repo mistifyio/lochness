@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -19,6 +18,7 @@ import (
 	"github.com/coreos/go-systemd/dbus"
 	"github.com/mistifyio/lochness/pkg/deferer"
 	"github.com/mistifyio/lochness/pkg/lock"
+	flag "github.com/ogier/pflag"
 )
 
 const defaultAddr = "http://localhost:4001"
@@ -117,11 +117,11 @@ func main() {
 	}
 
 	params := params{ID: id}
-	flag.Uint64Var(&params.Interval, "interval", 30, "Interval in seconds to refresh lock")
-	flag.Uint64Var(&params.TTL, "ttl", 0, "TTL for key in seconds, leave 0 for (2 * interval)")
-	flag.StringVar(&params.Key, "key", "/lock", "Key to use as lock")
-	flag.BoolVar(&params.Blocking, "block", false, "Block if we failed to acquire the lock")
-	flag.StringVar(&params.Addr, "etcd", defaultAddr, "address of etcd machine")
+	flag.Uint64VarP(&params.Interval, "interval", "i", 30, "Interval in seconds to refresh lock")
+	flag.Uint64VarP(&params.TTL, "ttl", "t", 0, "TTL for key in seconds, leave 0 for (2 * interval)")
+	flag.StringVarP(&params.Key, "key", "k", "/lock", "Key to use as lock")
+	flag.BoolVarP(&params.Blocking, "block", "b", false, "Block if we failed to acquire the lock")
+	flag.StringVarP(&params.Addr, "etcd", "e", defaultAddr, "address of etcd machine")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s: [options] -- command args\n", os.Args[0])
 		flag.PrintDefaults()
