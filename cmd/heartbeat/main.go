@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"os"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	flag "github.com/ogier/pflag"

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/dbus"
 	"github.com/mistifyio/lochness/pkg/deferer"
 	"github.com/mistifyio/lochness/pkg/lock"
@@ -134,8 +134,6 @@ func tickle(interval uint64) chan struct{} {
 func main() {
 	d := deferer.NewDeferer(nil)
 	defer d.Run()
-
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 
 	params := params{}
 	arg, err := base64.StdEncoding.DecodeString(os.Args[1])

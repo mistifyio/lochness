@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"math/rand"
 	"net"
 	"reflect"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 )
@@ -22,7 +22,6 @@ func print(i interface{}) {
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
 	c := lochness.NewContext(e)
 

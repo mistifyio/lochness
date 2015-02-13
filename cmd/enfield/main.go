@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	_ "expvar"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-metrics"
 	"github.com/bakins/go-metrics-map"
 	"github.com/bakins/go-metrics-middleware"
