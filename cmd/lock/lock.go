@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -14,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/go-systemd/dbus"
 	"github.com/mistifyio/lochness/pkg/deferer"
@@ -107,8 +107,6 @@ func resolveCommand(command string) (string, error) {
 func main() {
 	d := deferer.NewDeferer(nil)
 	defer d.Run()
-
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 
 	rand.Seed(time.Now().UnixNano())
 	id := rand.Int()
