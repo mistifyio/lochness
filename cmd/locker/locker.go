@@ -76,9 +76,12 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 
 	status := <-done
 	if status != "done" {
+		log.WithFields(log.Fields{
+			"status": status,
+			"func":   "StartUnit",
+		}).Error("StartUnit returned a bad status")
 		d.Fatal(errors.New(name + " " + status))
 	}
-	log.Println("status:", status)
 
 	serviceDone <- struct{}{}
 }
@@ -86,7 +89,10 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 func killService(name string, signal int32) error {
 	conn, err := dbus.New()
 	if err != nil {
-		log.Println("err:", err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "dbus.New",
+		}).Error("error creating new dbus connection")
 		return err
 	}
 
@@ -106,7 +112,6 @@ func refresh(lock *lock.Lock, interval uint64) chan struct{} {
 					// TODO: Should we just log.Fatal here?
 					// So that systemd kills the services
 					// ASAP?
-					log.Println("sending to ch")
 					ch <- struct{}{}
 				}
 			case <-ch:
@@ -175,7 +180,7 @@ func main() {
 	case <-serviceDone:
 		close(locker)
 	case s := <-sigs:
-		log.Println("got a sig:", s)
+		log.WithField("signal", s).Info("signal received")
 		killService(target, int32(s.(syscall.Signal)))
 		close(locker)
 	case <-tickler:
