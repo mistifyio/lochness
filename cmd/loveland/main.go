@@ -61,24 +61,33 @@ func main() {
 
 	level, err := log.ParseLevel(*logLevel)
 	if err != nil {
-		log.Fatal(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "logrus.ParseLevel",
+			"level": *logLevel,
+		}).Fatal("error parsing log level")
 	}
 
 	log.SetLevel(level)
 
-	log.Infof("using beanstalk %s", *bstalk)
-
+	log.WithField("address", *bstalk).Info("connection to beanstalk")
 	conn, err := beanstalk.Dial("tcp", *bstalk)
 	if err != nil {
-		log.Fatal(err)
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": *bstalk,
+		}).Fatal("failed to connect to beanstalk server")
 	}
 
-	log.Infof("using etcd %s", *addr)
+	log.WithField("address", *addr).Info("connection to etcd")
 	etcdClient := etcd.NewClient([]string{*addr})
 
 	// make sure we can actually talk to etcd
 	if !etcdClient.SyncCluster() {
-		log.Fatal("unable to sync etcd at %s", *addr)
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": *bstalk,
+		}).Fatal("failed to connect to beanstalk server")
 	}
 
 	//inm := metrics.NewInmemSink(10*time.Second, 5*time.Minute)
@@ -96,7 +105,13 @@ func main() {
 		}))
 
 		go func() {
-			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
+			err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+					"func":  "http.ListenAndServe",
+				}).Fatal("error serving")
+			}
 		}()
 
 	}
@@ -324,7 +339,10 @@ func addJobToWorker(t *Task) (bool, error) {
 		return true, fmt.Errorf("unable to put to work queue %s", err)
 	}
 
-	log.Debugf("added %d to work queue for %s", id, t.Job.ID)
+	log.WithFields(log.Fields{
+		"id":  id,
+		"job": t.Job.ID,
+	}).Debug("ading job to work queue")
 
 	return false, nil
 }
