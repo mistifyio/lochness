@@ -168,17 +168,21 @@ func main() {
 	for {
 		id, body, err := ts.Reserve(10 * time.Hour)
 		if err != nil {
-			if err.(beanstalk.ConnError).Err == beanstalk.ErrTimeout {
-				// nothing queued, so just retry
+			switch err.(beanstalk.ConnError) {
+			case beanstalk.ErrTimeout:
+				// Empty queue, continue waiting
 				continue
-			} else if err.(beanstalk.ConnError).Err == beanstalk.ErrDeadline {
-				// this is a hack. read docs on deadline. we just sleep to try to get another job
-				log.Info(beanstalk.ErrDeadline)
+			case beanstalk.ErrDeadline:
+				// See docs on beanstalkd deadline
+				// We're just going to sleep to let the deadline'd job expire
+				// and try to get another job
+				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
+				log.Debug(beanstalk.ErrDeadline)
 				time.Sleep(5 * time.Second)
 				continue
-			} else {
-				// take a dirt nap
-				log.WithFields(log.Fields{"error": err}).Fatal(err)
+			default:
+				// You have failed me for the last time
+				log.WithField("error", err).Fatal(err)
 			}
 		}
 
