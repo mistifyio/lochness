@@ -105,7 +105,12 @@ func main() {
 			json.NewEncoder(w).Encode(sink)
 		}))
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), router))
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), router); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "http.ListenAndServer",
+		}).Fatal("ListenAndServe returned an error")
+	}
 }
 
 func ipxeHandler(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +144,10 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 		version, err = s.ctx.GetConfig("defaultVersion")
 		if err != nil && !lochness.IsKeyNotFound(err) {
 			// XXX: should be fatal?
-			log.Println(err)
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "lochness.GetConfig",
+			}).Error("failed to get a version")
 		}
 		if version == "" {
 			version = s.defaultVersion
