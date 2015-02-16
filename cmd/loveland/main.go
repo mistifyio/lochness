@@ -201,7 +201,7 @@ func main() {
 				fields["job"] = task.Job.ID
 			}
 
-			log.WithFields(fields).Debugf("running")
+			log.WithFields(fields).Debug("running")
 
 			start := time.Now()
 			rm, err := f.function(task)
@@ -219,7 +219,7 @@ func main() {
 
 				f3 := copyFields(fields)
 				f3["error"] = err
-				log.WithFields(f3).Errorf("task error")
+				log.WithFields(f3).Error("task error")
 
 				if task.Job != nil {
 					task.Job.Status = lochness.JobStatusError
@@ -229,7 +229,7 @@ func main() {
 							"job":   task.Job.ID,
 							"task":  task.ID,
 							"error": err,
-						}).Errorf("unable to save")
+						}).Error("unable to save")
 					}
 				}
 				break
@@ -240,7 +240,7 @@ func main() {
 					log.WithFields(log.Fields{
 						"task":  task.ID,
 						"error": err,
-					}).Errorf("unable to delete")
+					}).Error("unable to delete")
 				}
 				break
 			}
