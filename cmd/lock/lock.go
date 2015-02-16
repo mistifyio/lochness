@@ -49,11 +49,19 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 
 	conn, err := dbus.New()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "dbus.New",
+		}).Error("error creating new dbus connection")
 		d.Fatal(err)
 	}
 
 	f, err := os.Create("/run/systemd/system/" + target)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.Create",
+		}).Error("error creating service file")
 		d.Fatal(err)
 	}
 	d.Defer(func() { f.Close() })
@@ -62,25 +70,37 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 	dotService := fmt.Sprintf(service, base, cmd, arg, ttl)
 	_, err = f.WriteString(dotService)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "f.WriteString",
+		}).Error("error writing service file")
 		d.Fatal(err)
 	}
 	f.Sync()
 
-	log.Println("services names are:")
-	log.Printf("locker-%s-%d\n", base, id)
-	log.Printf("locked-%s-%d\n", base, id)
+	log.WithFields(log.Fields{
+		"locker": fmt.Sprintf("locker-%s-%d", base, id),
+		"locked": fmt.Sprintf("locked-%s-%d", base, id),
+	}).Info("created service names")
 
 	done := make(chan string)
 	_, err = conn.StartUnit(target, "fail", done)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "conn.StartUnit",
+		}).Error("error starting service")
 		d.Fatal(err)
 	}
 
 	status := <-done
 	if status != "done" {
+		log.WithFields(log.Fields{
+			"status": status,
+			"func":   "StartUnit",
+		}).Error("StartUnit returned a bad status")
 		d.Fatal(errors.New(target + " " + status))
 	}
-	log.Println("status:", status)
 
 	serviceDone <- struct{}{}
 }
@@ -88,7 +108,10 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 func killService(name string, signal int32) error {
 	conn, err := dbus.New()
 	if err != nil {
-		log.Println("err:", err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "dbus.New",
+		}).Error("error creating new dbus connection")
 		return err
 	}
 
@@ -99,6 +122,11 @@ func killService(name string, signal int32) error {
 func resolveCommand(command string) (string, error) {
 	command, err := exec.LookPath(command)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"exec":  command,
+			"func":  "exec.LookPath",
+		}).Error("could not find executable in path")
 		return "", err
 	}
 	return filepath.Abs(command)
@@ -133,29 +161,50 @@ func main() {
 
 	params.Args = flag.Args()
 	if len(params.Args) < 1 {
-		d.Fatal("command is required")
+		log.Fatal("command is required")
 	}
 	cmd, err := resolveCommand(params.Args[0])
 	if err != nil {
-		d.Fatal(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"exec":  params.Args[0],
+			"func":  "resolveCommand",
+		}).Error("failed to resolveCommand")
+		d.Fatal()
 	}
 	params.Args[0] = cmd
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		d.Fatal(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.Hostname",
+		}).Error("failed to get hostname")
+		d.Fatal()
 	}
 
 	c := etcd.NewClient([]string{params.Addr})
 	l, err := lock.Acquire(c, params.Key, hostname, params.TTL, params.Blocking)
 	if err != nil {
-		d.Fatal("failed to get lock", params.Key, err)
+		log.WithFields(log.Fields{
+			"error":    err,
+			"func":     "lock.Acquire",
+			"lock":     params.Key,
+			"ttl":      params.TTL,
+			"blocking": params.Blocking,
+		}).Error("failed to get lock")
+		d.Fatal()
 	}
+
 	d.Defer(func() { l.Release() })
 	params.Lock = l
 
 	args, err := json.Marshal(&params)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "json.Marshal",
+		}).Error("failed to serialize params")
 		d.Fatal(err)
 	}
 
@@ -164,6 +213,11 @@ func main() {
 	target := fmt.Sprintf("locker-%s-%d.service", base, id)
 	locker, err := resolveCommand("locker")
 	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"exec":  params.Args[0],
+			"func":  "resolveCommand",
+		}).Error("failed to resolveCommand")
 		d.Fatal(err)
 	}
 	go runService(d, serviceDone, params.ID, params.TTL, target, locker, base, string(args))
@@ -173,9 +227,9 @@ func main() {
 
 	select {
 	case <-serviceDone:
-		log.Println("cmd is done")
+		log.WithField("service_state", "done").Info("service is done")
 	case s := <-sigs:
-		log.Println("got a sig:", s)
+		log.WithField("signal", s).Info("signal received")
 		killService(target, int32(s.(syscall.Signal)))
 	}
 }
