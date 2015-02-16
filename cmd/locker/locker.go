@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -45,12 +44,18 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 
 	conn, err := dbus.New()
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "dbus.New",
+		}, "error creating new dbus connection")
 	}
 
 	f, err := os.Create("/run/systemd/system/" + name)
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "os.Create",
+		}, "error creating service file")
 	}
 	d.Defer(func() { f.Close() })
 
@@ -64,23 +69,28 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 	dotService := fmt.Sprintf(service, base, strings.Join(args, " "))
 	_, err = f.WriteString(dotService)
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "f.WriteString",
+		}, "error writing service file")
 	}
 	f.Sync()
 
 	done := make(chan string)
 	_, err = conn.StartUnit(name, "fail", done)
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "conn.StartUnit",
+		}, "error starting service")
 	}
 
 	status := <-done
 	if status != "done" {
-		log.WithFields(log.Fields{
+		d.FatalWithFields(log.Fields{
 			"status": status,
 			"func":   "StartUnit",
-		}).Error("StartUnit returned a bad status")
-		d.Fatal(errors.New(name + " " + status))
+		}, "StartUnit returned a bad status")
 	}
 
 	serviceDone <- struct{}{}
@@ -143,25 +153,42 @@ func main() {
 	params := params{}
 	arg, err := base64.StdEncoding.DecodeString(os.Args[1])
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "base64.DecodeString",
+			"arg":   os.Args[1],
+		}, "error decoding arg string")
 	}
 	if err := json.Unmarshal(arg, &params); err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "json.Unmarshal",
+			"json":  arg,
+		}, "error unmarshaling json")
 	}
 
 	l := params.Lock
 	if err := l.Refresh(); err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "lock.Refresh",
+		}, "failed to refresh lock")
 	}
 	d.Defer(func() { l.Release() })
 	locker := refresh(l, params.Interval)
 
 	sdttl, err := sd.WatchdogEnabled()
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "sd.WatchdogEnabled",
+		}, "failed to check watchdog configuration")
 	}
 	if uint64(sdttl.Seconds()) != params.TTL {
-		d.Fatal("params and systemd ttls do not match")
+		d.FatalWithFields(log.Fields{
+			"serviceTTL": sdttl,
+			"paramTTL":   params.TTL,
+		}, "params and systemd ttls do not match")
 	}
 	tickler := tickle(params.Interval)
 
