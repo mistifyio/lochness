@@ -128,7 +128,9 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 				_ = updateJobStatus(task, lochness.JobStatusDone, nil)
 			}
 			if task.Job != nil {
-				log.WithFields(logFields).Infof("job status: %s", task.Job.Status)
+				logFields["status"] = task.Job.Status
+				log.WithFields(logFields).Info("job status info")
+				delete(logFields, "status")
 			}
 			log.WithFields(logFields).Info("removing task")
 			deleteTask(task)
@@ -208,7 +210,8 @@ func processTask(task *Task) (bool, error) {
 	if err := getJob(task); err != nil {
 		return true, err
 	}
-	log.WithFields(logFields).Infof("job status: %s", task.Job.Status)
+	logFields["status"] = task.Job.Status
+	log.WithFields(logFields).Info("job status info")
 
 	if err := getGuest(task); err != nil {
 		return true, err
@@ -323,7 +326,7 @@ func deleteTask(task *Task) {
 		log.WithFields(log.Fields{
 			"task":  task.ID,
 			"error": err,
-		}).Errorf("unable to delete")
+		}).Error("unable to delete")
 	}
 }
 
