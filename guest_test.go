@@ -95,16 +95,25 @@ func TestGuestsAlias(t *testing.T) {
 func TestFirstGuest(t *testing.T) {
 	c := newContext(t)
 
+	f := c.NewFlavor()
+	f.Resources.Memory = 1024
+	f.Resources.CPU = 2
+	f.Resources.Disk = 8192
+	h.Ok(t, f.Save())
+
 	g := newGuest(t)
 	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e0")
+	g.FlavorID = f.ID
 	h.Ok(t, g.Save())
 
 	g = newGuest(t)
 	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e1")
+	g.FlavorID = f.ID
 	h.Ok(t, g.Save())
 
 	g = newGuest(t)
 	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e2")
+	g.FlavorID = f.ID
 	h.Ok(t, g.Save())
 
 	defer contextCleanup(t)
@@ -131,8 +140,14 @@ func TestGuestWithoutMAC(t *testing.T) {
 	c := newContext(t)
 	defer contextCleanup(t)
 
-	g := c.NewGuest()
+	f := c.NewFlavor()
+	f.Resources.Memory = 1024
+	f.Resources.CPU = 2
+	f.Resources.Disk = 8192
+	h.Ok(t, f.Save())
 
+	g := c.NewGuest()
+	g.FlavorID = f.ID
 	err := g.Save()
 
 	h.Ok(t, err)
