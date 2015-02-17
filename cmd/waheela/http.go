@@ -34,7 +34,7 @@ type (
 )
 
 // Run starts the server
-func Run(port uint, ctx *lochness.Context) error {
+func Run(port uint, ctx *lochness.Context, m *metricsContext) error {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
@@ -63,7 +63,13 @@ func Run(port uint, ctx *lochness.Context) error {
 	// work cleanly. The register functions need to add a base path handler to
 	// the main router before setting subhandlers on either main or subrouter
 
-	RegisterGuestRoutes("/guests", router)
+	RegisterGuestRoutes("/guests", router, m)
+
+	router.HandleFunc("/metrics",
+		func(w http.ResponseWriter, r *http.Request) {
+			hr := HTTPResponse{w}
+			hr.JSON(http.StatusOK, m.sink)
+		})
 
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", port),
