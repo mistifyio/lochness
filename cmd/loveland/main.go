@@ -212,17 +212,14 @@ func main() {
 			m.MeasureSince([]string{f.label, "time"}, start)
 			m.IncrCounter([]string{f.label, "count"}, 1)
 
-			f2 := copyFields(fields)
-			f2["duration"] = int(time.Since(start).Seconds() * 1000)
-			log.WithFields(f2).Info("done")
+			duration := int(time.Since(start).Seconds() * 1000)
+			log.WithFields(fields).WithField("duration", duration).Info("done")
 
 			if err != nil {
 
 				m.IncrCounter([]string{f.label, "error"}, 1)
 
-				f3 := copyFields(fields)
-				f3["error"] = err
-				log.WithFields(f3).Error("task error")
+				log.WithFields(fields).WithField("error", err).Error("task error")
 
 				if task.Job != nil {
 					task.Job.Status = lochness.JobStatusError
@@ -353,14 +350,4 @@ func addJobToWorker(t *Task) (bool, error) {
 // HACK: returning true trigegrs a task deletion in main
 func deleteTask(t *Task) (bool, error) {
 	return true, nil
-}
-
-// hacky helper
-func copyFields(fields log.Fields) log.Fields {
-	f := log.Fields{}
-	for k, v := range fields {
-		f[k] = v
-	}
-
-	return f
 }
