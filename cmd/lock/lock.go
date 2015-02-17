@@ -115,7 +115,7 @@ func killService(name string, signal int32) error {
 	return nil
 }
 
-func resolveCommand(command string) (string, error) {
+func resolveCommand(command string) string {
 	command, err := exec.LookPath(command)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -123,9 +123,18 @@ func resolveCommand(command string) (string, error) {
 			"exec":  command,
 			"func":  "exec.LookPath",
 		}).Error("could not find executable in path")
-		return "", err
+		return ""
 	}
-	return filepath.Abs(command)
+	command, err = filepath.Abs(command)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"exec":  command,
+			"func":  "filepath.Abs",
+		}).Error("failed to get absolute name")
+		return ""
+	}
+	return command
 }
 
 func main() {
@@ -159,13 +168,9 @@ func main() {
 	if len(params.Args) < 1 {
 		d.Fatal("command is required")
 	}
-	cmd, err := resolveCommand(params.Args[0])
-	if err != nil {
-		d.FatalWithFields(log.Fields{
-			"error": err,
-			"exec":  params.Args[0],
-			"func":  "resolveCommand",
-		}, "failed to resolveCommand")
+	cmd := resolveCommand(params.Args[0])
+	if cmd == "" {
+		d.Fatal()
 	}
 	params.Args[0] = cmd
 
@@ -203,13 +208,9 @@ func main() {
 	serviceDone := make(chan struct{})
 	base := filepath.Base(params.Args[0])
 	target := fmt.Sprintf("locker-%s-%d.service", base, id)
-	locker, err := resolveCommand("locker")
-	if err != nil {
-		d.FatalWithFields(log.Fields{
-			"error": err,
-			"exec":  params.Args[0],
-			"func":  "resolveCommand",
-		}, "failed to resolveCommand")
+	locker := resolveCommand("locker")
+	if locker == "" {
+		d.Fatal()
 	}
 	go runService(d, serviceDone, params.ID, params.TTL, target, locker, base, string(args))
 
