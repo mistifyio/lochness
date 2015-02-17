@@ -94,6 +94,7 @@ func TestGuestsAlias(t *testing.T) {
 
 func TestFirstGuest(t *testing.T) {
 	c := newContext(t)
+	defer contextCleanup(t)
 
 	f := c.NewFlavor()
 	f.Resources.Memory = 1024
@@ -115,8 +116,6 @@ func TestFirstGuest(t *testing.T) {
 	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e2")
 	g.FlavorID = f.ID
 	h.Ok(t, g.Save())
-
-	defer contextCleanup(t)
 
 	found, err := c.FirstGuest(func(g *lochness.Guest) bool {
 		return g.ID == "foo"
