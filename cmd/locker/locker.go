@@ -72,6 +72,7 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 		d.FatalWithFields(log.Fields{
 			"error": err,
 			"func":  "f.WriteString",
+			"name":  name,
 		}, "error writing service file")
 	}
 	f.Sync()
@@ -82,6 +83,7 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 		d.FatalWithFields(log.Fields{
 			"error": err,
 			"func":  "conn.StartUnit",
+			"name":  name,
 		}, "error starting service")
 	}
 
