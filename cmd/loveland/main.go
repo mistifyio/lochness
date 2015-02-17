@@ -105,8 +105,7 @@ func main() {
 		}))
 
 		go func() {
-			err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
-			if err != nil {
+			if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
 				log.WithFields(log.Fields{
 					"error": err,
 					"func":  "http.ListenAndServe",
