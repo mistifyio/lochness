@@ -85,6 +85,7 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 		d.FatalWithFields(log.Fields{
 			"error": err,
 			"func":  "conn.StartUnit",
+			"name":  target,
 		}, "error starting service")
 	}
 
@@ -93,6 +94,7 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 		d.FatalWithFields(log.Fields{
 			"status": status,
 			"func":   "StartUnit",
+			"name":   target,
 		}, "StartUnit returned a bad status")
 	}
 
