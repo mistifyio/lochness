@@ -86,8 +86,8 @@ func main() {
 	if !etcdClient.SyncCluster() {
 		log.WithFields(log.Fields{
 			"error":   err,
-			"address": *bstalk,
-		}).Fatal("failed to connect to beanstalk server")
+			"address": *addr,
+		}).Fatal("failed to connect to etcd cluster")
 	}
 
 	//inm := metrics.NewInmemSink(10*time.Second, 5*time.Minute)
