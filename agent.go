@@ -7,8 +7,9 @@ type (
 	// agent
 	Agent interface {
 		GetGuest(string) (*client.Guest, error)
-		CreateGuest(string) (*client.Guest, error)
-		DeleteGuest(string) (*client.Guest, error)
-		GuestAction(string, string) (*client.Guest, error)
+		CreateGuest(string) (string, error)
+		DeleteGuest(string) (string, error)
+		GuestAction(string, string) (string, error)
+		CheckJobStatus(string, string, string) (bool, error)
 	}
 )

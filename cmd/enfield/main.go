@@ -40,13 +40,13 @@ boot
 `
 
 func main() {
-	port := flag.Uint("port", 8888, "address to listen")
-	eaddr := flag.String("etcd", "http://127.0.0.1:4001", "address of etcd machine")
-	baseUrl := flag.String("base", "http://ipxe.mistify.local:8888", "base address of bits request")
-	defaultVersion := flag.String("version", "0.1.0", "If all else fails, what version to serve")
-	imageDir := flag.String("images", "/var/lib/images", "directory containing the images")
-	addOpts := flag.String("options", "", "additional options to add to boot kernel")
-	statsd := flag.String("statsd", "", "statsd address")
+	port := flag.UintP("port", "p", 8888, "address to listen")
+	eaddr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd machine")
+	baseUrl := flag.StringP("base", "b", "http://ipxe.mistify.local:8888", "base address of bits request")
+	defaultVersion := flag.StringP("version", "v", "0.1.0", "If all else fails, what version to serve")
+	imageDir := flag.StringP("images", "i", "/var/lib/images", "directory containing the images")
+	addOpts := flag.StringP("options", "o", "", "additional options to add to boot kernel")
+	statsd := flag.StringP("statsd", "s", "", "statsd address")
 
 	flag.Parse()
 

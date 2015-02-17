@@ -1,21 +1,25 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"os"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	flag "github.com/ogier/pflag"
 )
 
 func main() {
-	interval := flag.Int("interval", 60, "update interval in seconds")
-	ttl := flag.Int("ttl", 2*(*interval), "heartbeat ttl in seconds")
-	eaddr := flag.String("etcd", "http://localhost:4001", "address of etcd machine")
-	id := flag.String("id", "", "hypervisor id")
+	interval := flag.IntP("interval", "i", 60, "update interval in seconds")
+	ttl := flag.IntP("ttl", "t", 0, "heartbeat ttl in seconds")
+	eaddr := flag.StringP("etcd", "e", "http://localhost:4001", "address of etcd machine")
+	id := flag.StringP("id", "d", "", "hypervisor id")
 	flag.Parse()
+
+	if *ttl == 0 {
+		*ttl = 2 * (*interval)
+	}
 
 	e := etcd.NewClient([]string{*eaddr})
 	c := lochness.NewContext(e)
