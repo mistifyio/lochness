@@ -14,6 +14,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	ln "github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/watcher"
 	flag "github.com/ogier/pflag"
 )
 
@@ -228,30 +229,6 @@ func checkAndReload(permanet, temporary string) error {
 	return err
 }
 
-func watch(c *etcd.Client, prefix string, stop chan bool, ch chan struct{}) {
-	single := strings.TrimRight(filepath.Base(prefix), "s")
-
-	responses := make(chan *etcd.Response, 1)
-	go func() {
-		for r := range responses {
-			log.WithFields(log.Fields{
-				"type":   single,
-				"node":   r.Node.Key,
-				"action": r.Action,
-			}).Info(prefix, " was updated")
-			ch <- struct{}{}
-		}
-	}()
-
-	_, err := c.Watch(prefix, 0, true, responses, stop)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "etcd.Watch",
-		}).Fatal("etcd watch returned an error")
-	}
-}
-
 func cleanStaleFiles(rulesfile string) {
 	dir := filepath.Dir(rulesfile)
 	prefix := filepath.Base(rulesfile) + ".tmp"
@@ -331,22 +308,47 @@ func main() {
 	c := ln.NewContext(e)
 	hv := getHV(hn, e, c)
 
-	stop := make(chan bool)
-	ch := make(chan struct{})
-	go watch(e, "/lochness/guests/", stop, ch)
-	go watch(e, "/lochness/fwgroups/", stop, ch)
+	watcher, err := watcher.New(e)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "watcher.New",
+		}).Fatal("failed to start watcher")
+	}
 
-	go func() {
-		// load rules at startup
-		ch <- struct{}{}
-	}()
+	err = watcher.Add("/lochness/guests")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":  err,
+			"func":   "watcher.Add",
+			"prefix": "/lochness/guests",
+		}).Fatal("failed to add prefix to watch list")
+	}
 
-	// TODO: batching?
-	for range ch {
+	watcher.Add("/lochness/fwgroups")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":  err,
+			"func":   "watcher.Add",
+			"prefix": "/lochness/fwgroups",
+		}).Fatal("failed to add prefix to watch list")
+	}
+
+	// load rules at startup
+	td, err := genRules(hv, c)
+	if err != nil {
+		log.WithField("error", err).Fatal("could not load intial rules")
+	}
+	applyRules(rules, td)
+
+	for watcher.Next() {
 		td, err := genRules(hv, c)
 		if err != nil {
 			continue
 		}
 		applyRules(rules, td)
+	}
+	if err := watcher.Err(); err != nil {
+		log.Fatal(err)
 	}
 }
