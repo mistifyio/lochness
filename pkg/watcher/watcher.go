@@ -8,11 +8,11 @@ import (
 )
 
 type Watcher struct {
-	c        *etcd.Client
-	events   chan *etcd.Response
-	errors   chan error
-	err      error
-	response *etcd.Response
+	c         *etcd.Client
+	responses chan *etcd.Response
+	errors    chan error
+	err       error
+	response  *etcd.Response
 
 	mu       *sync.Mutex // mu protects the following two vars
 	isClosed bool
@@ -21,11 +21,11 @@ type Watcher struct {
 
 func New(c *etcd.Client) (*Watcher, error) {
 	w := &Watcher{
-		events:   make(chan *etcd.Response),
-		errors:   make(chan error),
-		c:        c,
-		mu:       &sync.Mutex{},
-		prefixes: map[string]chan bool{},
+		responses: make(chan *etcd.Response),
+		errors:    make(chan error),
+		c:         c,
+		mu:        &sync.Mutex{},
+		prefixes:  map[string]chan bool{},
 	}
 	return w, nil
 }
@@ -50,12 +50,12 @@ func (w *Watcher) Add(prefix string) error {
 
 func (w *Watcher) Next() bool {
 	select {
-	case resp := <-w.events:
+	case resp := <-w.responses:
 		w.response = resp
 		return true
 	default:
 		select {
-		case resp := <-w.events:
+		case resp := <-w.responses:
 			w.response = resp
 			return true
 		case err := <-w.errors:
@@ -104,7 +104,7 @@ func (w *Watcher) watch(prefix string, stop chan bool) {
 		responses := make(chan *etcd.Response)
 		go func() {
 			for resp := range responses {
-				w.events <- resp
+				w.responses <- resp
 			}
 		}()
 
