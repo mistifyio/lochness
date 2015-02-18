@@ -14,7 +14,7 @@ type Watcher struct {
 	err       error
 	response  *etcd.Response
 
-	mu       *sync.Mutex // mu protects the following two vars
+	mu       sync.Mutex // mu protects the following two vars
 	isClosed bool
 	prefixes map[string]chan bool
 }
@@ -24,7 +24,6 @@ func New(c *etcd.Client) (*Watcher, error) {
 		responses: make(chan *etcd.Response),
 		errors:    make(chan error),
 		c:         c,
-		mu:        &sync.Mutex{},
 		prefixes:  map[string]chan bool{},
 	}
 	return w, nil
