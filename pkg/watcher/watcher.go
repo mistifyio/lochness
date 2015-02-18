@@ -52,15 +52,9 @@ func (w *Watcher) Next() bool {
 	case resp := <-w.responses:
 		w.response = resp
 		return true
-	default:
-		select {
-		case resp := <-w.responses:
-			w.response = resp
-			return true
-		case err := <-w.errors:
-			w.err = err
-			return false
-		}
+	case err := <-w.errors:
+		w.err = err
+		return false
 	}
 }
 
