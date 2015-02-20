@@ -11,9 +11,9 @@ import (
 	"strings"
 	"syscall"
 
-	"../../pkg/watcher"
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/watcher"
 	flag "github.com/ogier/pflag"
 )
 
