@@ -70,11 +70,9 @@ func getTags(key string) []string {
 // runAnsible kicks off an ansible run
 func runAnsible(key string) {
 	keyTags := getTags(key)
-	log.Info("TAGS:", keyTags)
-	args := make([]string, 0, len(keyTags)+1)
-	if len(keyTags) > 0 {
-		args = append(args, "-t")
-		args = append(args, keyTags...)
+	args := make([]string, 0, len(keyTags)*2)
+	for _, tag := range keyTags {
+		args = append(args, "-t", tag)
 	}
 	cmd := exec.Command(path.Join(ansibleDir, "run"), args...)
 	cmd.Dir = ansibleDir
