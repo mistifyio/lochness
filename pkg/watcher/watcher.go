@@ -80,6 +80,7 @@ func (w *Watcher) Remove(prefix string) error {
 	}
 
 	close(ch)
+	delete(w.prefixes, prefix)
 	return nil
 }
 
@@ -89,8 +90,9 @@ func (w *Watcher) Close() error {
 
 	w.isClosed = true
 
-	for _, ch := range w.prefixes {
+	for prefix, ch := range w.prefixes {
 		close(ch)
+		delete(w.prefixes, prefix)
 	}
 
 	return nil
