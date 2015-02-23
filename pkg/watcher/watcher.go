@@ -32,6 +32,8 @@ func New(c *etcd.Client) (*Watcher, error) {
 	return w, nil
 }
 
+// Add will add prefix to the watch list, there still may be a short time (<500us)
+// after Add returns when an event on prefix may be missed.
 func (w *Watcher) Add(prefix string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -53,6 +55,9 @@ func (w *Watcher) Add(prefix string) error {
 	return nil
 }
 
+// Next blocks until an event has been received by any of the wathed prefixes.
+// The event it self may be accesed via the Response method. False will be
+// returned upon an error, the error can be retrieved via the Err method.
 func (w *Watcher) Next() bool {
 	select {
 	case resp := <-w.responses:
@@ -64,14 +69,18 @@ func (w *Watcher) Next() bool {
 	}
 }
 
+// Response returns the response received that caused Next to return.
 func (w *Watcher) Response() *etcd.Response {
 	return w.response
 }
 
+// Err returns the last error received
 func (w *Watcher) Err() error {
 	return w.err
 }
 
+// Remove will remove said prefix from the watch list, it will return an error
+// if the prefix is not being watched.
 func (w *Watcher) Remove(prefix string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -90,6 +99,8 @@ func (w *Watcher) removeLocked(prefix string) error {
 	return nil
 }
 
+// Close will stop all watches and disable any new watches from being started.
+// Close may be called multiple times in case there is a transient error.
 func (w *Watcher) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
