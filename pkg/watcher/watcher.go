@@ -82,7 +82,8 @@ func (w *Watcher) removeLocked(prefix string) error {
 		return ErrPrefixNotWatched
 	}
 
-	close(ch)
+	ch <- true
+	<-ch
 	delete(w.prefixes, prefix)
 	return nil
 }
@@ -103,6 +104,8 @@ func (w *Watcher) Close() error {
 }
 
 func (w *Watcher) watch(prefix string, stop chan bool) {
+	defer close(stop)
+
 	responses := make(chan *etcd.Response)
 	go func() {
 		for resp := range responses {
