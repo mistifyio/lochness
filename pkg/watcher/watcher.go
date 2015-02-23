@@ -73,7 +73,10 @@ func (w *Watcher) Err() error {
 func (w *Watcher) Remove(prefix string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	return w.removeLocked(prefix)
+}
 
+func (w *Watcher) removeLocked(prefix string) error {
 	ch, ok := w.prefixes[prefix]
 	if !ok {
 		return ErrPrefixNotWatched
@@ -90,9 +93,10 @@ func (w *Watcher) Close() error {
 
 	w.isClosed = true
 
-	for prefix, ch := range w.prefixes {
-		close(ch)
-		delete(w.prefixes, prefix)
+	for prefix := range w.prefixes {
+		if err := w.removeLocked(prefix); err != nil {
+			return err
+		}
 	}
 
 	return nil
