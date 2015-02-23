@@ -48,6 +48,8 @@ func (w *Watcher) Add(prefix string) error {
 	ch := make(chan bool)
 	w.prefixes[prefix] = ch
 	go w.watch(prefix, ch)
+	<-ch
+	<-ch
 	return nil
 }
 
@@ -108,11 +110,13 @@ func (w *Watcher) watch(prefix string, stop chan bool) {
 
 	responses := make(chan *etcd.Response)
 	go func() {
+		stop <- false
 		for resp := range responses {
 			w.responses <- resp
 		}
 	}()
 
+	stop <- false
 	_, err := w.c.Watch(prefix, 0, true, responses, stop)
 	if err == nil || err == etcd.ErrWatchStoppedByUser {
 		return
