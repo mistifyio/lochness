@@ -7,6 +7,9 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 )
 
+var ErrPrefixNotWatched = errors.New("prefix is not being watched")
+var ErrStopped = errors.New("watcher has been stopped")
+
 type Watcher struct {
 	c         *etcd.Client
 	responses chan *etcd.Response
@@ -34,7 +37,7 @@ func (w *Watcher) Add(prefix string) error {
 	defer w.mu.Unlock()
 
 	if w.isClosed {
-		return errors.New("watcher has been shutdown")
+		return ErrStopped
 	}
 
 	_, ok := w.prefixes[prefix]
@@ -72,7 +75,7 @@ func (w *Watcher) Remove(prefix string) error {
 
 	ch, ok := w.prefixes[prefix]
 	if !ok {
-		return errors.New("prefix is not being watched")
+		return ErrPrefixNotWatched
 	}
 
 	close(ch)
