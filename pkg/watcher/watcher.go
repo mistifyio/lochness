@@ -103,20 +103,16 @@ func (w *Watcher) Close() error {
 }
 
 func (w *Watcher) watch(prefix string, stop chan bool) {
-	for {
-		responses := make(chan *etcd.Response)
-		go func() {
-			for resp := range responses {
-				w.responses <- resp
-			}
-		}()
+	responses := make(chan *etcd.Response)
+	go func() {
+		for resp := range responses {
+			w.responses <- resp
+		}
+	}()
 
-		_, err := w.c.Watch(prefix, 0, true, responses, stop)
-		if err == nil || err == etcd.ErrWatchStoppedByUser {
-			break
-		}
-		if err != nil {
-			w.errors <- err
-		}
+	_, err := w.c.Watch(prefix, 0, true, responses, stop)
+	if err == nil || err == etcd.ErrWatchStoppedByUser {
+		return
 	}
+	w.errors <- err
 }
