@@ -46,6 +46,7 @@ func (w *Watcher) Add(prefix string) error {
 	}
 
 	ch := make(chan bool)
+	w.prefixes[prefix] = ch
 	go w.watch(prefix, ch)
 	return nil
 }
