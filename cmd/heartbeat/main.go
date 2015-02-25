@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"os"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	flag "github.com/ogier/pflag"
@@ -26,20 +26,35 @@ func main() {
 
 	hn, err := lochness.SetHypervisorID(*id)
 	if err != nil {
-		log.Fatal(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "lochness.SetHypervisorID",
+			"id":    id,
+		}).Fatal("failed to set hypervisor id")
 	}
 
 	hv, err := c.Hypervisor(hn)
 	if err != nil {
-		log.Fatal(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "context.Hypervisor",
+			"id":    hn,
+		}).Fatal("failed to instantiate hypervisor")
 	}
 
 	for {
 		if err = hv.UpdateResources(); err != nil {
-			log.Println(err)
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "hv.UpdateResources",
+			}).Error("failed to update hypervisor resources")
 		}
 		if err = hv.Heartbeat(time.Duration(*ttl)); err != nil {
-			log.Println(err)
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "hv.Heartbeat",
+				"ttl":   *ttl,
+			}).Error("failed to beat heart")
 		}
 		os.Stdout.WriteString("♥ ")
 		os.Stdout.Sync()

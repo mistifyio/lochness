@@ -118,9 +118,7 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 
 		if removeTask {
 			if err != nil {
-				lf := copyFields(logFields)
-				lf["error"] = err.Error()
-				log.WithFields(lf).Error(err)
+				log.WithFields(logFields).WithField("error", err).Error(err)
 				if task.Job != nil {
 					_ = updateJobStatus(task, lochness.JobStatusError, err)
 				}
@@ -128,16 +126,14 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 				_ = updateJobStatus(task, lochness.JobStatusDone, nil)
 			}
 			if task.Job != nil {
-				log.WithFields(logFields).Infof("job status: %s", task.Job.Status)
+				log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
 			}
 			log.WithFields(logFields).Info("removing task")
 			deleteTask(task)
 		} else {
 			log.WithFields(logFields).Info("releasing task")
 			if err := task.conn.Release(task.ID, 0, 5*time.Second); err != nil {
-				lf := copyFields(logFields)
-				lf["error"] = err
-				log.WithFields(lf).Fatal(err)
+				log.WithFields(logFields).WithField("error", err).Fatal(err)
 			}
 		}
 	}
@@ -208,7 +204,8 @@ func processTask(task *Task) (bool, error) {
 	if err := getJob(task); err != nil {
 		return true, err
 	}
-	log.WithFields(logFields).Infof("job status: %s", task.Job.Status)
+	logFields["status"] = task.Job.Status
+	log.WithFields(logFields).Info("job status info")
 
 	if err := getGuest(task); err != nil {
 		return true, err
@@ -323,16 +320,6 @@ func deleteTask(task *Task) {
 		log.WithFields(log.Fields{
 			"task":  task.ID,
 			"error": err,
-		}).Errorf("unable to delete")
+		}).Error("unable to delete")
 	}
-}
-
-// hacky helper
-func copyFields(fields log.Fields) log.Fields {
-	f := log.Fields{}
-	for k, v := range fields {
-		f[k] = v
-	}
-
-	return f
 }

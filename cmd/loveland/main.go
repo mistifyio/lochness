@@ -61,24 +61,33 @@ func main() {
 
 	level, err := log.ParseLevel(*logLevel)
 	if err != nil {
-		log.Fatal(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "logrus.ParseLevel",
+			"level": *logLevel,
+		}).Fatal("error parsing log level")
 	}
 
 	log.SetLevel(level)
 
-	log.Infof("using beanstalk %s", *bstalk)
-
+	log.WithField("address", *bstalk).Info("connection to beanstalk")
 	conn, err := beanstalk.Dial("tcp", *bstalk)
 	if err != nil {
-		log.Fatal(err)
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": *bstalk,
+		}).Fatal("failed to connect to beanstalk server")
 	}
 
-	log.Infof("using etcd %s", *addr)
+	log.WithField("address", *addr).Info("connection to etcd")
 	etcdClient := etcd.NewClient([]string{*addr})
 
 	// make sure we can actually talk to etcd
 	if !etcdClient.SyncCluster() {
-		log.Fatal("unable to sync etcd at %s", *addr)
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": *addr,
+		}).Fatal("failed to connect to etcd cluster")
 	}
 
 	//inm := metrics.NewInmemSink(10*time.Second, 5*time.Minute)
@@ -96,7 +105,12 @@ func main() {
 		}))
 
 		go func() {
-			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
+			if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+					"func":  "http.ListenAndServe",
+				}).Fatal("error serving")
+			}
 		}()
 
 	}
@@ -153,17 +167,21 @@ func main() {
 	for {
 		id, body, err := ts.Reserve(10 * time.Hour)
 		if err != nil {
-			if err.(beanstalk.ConnError).Err == beanstalk.ErrTimeout {
-				// nothing queued, so just retry
+			switch err.(beanstalk.ConnError) {
+			case beanstalk.ErrTimeout:
+				// Empty queue, continue waiting
 				continue
-			} else if err.(beanstalk.ConnError).Err == beanstalk.ErrDeadline {
-				// this is a hack. read docs on deadline. we just sleep to try to get another job
-				log.Info(beanstalk.ErrDeadline)
+			case beanstalk.ErrDeadline:
+				// See docs on beanstalkd deadline
+				// We're just going to sleep to let the deadline'd job expire
+				// and try to get another job
+				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
+				log.Debug(beanstalk.ErrDeadline)
 				time.Sleep(5 * time.Second)
 				continue
-			} else {
-				// take a dirt nap
-				log.WithFields(log.Fields{"error": err}).Fatal(err)
+			default:
+				// You have failed me for the last time
+				log.WithField("error", err).Fatal(err)
 			}
 		}
 
@@ -186,7 +204,7 @@ func main() {
 				fields["job"] = task.Job.ID
 			}
 
-			log.WithFields(fields).Debugf("running")
+			log.WithFields(fields).Debug("running")
 
 			start := time.Now()
 			rm, err := f.function(task)
@@ -194,17 +212,14 @@ func main() {
 			m.MeasureSince([]string{f.label, "time"}, start)
 			m.IncrCounter([]string{f.label, "count"}, 1)
 
-			f2 := copyFields(fields)
-			f2["duration"] = int(time.Since(start).Seconds() * 1000)
-			log.WithFields(f2).Info("done")
+			duration := int(time.Since(start).Seconds() * 1000)
+			log.WithFields(fields).WithField("duration", duration).Info("done")
 
 			if err != nil {
 
 				m.IncrCounter([]string{f.label, "error"}, 1)
 
-				f3 := copyFields(fields)
-				f3["error"] = err
-				log.WithFields(f3).Errorf("task error")
+				log.WithFields(fields).WithField("error", err).Error("task error")
 
 				if task.Job != nil {
 					task.Job.Status = lochness.JobStatusError
@@ -214,7 +229,7 @@ func main() {
 							"job":   task.Job.ID,
 							"task":  task.ID,
 							"error": err,
-						}).Errorf("unable to save")
+						}).Error("unable to save")
 					}
 				}
 				break
@@ -225,7 +240,7 @@ func main() {
 					log.WithFields(log.Fields{
 						"task":  task.ID,
 						"error": err,
-					}).Errorf("unable to delete")
+					}).Error("unable to delete")
 				}
 				break
 			}
@@ -324,7 +339,10 @@ func addJobToWorker(t *Task) (bool, error) {
 		return true, fmt.Errorf("unable to put to work queue %s", err)
 	}
 
-	log.Debugf("added %d to work queue for %s", id, t.Job.ID)
+	log.WithFields(log.Fields{
+		"id":  id,
+		"job": t.Job.ID,
+	}).Debug("ading job to work queue")
 
 	return false, nil
 }
@@ -332,14 +350,4 @@ func addJobToWorker(t *Task) (bool, error) {
 // HACK: returning true trigegrs a task deletion in main
 func deleteTask(t *Task) (bool, error) {
 	return true, nil
-}
-
-// hacky helper
-func copyFields(fields log.Fields) log.Fields {
-	f := log.Fields{}
-	for k, v := range fields {
-		f[k] = v
-	}
-
-	return f
 }

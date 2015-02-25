@@ -3,9 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -13,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/dbus"
 	"github.com/mistifyio/lochness/pkg/deferer"
 	"github.com/mistifyio/lochness/pkg/lock"
@@ -45,12 +44,18 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 
 	conn, err := dbus.New()
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "dbus.New",
+		}, "error creating new dbus connection")
 	}
 
 	f, err := os.Create("/run/systemd/system/" + name)
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "os.Create",
+		}, "error creating service file")
 	}
 	d.Defer(func() { f.Close() })
 
@@ -64,21 +69,31 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 	dotService := fmt.Sprintf(service, base, strings.Join(args, " "))
 	_, err = f.WriteString(dotService)
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "f.WriteString",
+			"name":  name,
+		}, "error writing service file")
 	}
 	f.Sync()
 
 	done := make(chan string)
 	_, err = conn.StartUnit(name, "fail", done)
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "conn.StartUnit",
+			"name":  name,
+		}, "error starting service")
 	}
 
 	status := <-done
 	if status != "done" {
-		d.Fatal(errors.New(name + " " + status))
+		d.FatalWithFields(log.Fields{
+			"status": status,
+			"func":   "StartUnit",
+		}, "StartUnit returned a bad status")
 	}
-	log.Println("status:", status)
 
 	serviceDone <- struct{}{}
 }
@@ -86,7 +101,10 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 func killService(name string, signal int32) error {
 	conn, err := dbus.New()
 	if err != nil {
-		log.Println("err:", err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "dbus.New",
+		}).Error("error creating new dbus connection")
 		return err
 	}
 
@@ -106,7 +124,6 @@ func refresh(lock *lock.Lock, interval uint64) chan struct{} {
 					// TODO: Should we just log.Fatal here?
 					// So that systemd kills the services
 					// ASAP?
-					log.Println("sending to ch")
 					ch <- struct{}{}
 				}
 			case <-ch:
@@ -135,30 +152,45 @@ func main() {
 	d := deferer.NewDeferer(nil)
 	defer d.Run()
 
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-
 	params := params{}
 	arg, err := base64.StdEncoding.DecodeString(os.Args[1])
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "base64.DecodeString",
+			"arg":   os.Args[1],
+		}, "error decoding arg string")
 	}
 	if err := json.Unmarshal(arg, &params); err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "json.Unmarshal",
+			"json":  arg,
+		}, "error unmarshaling json")
 	}
 
 	l := params.Lock
 	if err := l.Refresh(); err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "lock.Refresh",
+		}, "failed to refresh lock")
 	}
 	d.Defer(func() { l.Release() })
 	locker := refresh(l, params.Interval)
 
 	sdttl, err := sd.WatchdogEnabled()
 	if err != nil {
-		d.Fatal(err)
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "sd.WatchdogEnabled",
+		}, "failed to check watchdog configuration")
 	}
 	if uint64(sdttl.Seconds()) != params.TTL {
-		d.Fatal("params and systemd ttls do not match")
+		d.FatalWithFields(log.Fields{
+			"serviceTTL": sdttl,
+			"paramTTL":   params.TTL,
+		}, "params and systemd ttls do not match")
 	}
 	tickler := tickle(params.Interval)
 
@@ -177,7 +209,7 @@ func main() {
 	case <-serviceDone:
 		close(locker)
 	case s := <-sigs:
-		log.Println("got a sig:", s)
+		log.WithField("signal", s).Info("signal received")
 		killService(target, int32(s.(syscall.Signal)))
 		close(locker)
 	case <-tickler:

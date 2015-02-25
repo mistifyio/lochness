@@ -31,14 +31,21 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 	level, err := log.ParseLevel(logLevel)
 	if err != nil {
-		log.Fatal(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "log.ParseLevel",
+		}).Fatal(err)
 	}
 	log.SetLevel(level)
 
 	etcdClient := etcd.NewClient([]string{etcdAddr})
 
 	if !etcdClient.SyncCluster() {
-		log.Fatalf("unable to sync etcd at %s", etcdAddr)
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "etcd.SyncCluster",
+			"addr":  etcdAddr,
+		}).Fatal("unable to sync etcd cluster")
 	}
 
 	// setup metrics

@@ -9,6 +9,8 @@ import (
 	"log"
 	"path/filepath"
 	"runtime"
+
+	"github.com/Sirupsen/logrus"
 )
 
 // Deferer holds a slice of deferred functions and an optional pointer to the
@@ -43,6 +45,21 @@ func (d *Deferer) Fatal(v ...interface{}) {
 		base := filepath.Base(file)
 		args := []interface{}{interface{}(fmt.Sprintf("%s:%d: ", base, line))}
 		log.Fatal(append(args, v...)...)
+	}
+}
+
+// FatalWithFields is a mash up of Fatal and logrus
+func (d *Deferer) FatalWithFields(fields logrus.Fields, v ...interface{}) {
+	d.fatal()
+	// Need to grab the original caller file and line number
+	_, file, line, ok := runtime.Caller(1)
+	if !ok {
+		logrus.WithFields(fields).Fatal(v...)
+	} else {
+		base := filepath.Base(file)
+		fields["file"] = base
+		fields["line"] = line
+		logrus.WithFields(fields).Fatal(v...)
 	}
 }
 
