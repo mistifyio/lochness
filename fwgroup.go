@@ -121,13 +121,13 @@ func (f *FWGroup) UnmarshalJSON(input []byte) error {
 
 // NewFWGroup creates a new, blank FWGroup
 func (c *Context) NewFWGroup() *FWGroup {
-	g := &FWGroup{
+	f := &FWGroup{
 		context:  c,
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
 
-	return g
+	return f
 }
 
 // FWGroup fetches a FWGroup from the config store
@@ -137,32 +137,32 @@ func (c *Context) FWGroup(id string) (*FWGroup, error) {
 	if err != nil {
 		return nil, err
 	}
-	g := &FWGroup{
+	f := &FWGroup{
 		context: c,
 		ID:      id,
 	}
 
-	err = g.Refresh()
+	err = f.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	return g, nil
+	return f, nil
 }
 
 // key is a helper to generate the config store key
-func (g *FWGroup) key() string {
-	return filepath.Join(FWGroupPath, g.ID, "metadata")
+func (f *FWGroup) key() string {
+	return filepath.Join(FWGroupPath, f.ID, "metadata")
 }
 
 // fromResponse is a helper to unmarshal a FWGroup
-func (g *FWGroup) fromResponse(resp *etcd.Response) error {
-	g.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &g)
+func (f *FWGroup) fromResponse(resp *etcd.Response) error {
+	f.modifiedIndex = resp.Node.ModifiedIndex
+	return json.Unmarshal([]byte(resp.Node.Value), &f)
 }
 
 // Refresh reloads from the data store
-func (g *FWGroup) Refresh() error {
-	resp, err := g.context.etcd.Get(g.key(), false, false)
+func (f *FWGroup) Refresh() error {
+	resp, err := f.context.etcd.Get(f.key(), false, false)
 
 	if err != nil {
 		return err
@@ -173,23 +173,23 @@ func (g *FWGroup) Refresh() error {
 		return nil
 	}
 
-	return g.fromResponse(resp)
+	return f.fromResponse(resp)
 }
 
 // Validate ensures a FWGroup has reasonable data. It currently does nothing.
-func (g *FWGroup) Validate() error {
+func (f *FWGroup) Validate() error {
 	// do validation stuff...
 	return nil
 }
 
 // Save persists a FWGroup.  It will call Validate.
-func (g *FWGroup) Save() error {
+func (f *FWGroup) Save() error {
 
-	if err := g.Validate(); err != nil {
+	if err := f.Validate(); err != nil {
 		return err
 	}
 
-	v, err := json.Marshal(g)
+	v, err := json.Marshal(f)
 
 	if err != nil {
 		return err
@@ -197,15 +197,15 @@ func (g *FWGroup) Save() error {
 
 	// if we changed something, don't clobber
 	var resp *etcd.Response
-	if g.modifiedIndex != 0 {
-		resp, err = g.context.etcd.CompareAndSwap(g.key(), string(v), 0, "", g.modifiedIndex)
+	if f.modifiedIndex != 0 {
+		resp, err = f.context.etcd.CompareAndSwap(f.key(), string(v), 0, "", f.modifiedIndex)
 	} else {
-		resp, err = g.context.etcd.Create(g.key(), string(v), 0)
+		resp, err = f.context.etcd.Create(f.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
 	}
 
-	g.modifiedIndex = resp.EtcdIndex
+	f.modifiedIndex = resp.EtcdIndex
 	return nil
 }
