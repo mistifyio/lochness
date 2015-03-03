@@ -166,7 +166,14 @@ func main() {
 			}).Fatal("failed to save hypervisor")
 		}
 	}
-	h.AddSubnet(s, "br0")
+	if err := h.AddSubnet(s, "br0"); err != nil {
+		log.WithFields(log.Fields{
+			"func":  "AddSubnet",
+			"error": err,
+			"id":    h.ID,
+			"item":  "hypervisor",
+		}).Fatal("failed to add subnet")
+	}
 
 	print(h)
 
@@ -199,8 +206,22 @@ func main() {
 		Protocol:  "tcp",
 	}}
 
-	fw1.Save()
-	fw2.Save()
+	if err := fw1.Save(); err != nil {
+		log.WithFields(log.Fields{
+			"func":  "Save",
+			"error": err,
+			"id":    fw1.ID,
+			"item":  "fwgroup",
+		}).Fatal("failed to save fwgroup")
+	}
+	if err := fw2.Save(); err != nil {
+		log.WithFields(log.Fields{
+			"func":  "Save",
+			"error": err,
+			"id":    fw2.ID,
+			"item":  "fwgroup",
+		}).Fatal("failed to save fwgroup")
+	}
 
 	g1 := c.NewGuest()
 	g1.SubnetID = s.ID

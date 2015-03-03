@@ -102,7 +102,9 @@ func main() {
 	router.Handle("/metrics", chain.Append(mw.HandlerWrapper("metrics")).ThenFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			json.NewEncoder(w).Encode(sink)
+			if err := json.NewEncoder(w).Encode(sink); err != nil {
+				log.WithField("error", err).Error(err)
+			}
 		}))
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), router); err != nil {

@@ -57,7 +57,7 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 			"func":  "os.Create",
 		}, "error creating service file")
 	}
-	d.Defer(func() { f.Close() })
+	d.Defer(func() { _ = f.Close() })
 
 	base := filepath.Base(args[0])
 	// For args with spaces, quote 'em
@@ -75,7 +75,13 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 			"name":  name,
 		}, "error writing service file")
 	}
-	f.Sync()
+	if err := f.Sync(); err != nil {
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "f.Sync",
+			"name":  name,
+		}, "error syncing service file")
+	}
 
 	done := make(chan string)
 	_, err = conn.StartUnit(name, "fail", done)
@@ -127,7 +133,9 @@ func refresh(lock *lock.Lock, interval uint64) chan struct{} {
 					ch <- struct{}{}
 				}
 			case <-ch:
-				lock.Release()
+				if err := lock.Release(); err != nil {
+					log.WithField("error", err).Error("faile to release lock")
+				}
 				return
 			}
 		}
@@ -141,7 +149,7 @@ func tickle(interval uint64) chan struct{} {
 	go func() {
 		ticker := time.NewTicker(time.Duration(interval) * time.Second)
 		for range ticker.C {
-			sd.Notify("WATCHDOG=1")
+			_ = sd.Notify("WATCHDOG=1")
 		}
 		tickler <- struct{}{}
 	}()
@@ -176,7 +184,14 @@ func main() {
 			"func":  "lock.Refresh",
 		}, "failed to refresh lock")
 	}
-	d.Defer(func() { l.Release() })
+	d.Defer(func() {
+		if err := l.Release(); err != nil {
+			d.FatalWithFields(log.Fields{
+				"error": err,
+				"func":  "lock.Release",
+			}, "failed to release lock")
+		}
+	})
 	locker := refresh(l, params.Interval)
 
 	sdttl, err := sd.WatchdogEnabled()
@@ -202,19 +217,24 @@ func main() {
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
+	var killErr error
 	select {
 	case <-locker:
 		// TODO: should we never expect this?
-		killService(target, int32(syscall.SIGINT))
+		killErr = killService(target, int32(syscall.SIGINT))
 	case <-serviceDone:
 		close(locker)
 	case s := <-sigs:
 		log.WithField("signal", s).Info("signal received")
-		killService(target, int32(s.(syscall.Signal)))
+		killErr = killService(target, int32(s.(syscall.Signal)))
 		close(locker)
 	case <-tickler:
 		// watchdog tickler stopped, uh oh we are going down pretty soon
-		killService(target, int32(syscall.SIGINT))
+		killErr = killService(target, int32(syscall.SIGINT))
 		close(locker)
+	}
+
+	if killErr != nil {
+		log.WithField("error", killErr).Fatal("failed to kill service")
 	}
 }

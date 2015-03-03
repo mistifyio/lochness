@@ -96,7 +96,7 @@ func getGuestsFWGroups(c *ln.Context, hv *ln.Hypervisor) (groupMap, guestMap) {
 	groups := groupMap{}
 	n := len(groups)
 
-	hv.ForEachGuest(func(guest *ln.Guest) error {
+	_ = hv.ForEachGuest(func(guest *ln.Guest) error {
 		// check if in cache
 		g, ok := groups[guest.FWGroupID]
 		if ok {
@@ -132,7 +132,7 @@ func getGuestsFWGroups(c *ln.Context, hv *ln.Hypervisor) (groupMap, guestMap) {
 }
 
 func populateGroupMembers(c *ln.Context, groups groupMap) {
-	c.ForEachGuest(func(guest *ln.Guest) error {
+	_ = c.ForEachGuest(func(guest *ln.Guest) error {
 		group, ok := groups[guest.FWGroupID]
 		if !ok {
 			// not a FWGroup referenced by any guest's FWGroup
@@ -316,8 +316,7 @@ func main() {
 		}).Fatal("failed to start watcher")
 	}
 
-	err = watcher.Add("/lochness/guests")
-	if err != nil {
+	if err = watcher.Add("/lochness/guests"); err != nil {
 		log.WithFields(log.Fields{
 			"error":  err,
 			"func":   "watcher.Add",
@@ -325,8 +324,7 @@ func main() {
 		}).Fatal("failed to add prefix to watch list")
 	}
 
-	watcher.Add("/lochness/fwgroups")
-	if err != nil {
+	if err := watcher.Add("/lochness/fwgroups"); err != nil {
 		log.WithFields(log.Fields{
 			"error":  err,
 			"func":   "watcher.Add",
@@ -339,14 +337,18 @@ func main() {
 	if err != nil {
 		log.WithField("error", err).Fatal("could not load intial rules")
 	}
-	applyRules(rules, td)
+	if err := applyRules(rules, td); err != nil {
+		log.WithField("error", err).Fatal("could not apply intial rules")
+	}
 
 	for watcher.Next() {
 		td, err := genRules(hv, c)
 		if err != nil {
 			continue
 		}
-		applyRules(rules, td)
+		if err := applyRules(rules, td); err != nil {
+			log.WithField("error", err).Fatal("could not apply rules")
+		}
 	}
 	if err := watcher.Err(); err != nil {
 		log.Fatal(err)

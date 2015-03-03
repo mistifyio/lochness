@@ -61,7 +61,7 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 			"func":  "os.Create",
 		}, "error creating service file")
 	}
-	d.Defer(func() { f.Close() })
+	d.Defer(func() { _ = f.Close() })
 
 	arg = base64.StdEncoding.EncodeToString([]byte(arg))
 	dotService := fmt.Sprintf(service, base, cmd, arg, ttl)
@@ -72,7 +72,12 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, ttl uint
 			"func":  "f.WriteString",
 		}, "error writing service file")
 	}
-	f.Sync()
+	if err := f.Sync(); err != nil {
+		d.FatalWithFields(log.Fields{
+			"error": err,
+			"func":  "f.Sync",
+		}, "error syncing service file")
+	}
 
 	log.WithFields(log.Fields{
 		"locker": fmt.Sprintf("locker-%s-%d", base, id),
@@ -194,7 +199,14 @@ func main() {
 		}, "failed to get lock")
 	}
 
-	d.Defer(func() { l.Release() })
+	d.Defer(func() {
+		if err := l.Release(); err != nil {
+			d.FatalWithFields(log.Fields{
+				"error": err,
+				"func":  "l.Release",
+			}, "failed to release lock")
+		}
+	})
 	params.Lock = l
 
 	args, err := json.Marshal(&params)
@@ -222,6 +234,8 @@ func main() {
 		log.WithField("service_state", "done").Info("service is done")
 	case s := <-sigs:
 		log.WithField("signal", s).Info("signal received")
-		killService(target, int32(s.(syscall.Signal)))
+		if err := killService(target, int32(s.(syscall.Signal))); err != nil {
+			log.WithField("error", err).Info("failed to kill service")
+		}
 	}
 }

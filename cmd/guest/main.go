@@ -17,7 +17,9 @@ var (
 )
 
 func help(cmd *cobra.Command, _ []string) {
-	cmd.Help()
+	if err := cmd.Help(); err != nil {
+		log.WithField("error", err).Fatal("help")
+	}
 }
 
 func getGuests(c *cli.Client) []cli.JMap {
@@ -150,5 +152,7 @@ func main() {
 	}
 
 	root.AddCommand(cmdList, cmdCreate, cmdModify, cmdDelete)
-	root.Execute()
+	if err := root.Execute(); err != nil {
+		log.WithField("error", err).Fatal("failed to execute root command")
+	}
 }

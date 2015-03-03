@@ -117,7 +117,14 @@ func main() {
 			"item":  "hypervisor",
 		}).Fatal("failed to save hypervisor")
 	}
-	h.AddSubnet(s, "br0")
+	if err := h.AddSubnet(s, "br0"); err != nil {
+		log.WithFields(log.Fields{
+			"func":  "AddSubnet",
+			"error": err,
+			"id":    h.ID,
+			"item":  "hypervisor",
+		}).Fatal("failed to add subnet")
+	}
 
 	g := c.NewGuest()
 	g.SubnetID = s.ID

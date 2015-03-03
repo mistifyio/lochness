@@ -70,7 +70,9 @@ func printTreeSlice(id, key string, s []string) {
 }
 
 func help(cmd *cobra.Command, _ []string) {
-	cmd.Help()
+	if err := cmd.Help(); err != nil {
+		log.WithField("error", err).Fatal("help")
+	}
 }
 
 func getHVs(c *cli.Client) []cli.JMap {
@@ -403,5 +405,7 @@ valid json and contain the required fields, "mac" and "ip".`,
 	cmdConfigRoot.AddCommand(cmdConfigList, cmdConfigMod)
 	cmdGuestsRoot.AddCommand(cmdGuestsList)
 	cmdSubnetsRoot.AddCommand(cmdSubnetsList, cmdSubnetsMod, cmdSubnetsDel)
-	root.Execute()
+	if err := root.Execute(); err != nil {
+		log.WithField("error", err).Fatal("failed to execute root command")
+	}
 }
