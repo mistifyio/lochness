@@ -11,7 +11,7 @@ all: \
 	cmd/waheela/waheela
 
 cmd/cherufe/cherufe: cmd/cherufe/cherufe.go \
-		cmd/cherufe/nftables.ego.go
+		cmd/cherufe/nftables.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v

@@ -1,6 +1,6 @@
 package main
 
-//go:generate ego -package=main -o=nftables.ego.go
+//go:generate ego -package=main -o=nftables.go
 
 import (
 	"fmt"
