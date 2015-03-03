@@ -175,7 +175,7 @@ func main() {
 	}
 	cmd := resolveCommand(params.Args[0])
 	if cmd == "" {
-		d.Fatal()
+		d.Fatal("")
 	}
 	params.Args[0] = cmd
 
@@ -222,7 +222,7 @@ func main() {
 	target := fmt.Sprintf("locker-%s-%d.service", base, id)
 	locker := resolveCommand("locker")
 	if locker == "" {
-		d.Fatal()
+		d.Fatal("")
 	}
 	go runService(d, serviceDone, params.ID, params.TTL, target, locker, base, string(args))
 

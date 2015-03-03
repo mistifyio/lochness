@@ -221,7 +221,7 @@ func TestResponse(t *testing.T) {
 	for w.Next() {
 		resp := w.Response()
 		if resp.Node.Value != strconv.Itoa(i) {
-			t.Fatal("unexpected value, want: %d, got: %s", i, resp.Node.Value)
+			t.Fatalf("unexpected value, want: %d, got: %s", i, resp.Node.Value)
 		}
 		i++
 		if i == num {

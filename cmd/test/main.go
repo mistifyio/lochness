@@ -15,9 +15,9 @@ import (
 )
 
 func print(i interface{}) {
-	log.WithField(reflect.TypeOf(i).String(), fmt.Sprintf("%#v", i)).Print()
+	log.WithField(reflect.TypeOf(i).String(), fmt.Sprintf("%#v", i)).Print("")
 	if data, err := json.Marshal(i); err == nil {
-		log.WithField(reflect.TypeOf(i).String(), string(data)).Print()
+		log.WithField(reflect.TypeOf(i).String(), string(data)).Print("")
 	}
 
 }
