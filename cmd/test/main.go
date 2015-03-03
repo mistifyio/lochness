@@ -118,11 +118,11 @@ func main() {
 		}).Fatal("failed to add subnet to network")
 	}
 
-	network_subnets := n.Subnets()
-	if len(network_subnets) == 0 {
+	networkSubnets := n.Subnets()
+	if len(networkSubnets) == 0 {
 		log.Fatal("no subnets available on network")
 	}
-	for _, k := range network_subnets {
+	for _, k := range networkSubnets {
 		_, err := c.Subnet(k)
 		if err != nil {
 			log.Fatal(err)

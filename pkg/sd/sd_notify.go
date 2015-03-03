@@ -1,4 +1,4 @@
-// package sd implements some systemd interaction, namely the equivalent of sd_notify and
+// Package sd implements some systemd interaction, namely the equivalent of sd_notify and
 // sd_watchdog_enabled
 package sd
 
@@ -10,9 +10,10 @@ import (
 	"os"
 )
 
+// ErrNotifyNoSocket is an error for when a valid notify socket name isn't prvided
 var ErrNotifyNoSocket = errors.New("No socket")
 
-// Send a message to the init daemon. It is common to ignore the error.
+// Notify sends a message to the init daemon. It is common to ignore the error.
 func Notify(state string) error {
 	socketAddr := &net.UnixAddr{
 		Name: os.Getenv("NOTIFY_SOCKET"),

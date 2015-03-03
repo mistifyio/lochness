@@ -30,11 +30,12 @@ type lockJSON struct {
 	Addr  string `json:"addr"`
 	Key   string `json:"key"`
 	Value string `json:"value"`
-	Ttl   uint64 `json:"ttl"`
+	TTL   uint64 `json:"ttl"`
 	Index uint64 `json:"index"`
 	Held  bool   `json:"held"`
 }
 
+// UnmarshalJSON populates a Lock from a json string
 func (l *Lock) UnmarshalJSON(data []byte) error {
 	j := lockJSON{}
 	err := json.Unmarshal(data, &j)
@@ -44,12 +45,13 @@ func (l *Lock) UnmarshalJSON(data []byte) error {
 	l.c = etcd.NewClient([]string{j.Addr})
 	l.key = j.Key
 	l.value = j.Value
-	l.ttl = j.Ttl
+	l.ttl = j.TTL
 	l.index = j.Index
 	l.held = j.Held
 	return nil
 }
 
+// MarshalJSON creates a json string from the Lock
 func (l *Lock) MarshalJSON() ([]byte, error) {
 	addr := ""
 	if cluster := l.c.GetCluster(); len(cluster) > 0 {
@@ -60,7 +62,7 @@ func (l *Lock) MarshalJSON() ([]byte, error) {
 		Addr:  addr,
 		Key:   l.key,
 		Value: l.value,
-		Ttl:   l.ttl,
+		TTL:   l.ttl,
 		Index: l.index,
 		Held:  l.held,
 	}

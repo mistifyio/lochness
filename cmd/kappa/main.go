@@ -189,6 +189,6 @@ func main() {
 	log.WithField("signal", s).Info("signal received. waiting for current task to process")
 	// wait until any current processing is finished
 	<-ready
-	w.Close()
+	_ = w.Close()
 	log.Info("exiting")
 }

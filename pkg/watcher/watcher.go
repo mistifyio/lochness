@@ -7,9 +7,13 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 )
 
+// ErrPrefixNotWatched is an error for attempting to remove an unwatched prefix
 var ErrPrefixNotWatched = errors.New("prefix is not being watched")
+
+// ErrStopped is an error for attempting to add a prefix to a stopped watcher
 var ErrStopped = errors.New("watcher has been stopped")
 
+// Watcher monitors etcd prefixes and notifies on change
 type Watcher struct {
 	c         *etcd.Client
 	responses chan *etcd.Response
@@ -22,6 +26,7 @@ type Watcher struct {
 	prefixes map[string]chan bool
 }
 
+// New creates a new Watcher
 func New(c *etcd.Client) (*Watcher, error) {
 	w := &Watcher{
 		responses: make(chan *etcd.Response),

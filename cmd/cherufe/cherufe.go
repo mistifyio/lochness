@@ -186,10 +186,10 @@ func applyRules(filename string, td templateData) error {
 			"error": err,
 			"func":  "nftWrite",
 		}).Error("template returned an error")
-		temp.Close()
+		_ = temp.Close()
 		return err
 	}
-	temp.Close()
+	_ = temp.Close()
 
 	return checkAndReload(filename, temp.Name())
 }
