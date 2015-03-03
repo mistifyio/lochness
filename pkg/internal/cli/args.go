@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Read parses cli args into an array of strings
 func Read(r io.Reader) []string {
 	args := []string{}
 	scanner := bufio.NewScanner(r)

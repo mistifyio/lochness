@@ -70,7 +70,9 @@ func printTreeSlice(id, key string, s []string) {
 }
 
 func help(cmd *cobra.Command, _ []string) {
-	cmd.Help()
+	if err := cmd.Help(); err != nil {
+		log.WithField("error", err).Fatal("help")
+	}
 }
 
 func getHVs(c *cli.Client) []cli.JMap {
@@ -230,7 +232,7 @@ func config(cmd *cobra.Command, ids []string) {
 	}
 }
 
-func config_modify(cmd *cobra.Command, args []string) {
+func configModify(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
 	if len(args) == 0 {
 		args = cli.Read(os.Stdin)
@@ -273,7 +275,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 	}
 }
 
-func subnets_modify(cmd *cobra.Command, args []string) {
+func subnetsModify(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
 	if len(args) == 0 {
 		args = cli.Read(os.Stdin)
@@ -293,7 +295,7 @@ func subnets_modify(cmd *cobra.Command, args []string) {
 	}
 }
 
-func subnets_del(cmd *cobra.Command, args []string) {
+func subnetsDel(cmd *cobra.Command, args []string) {
 	c := cli.NewClient(server)
 	if len(args) == 0 {
 		args = cli.Read(os.Stdin)
@@ -369,7 +371,7 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Use:   "modify (<hv> <spec>)...",
 		Short: "Modify hypervisor config",
 		Long:  `Modify the config of given hypervisor. Where "spec" is a valid json string.`,
-		Run:   config_modify,
+		Run:   configModify,
 	}
 	cmdSubnetsRoot := &cobra.Command{
 		Use:   "subnets",
@@ -385,12 +387,12 @@ valid json and contain the required fields, "mac" and "ip".`,
 		Use:   "modify (<hv> <spec>)...",
 		Short: "Modify hypervisor subnets",
 		Long:  `Modify the subnets of given hypervisor. Where "spec" is a valid json string.`,
-		Run:   subnets_modify,
+		Run:   subnetsModify,
 	}
 	cmdSubnetsDel := &cobra.Command{
 		Use:   "delete (<hv> <subnet>)...",
 		Short: "Delete hypervisor subnets",
-		Run:   subnets_del,
+		Run:   subnetsDel,
 	}
 
 	root.AddCommand(cmdList,
@@ -403,5 +405,7 @@ valid json and contain the required fields, "mac" and "ip".`,
 	cmdConfigRoot.AddCommand(cmdConfigList, cmdConfigMod)
 	cmdGuestsRoot.AddCommand(cmdGuestsList)
 	cmdSubnetsRoot.AddCommand(cmdSubnetsList, cmdSubnetsMod, cmdSubnetsDel)
-	root.Execute()
+	if err := root.Execute(); err != nil {
+		log.WithField("error", err).Fatal("failed to execute root command")
+	}
 }

@@ -15,9 +15,9 @@ import (
 )
 
 func print(i interface{}) {
-	log.WithField(reflect.TypeOf(i).String(), fmt.Sprintf("%#v", i)).Print()
+	log.WithField(reflect.TypeOf(i).String(), fmt.Sprintf("%#v", i)).Print("")
 	if data, err := json.Marshal(i); err == nil {
-		log.WithField(reflect.TypeOf(i).String(), string(data)).Print()
+		log.WithField(reflect.TypeOf(i).String(), string(data)).Print("")
 	}
 
 }
@@ -118,11 +118,11 @@ func main() {
 		}).Fatal("failed to add subnet to network")
 	}
 
-	network_subnets := n.Subnets()
-	if len(network_subnets) == 0 {
+	networkSubnets := n.Subnets()
+	if len(networkSubnets) == 0 {
 		log.Fatal("no subnets available on network")
 	}
-	for _, k := range network_subnets {
+	for _, k := range networkSubnets {
 		_, err := c.Subnet(k)
 		if err != nil {
 			log.Fatal(err)
@@ -166,7 +166,14 @@ func main() {
 			}).Fatal("failed to save hypervisor")
 		}
 	}
-	h.AddSubnet(s, "br0")
+	if err := h.AddSubnet(s, "br0"); err != nil {
+		log.WithFields(log.Fields{
+			"func":  "AddSubnet",
+			"error": err,
+			"id":    h.ID,
+			"item":  "hypervisor",
+		}).Fatal("failed to add subnet")
+	}
 
 	print(h)
 
@@ -199,8 +206,22 @@ func main() {
 		Protocol:  "tcp",
 	}}
 
-	fw1.Save()
-	fw2.Save()
+	if err := fw1.Save(); err != nil {
+		log.WithFields(log.Fields{
+			"func":  "Save",
+			"error": err,
+			"id":    fw1.ID,
+			"item":  "fwgroup",
+		}).Fatal("failed to save fwgroup")
+	}
+	if err := fw2.Save(); err != nil {
+		log.WithFields(log.Fields{
+			"func":  "Save",
+			"error": err,
+			"id":    fw2.ID,
+			"item":  "fwgroup",
+		}).Fatal("failed to save fwgroup")
+	}
 
 	g1 := c.NewGuest()
 	g1.SubnetID = s.ID
