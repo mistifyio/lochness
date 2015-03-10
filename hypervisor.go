@@ -120,8 +120,8 @@ func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 
 }
 
-// blankHypervisor is a helper for creating a blank Hypervisor.
-func (c *Context) blankHypervisor(id string) *Hypervisor {
+// BlankHypervisor is a helper for creating a blank Hypervisor.
+func (c *Context) BlankHypervisor(id string) *Hypervisor {
 	h := &Hypervisor{
 		context:  c,
 		ID:       id,
@@ -140,7 +140,7 @@ func (c *Context) blankHypervisor(id string) *Hypervisor {
 
 // NewHypervisor create a new blank Hypervisor.
 func (c *Context) NewHypervisor() *Hypervisor {
-	return c.blankHypervisor("")
+	return c.BlankHypervisor("")
 }
 
 // Hypervisor fetches a Hypervisor from the config store.
@@ -150,7 +150,7 @@ func (c *Context) Hypervisor(id string) (*Hypervisor, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := c.blankHypervisor(id)
+	h := c.BlankHypervisor(id)
 
 	err = h.Refresh()
 	if err != nil {
