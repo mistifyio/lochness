@@ -1,0 +1,6 @@
+{
+  "endpoints": [
+    "GET    /ipxe/:ip",
+    "GET    /images/:version/:file"
+  ]
+}
