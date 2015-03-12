@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -28,16 +29,20 @@ import (
 type server struct {
 	ctx            *lochness.Context
 	t              *template.Template
+	c              *template.Template
 	defaultVersion string
 	baseURL        string
 	addOpts        string
 }
+
+var envRegex = regexp.MustCompile("^[_A-Z][_A-Z0-9]*$")
 
 const ipxeTemplate = `#!ipxe
 kernel {{.BaseURL}}/images/{{.Version}}/vmlinuz {{.Options}}
 initrd {{.BaseURL}}/images/{{.Version}}/initrd
 boot
 `
+const configTemplate = `{{range $key, $value := .}}{{ printf "%s=%s\n" $key $value}}{{end}}`
 
 func main() {
 	port := flag.UintP("port", "p", 8888, "address to listen")
@@ -59,6 +64,7 @@ func main() {
 	s := &server{
 		ctx:            c,
 		t:              template.Must(template.New("ipxe").Parse(ipxeTemplate)),
+		c:              template.Must(template.New("config").Parse(configTemplate)),
 		defaultVersion: *defaultVersion,
 		baseURL:        *baseURL,
 		addOpts:        *addOpts,
@@ -98,6 +104,15 @@ func main() {
 			})
 		},
 	).Append(mw.HandlerWrapper("ipxe")).ThenFunc(ipxeHandler))
+
+	router.Handle("/configs/{ip}", chain.Append(
+		func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				context.Set(r, "_server_", s)
+				h.ServeHTTP(w, r)
+			})
+		},
+	).Append(mw.HandlerWrapper("config")).ThenFunc(configHandler))
 
 	router.Handle("/metrics", chain.Append(mw.HandlerWrapper("metrics")).ThenFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -167,9 +182,54 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = s.t.Execute(w, data)
 	if err != nil {
-		// we shouldn not get here
+		// we should not get here
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func configHandler(w http.ResponseWriter, r *http.Request) {
+
+	s := context.Get(r, "_server_").(*server)
+
+	ip := mux.Vars(r)["ip"]
+
+	if net.ParseIP(ip) == nil {
+		http.Error(w, "invalid address", http.StatusBadRequest)
+		return
+	}
+
+	found, err := s.ctx.FirstHypervisor(func(h *lochness.Hypervisor) bool {
+		return ip == h.IP.String()
+	})
+
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if found == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	configs := map[string]string{}
+	s.ctx.ForEachConfig(func(key, val string) error {
+		if envRegex.MatchString(key) {
+			configs[key] = val
+		}
+		return nil
+	})
+
+	for key, val := range found.Config {
+		if envRegex.MatchString(key) {
+			configs[key] = val
+		}
+	}
+
+	err = s.c.Execute(w, configs)
+	if err != nil {
+		// we should not get here
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
