@@ -1,6 +1,7 @@
 {
   "endpoints": [
     "GET    /ipxe/:ip",
-    "GET    /images/:version/:file"
+    "GET    /images/:version/:file",
+    "GET    /configs/:ip"
   ]
 }

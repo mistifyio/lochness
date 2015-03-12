@@ -21,6 +21,10 @@
   <ul>
     <li><div><a href="#GET-/images/:version/:file"><span class="method justendpoint"><span class="endpoint"><span class="verb">GET</span> <span class="path">/images/:version/:file</span></span></span></a></div></li>
   </ul></li>
+  <li><div><a href="#configs">configs</a></div>
+  <ul>
+    <li><div><a href="#GET-/configs/:ip"><span class="method justendpoint"><span class="endpoint"><span class="verb">GET</span> <span class="path">/configs/:ip</span></span></span></a></div></li>
+  </ul></li>
 </ul>
 
     </div>
@@ -41,6 +45,7 @@ nodes.</p>
 <ul>
 <li><code>/ipxe</code> - iPXE config</li>
 <li><code>/images</code> - boot images (<em>kernel</em>, <em>rootfs</em>)</li>
+<li><code>/configs</code> - pre-init node configuration (<em>zfs</em>, <em>etcd</em>, ...)</li>
 </ul>
 
 
@@ -88,6 +93,23 @@ Saving to: 'vmlinuz'
 vmlinuz                        100%[=========================================================&gt;]   5.50M  --.-KB/s   in 0.01s
 
 2015-03-12 19:24:49 (426 MB/s) - 'vmlinuz' saved [5765360/5765360]
+</code></pre>
+
+<h1 id="configs">configs</h1>
+
+<h2 id="GET-/configs/:ip"><span class="method justendpoint"><span class="endpoint"><span class="verb">GET</span> <span class="path">/configs/:ip</span></span></span></h2>
+
+<p>Get a shell style file of K=V pairs for pre-init configuration</p>
+
+<h4 id="request-3">request</h4>
+
+<pre><code>curl http://192.168.100.100:8888/configs/192.168.100.200
+</code></pre>
+
+<h4 id="response-3">response</h4>
+
+<pre><code>ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+ZFS_POOL=raid0
 </code></pre>
 
     </div> <!-- #content -->

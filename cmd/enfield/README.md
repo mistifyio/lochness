@@ -14,6 +14,7 @@ Current service endpoints served by enfield are:
 
  - `/ipxe` - iPXE config
  - `/images` - boot images (_kernel_, _rootfs_)
+ - `/configs` - pre-init node configuration (_zfs_, _etcd_, ...)
 
 # ipxe
 
@@ -55,3 +56,18 @@ Get kernel/rootfs
     vmlinuz                        100%[=========================================================>]   5.50M  --.-KB/s   in 0.01s
 
     2015-03-12 19:24:49 (426 MB/s) - 'vmlinuz' saved [5765360/5765360]
+
+# configs
+
+## GET /configs/:ip
+
+Get a shell style file of K=V pairs for pre-init configuration
+
+#### request
+
+    curl http://192.168.100.100:8888/configs/192.168.100.200
+
+#### response
+
+    ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+    ZFS_POOL=raid0
