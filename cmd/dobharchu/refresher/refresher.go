@@ -15,9 +15,9 @@ type (
 		Domain      string
 		Context     *lochness.Context
 		EtcdClient  *etcd.Client
-		Hypervisors *map[string]*lochness.Hypervisor
-		Subnets     *map[string]*lochness.Subnet
-		Guests      *map[string]*lochness.Guest
+		hypervisors *map[string]*lochness.Hypervisor
+		subnets     *map[string]*lochness.Subnet
+		guests      *map[string]*lochness.Guest
 	}
 
 	TemplateHelper struct {
@@ -88,15 +88,15 @@ func NewRefresher(domain string, etcdAddress string) *Refresher {
 		Domain:      domain,
 		Context:     c,
 		EtcdClient:  e,
-		Hypervisors: nil,
-		Subnets:     nil,
-		Guests:      nil,
+		hypervisors: nil,
+		subnets:     nil,
+		guests:      nil,
 	}
 }
 
 func (r *Refresher) fetchHypervisors() (*map[string]*lochness.Hypervisor, error) {
-	if r.Hypervisors != nil {
-		return r.Hypervisors, nil
+	if r.hypervisors != nil {
+		return r.hypervisors, nil
 	}
 	res, err := r.EtcdClient.Get("lochness/hypervisors/", true, true)
 	if err != nil {
@@ -119,13 +119,13 @@ func (r *Refresher) fetchHypervisors() (*map[string]*lochness.Hypervisor, error)
 	log.WithFields(log.Fields{
 		"hypervisors": hypervisors,
 	}).Info("Fetched hypervisors metadata")
-	r.Hypervisors = &hypervisors
-	return r.Hypervisors, nil
+	r.hypervisors = &hypervisors
+	return r.hypervisors, nil
 }
 
 func (r *Refresher) fetchGuests() (*map[string]*lochness.Guest, error) {
-	if r.Guests != nil {
-		return r.Guests, nil
+	if r.guests != nil {
+		return r.guests, nil
 	}
 	res, err := r.EtcdClient.Get("lochness/guests/", true, true)
 	if err != nil {
@@ -148,8 +148,8 @@ func (r *Refresher) fetchGuests() (*map[string]*lochness.Guest, error) {
 	log.WithFields(log.Fields{
 		"guests": guests,
 	}).Info("Fetched guests metadata")
-	r.Guests = &guests
-	return r.Guests, nil
+	r.guests = &guests
+	return r.guests, nil
 }
 
 func (r *Refresher) fetchSubnets() (*map[string]*lochness.Subnet, error) {
@@ -174,8 +174,8 @@ func (r *Refresher) fetchSubnets() (*map[string]*lochness.Subnet, error) {
 	log.WithFields(log.Fields{
 		"subnets": subnets,
 	}).Info("Fetched subnets metadata")
-	r.Subnets = &subnets
-	return r.Subnets, nil
+	r.subnets = &subnets
+	return r.subnets, nil
 }
 
 func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer) error {
