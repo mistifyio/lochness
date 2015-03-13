@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	// "fmt"
 	"net"
 	"regexp"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/cmd/dobharchu/refresher"
+	"github.com/mistifyio/lochness/cmd/dobharchu/testhelper"
 )
 
 type (
@@ -48,162 +48,64 @@ func doTestSetup(context *lochness.Context, etcdClient *etcd.Client) (*TestingDa
 	}
 
 	// Add flavors, network, and firewall group
-	f1, err := newTestFlavor(context, 4, 4096, 8192)
+	f1, err := testhelper.NewTestFlavor(context, 4, 4096, 8192)
 	if err != nil {
 		return nil, err
 	}
-	f2, err := newTestFlavor(context, 6, 8192, 1024)
+	f2, err := testhelper.NewTestFlavor(context, 6, 8192, 1024)
 	if err != nil {
 		return nil, err
 	}
-	n, err := newTestNetwork(context)
+	n, err := testhelper.NewTestNetwork(context)
 	if err != nil {
 		return nil, err
 	}
-	fw, err := newTestFirewallGroup(context)
+	fw, err := testhelper.NewTestFirewallGroup(context)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add subnet
-	s, err := newTestSubnet(context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	s, err := testhelper.NewTestSubnet(context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add hypervisors
-	h1, err := newTestHypervisor(context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h1, err := testhelper.NewTestHypervisor(context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		return nil, err
 	}
 	data.hypervisors[h1.ID] = &TestingHypervisorData{"DE:AD:BE:EF:7F:21", "192.168.100.200", "192.168.100.1", "255.255.255.0"}
-	h2, err := newTestHypervisor(context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h2, err := testhelper.NewTestHypervisor(context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		return nil, err
 	}
 	data.hypervisors[h2.ID] = &TestingHypervisorData{"DE:AD:BE:EF:7F:23", "192.168.100.203", "192.168.100.1", "255.255.255.0"}
 
 	// Add guests
-	g1, err := newTestGuest(context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
+	g1, err := testhelper.NewTestGuest(context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
 	if err != nil {
 		return nil, err
 	}
 	data.guests[g1.ID] = &TestingGuestData{"01:23:45:67:89:AB", g1.IP.String(), "10.10.10.1", "10.10.10.0"}
-	g2, err := newTestGuest(context, "23:45:67:89:ab:cd", n, s, f2, fw, h1)
+	g2, err := testhelper.NewTestGuest(context, "23:45:67:89:ab:cd", n, s, f2, fw, h1)
 	if err != nil {
 		return nil, err
 	}
 	data.guests[g2.ID] = &TestingGuestData{"23:45:67:89:AB:CD", g2.IP.String(), "10.10.10.1", "10.10.10.0"}
-	g3, err := newTestGuest(context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
+	g3, err := testhelper.NewTestGuest(context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
 	if err != nil {
 		return nil, err
 	}
 	data.guests[g3.ID] = &TestingGuestData{"45:67:89:AB:CD:EF", g3.IP.String(), "10.10.10.1", "10.10.10.0"}
-	g4, err := newTestGuest(context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
+	g4, err := testhelper.NewTestGuest(context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
 	if err != nil {
 		return nil, err
 	}
 	data.guests[g4.ID] = &TestingGuestData{"67:89:AB:CD:EF:01", g4.IP.String(), "10.10.10.1", "10.10.10.0"}
 
 	return data, nil
-}
-
-func newTestFlavor(context *lochness.Context, cpu uint32, memory, disk uint64) (*lochness.Flavor, error) {
-	f := context.NewFlavor()
-	f.CPU = cpu
-	f.Memory = memory
-	f.Disk = disk
-	err := f.Save()
-	if err != nil {
-		return nil, errors.New("Could not save flavor: " + err.Error())
-	}
-	return f, nil
-}
-
-func newTestNetwork(context *lochness.Context) (*lochness.Network, error) {
-	n := context.NewNetwork()
-	if err := n.Save(); err != nil {
-		return nil, errors.New("Could not save network: " + err.Error())
-	}
-	return n, nil
-}
-
-func newTestFirewallGroup(context *lochness.Context) (*lochness.FWGroup, error) {
-	fw := context.NewFWGroup()
-	fw.Rules = append(fw.Rules, &lochness.FWRule{})
-	if err := fw.Save(); err != nil {
-		return nil, errors.New("Could not save firewall group: " + err.Error())
-	}
-	return fw, nil
-}
-
-func newTestHypervisor(context *lochness.Context, mac string, ip, gateway, netmask net.IP, ifname string, s *lochness.Subnet) (*lochness.Hypervisor, error) {
-	var err error
-	h := context.NewHypervisor()
-	h.IP = ip
-	h.MAC, err = net.ParseMAC(mac)
-	if err != nil {
-		return nil, errors.New("Could not parse hypervisor MAC '" + mac + "': " + err.Error())
-	}
-	h.Gateway = gateway
-	h.Netmask = netmask
-	if err = h.Save(); err != nil {
-		return nil, errors.New("Could not save hypervisor: " + err.Error())
-	}
-	if err := h.AddSubnet(s, ifname); err != nil {
-		return nil, errors.New("Could not add subnet to hypervisor: " + err.Error())
-	}
-	return h, nil
-}
-
-func newTestGuest(context *lochness.Context, mac string, n *lochness.Network, s *lochness.Subnet, f *lochness.Flavor, fw *lochness.FWGroup, h *lochness.Hypervisor) (*lochness.Guest, error) {
-	var err error
-	g := context.NewGuest()
-	g.MAC, err = net.ParseMAC(mac)
-	if err != nil {
-		return nil, errors.New("Could not parse guest MAC '" + mac + "': " + err.Error())
-	}
-	g.NetworkID = n.ID
-	g.SubnetID = s.ID
-	g.FlavorID = f.ID
-	g.FWGroupID = fw.ID
-	if err := g.Save(); err != nil {
-		return nil, errors.New("Could not save guest: " + err.Error())
-	}
-
-	if err := h.AddGuest(g); err != nil {
-		return nil, errors.New("Could not add guest to hypervisor: " + err.Error())
-	}
-
-	g.IP, err = s.ReserveAddress(g.ID)
-	if err != nil {
-		return nil, errors.New("Could not reserve guest address in subnet: " + err.Error())
-	}
-
-	if err := g.Save(); err != nil {
-		return nil, errors.New("Could not resave guest: " + err.Error())
-	}
-
-	return g, nil
-}
-
-func newTestSubnet(context *lochness.Context, cidr string, gateway, start, end net.IP, n *lochness.Network) (*lochness.Subnet, error) {
-	var err error
-	s := context.NewSubnet()
-	_, s.CIDR, err = net.ParseCIDR(cidr)
-	if err != nil {
-		return nil, errors.New("Could not parse subnet CIDR '" + cidr + "': " + err.Error())
-	}
-	s.Gateway = gateway
-	s.StartRange = start
-	s.EndRange = end
-	if err := s.Save(); err != nil {
-		return nil, errors.New("Could not save subnet: " + err.Error())
-	}
-	if err := n.AddSubnet(s); err != nil {
-		return nil, errors.New("Could not add subnet to network: " + err.Error())
-	}
-	return s, nil
 }
 
 func getLines(t *testing.T, b *bytes.Buffer) []string {
