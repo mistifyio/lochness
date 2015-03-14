@@ -118,8 +118,8 @@ func (r *Refresher) fetchHypervisors() (*map[string]*lochness.Hypervisor, error)
 		}
 	}
 	log.WithFields(log.Fields{
-		"hypervisors": hypervisors,
-	}).Info("Fetched hypervisors metadata")
+		"hypervisorCount": len(hypervisors),
+	}).Debug("Fetched hypervisors metadata")
 	r.hypervisors = &hypervisors
 	return r.hypervisors, nil
 }
@@ -147,8 +147,8 @@ func (r *Refresher) fetchGuests() (*map[string]*lochness.Guest, error) {
 		}
 	}
 	log.WithFields(log.Fields{
-		"guests": guests,
-	}).Info("Fetched guests metadata")
+		"guestCount": len(guests),
+	}).Debug("Fetched guests metadata")
 	r.guests = &guests
 	return r.guests, nil
 }
@@ -173,8 +173,8 @@ func (r *Refresher) fetchSubnets() (*map[string]*lochness.Subnet, error) {
 		}
 	}
 	log.WithFields(log.Fields{
-		"subnets": subnets,
-	}).Info("Fetched subnets metadata")
+		"subnetCount": len(subnets),
+	}).Debug("Fetched subnets metadata")
 	r.subnets = &subnets
 	return r.subnets, nil
 }
