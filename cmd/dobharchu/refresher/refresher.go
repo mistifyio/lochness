@@ -2,6 +2,7 @@ package refresher
 
 import (
 	"io"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -181,12 +182,24 @@ func (r *Refresher) fetchSubnets() (*map[string]*lochness.Subnet, error) {
 func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer) error {
 	vals := new(TemplateHelper)
 	vals.Domain = r.Domain
+
+	// Fetch and sort keys
 	href, err := r.fetchHypervisors()
 	if err != nil {
 		return err
 	}
 	hypervisors := *href
-	for _, hv := range hypervisors {
+	hkeys := make([]string, len(hypervisors))
+	i := 0
+	for id, _ := range hypervisors {
+		hkeys[i] = id
+		i++
+	}
+	sort.Strings(hkeys)
+
+	// Loop through and build up the TemplateHelper
+	for _, id := range hkeys {
+		hv := hypervisors[id]
 		vals.Hypervisors = append(vals.Hypervisors, HypervisorHelper{
 			ID:      hv.ID,
 			MAC:     strings.ToUpper(hv.MAC.String()),
@@ -196,6 +209,7 @@ func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer) error {
 		})
 	}
 
+	// Execute template
 	t := template.New("hypervisors.conf")
 	t, err = t.Parse(HypervisorsTemplate)
 	if err != nil {
@@ -212,17 +226,29 @@ func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer) error {
 func (r *Refresher) WriteGuestsConfigFile(w io.Writer) error {
 	vals := new(TemplateHelper)
 	vals.Domain = r.Domain
+
+	// Fetch and sort keys
+	sref, err := r.fetchSubnets()
+	subnets := *sref
+	if err != nil {
+		return err
+	}
 	gref, err := r.fetchGuests()
 	if err != nil {
 		return err
 	}
 	guests := *gref
-	sref, err := r.fetchSubnets()
-	if err != nil {
-		return err
+	gkeys := make([]string, len(guests))
+	i := 0
+	for id, _ := range guests {
+		gkeys[i] = id
+		i++
 	}
-	subnets := *sref
-	for _, g := range guests {
+	sort.Strings(gkeys)
+
+	// Loop through and build up the TemplateHelper
+	for _, id := range gkeys {
+		g := guests[id]
 		if g.HypervisorID == "" || g.SubnetID == "" {
 			continue
 		}
@@ -239,6 +265,7 @@ func (r *Refresher) WriteGuestsConfigFile(w io.Writer) error {
 		})
 	}
 
+	// Execute template
 	t := template.New("guests.conf")
 	t, err = t.Parse(GuestsTemplate)
 	if err != nil {
