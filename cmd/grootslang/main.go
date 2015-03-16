@@ -33,8 +33,7 @@ func main() {
 		log.WithFields(log.Fields{
 			"addr": etcdAddr,
 			"func": "etcd.SyncCluster",
-		}).Fatal(err)
-		log.Fatal("unable to sync etcd cluster")
+		}).Fatal("unable to sync etcd cluster")
 	}
 
 	ctx := lochness.NewContext(etcdClient)

@@ -41,7 +41,7 @@ func main() {
 
 	if !etcdClient.SyncCluster() {
 		log.WithFields(log.Fields{
-			"error": err,
+			"error": nil,
 			"func":  "etcd.SyncCluster",
 			"addr":  etcdAddr,
 		}).Fatal("unable to sync etcd cluster")
