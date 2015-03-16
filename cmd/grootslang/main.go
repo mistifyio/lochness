@@ -4,6 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
@@ -18,15 +19,14 @@ func main() {
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.Parse()
 
-	log.SetFormatter(&log.JSONFormatter{})
-	level, err := log.ParseLevel(logLevel)
+	err := logx.DefaultSetup(logLevel)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "log.ParseLevel",
-		}).Fatal(err)
+			"func":  "logx.DefaultSetup",
+			"level": logLevel,
+		}).Fatal("failed to set up logging")
 	}
-	log.SetLevel(level)
 
 	etcdClient := etcd.NewClient([]string{etcdAddr})
 

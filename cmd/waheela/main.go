@@ -7,6 +7,7 @@ import (
 	"github.com/bakins/go-metrics-middleware"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
@@ -28,15 +29,14 @@ func main() {
 	flag.StringVarP(&statsd, "statsd", "s", "", "statsd address")
 	flag.Parse()
 
-	log.SetFormatter(&log.JSONFormatter{})
-	level, err := log.ParseLevel(logLevel)
+	err := logx.DefaultSetup(logLevel)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "log.ParseLevel",
-		}).Fatal(err)
+			"func":  "logx.DefaultSetup",
+			"level": logLevel,
+		}).Fatal("unable to set up logrus")
 	}
-	log.SetLevel(level)
 
 	etcdClient := etcd.NewClient([]string{etcdAddr})
 

@@ -19,6 +19,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
@@ -57,18 +58,14 @@ func main() {
 	flag.Parse()
 
 	// set with flag?
-	log.SetFormatter(&log.JSONFormatter{})
-
-	level, err := log.ParseLevel(*logLevel)
+	err := logx.DefaultSetup(*logLevel)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "logrus.ParseLevel",
+			"func":  "logx.DefaultSetup",
 			"level": *logLevel,
-		}).Fatal("error parsing log level")
+		}).Fatal("failed to set up logging")
 	}
-
-	log.SetLevel(level)
 
 	log.WithField("address", *bstalk).Info("connection to beanstalk")
 	conn, err := beanstalk.Dial("tcp", *bstalk)
