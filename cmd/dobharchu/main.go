@@ -78,11 +78,10 @@ func main() {
 	flag.Parse()
 
 	// Logging
-	err := logx.SetLevel(logLevel)
-	if err != nil {
+	if err := logx.DefaultSetup(logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "logx.SetLevel",
+			"func":  "logx.DefaultSetup",
 		}).Fatal("Could not set up logrus")
 	}
 
