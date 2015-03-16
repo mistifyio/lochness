@@ -29,8 +29,7 @@ func main() {
 	flag.StringVarP(&statsd, "statsd", "s", "", "statsd address")
 	flag.Parse()
 
-	err := logx.DefaultSetup(logLevel)
-	if err != nil {
+	if err := logx.DefaultSetup(logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "logx.DefaultSetup",

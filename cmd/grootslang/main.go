@@ -19,8 +19,7 @@ func main() {
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.Parse()
 
-	err := logx.DefaultSetup(logLevel)
-	if err != nil {
+	if err := logx.DefaultSetup(logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "logx.DefaultSetup",

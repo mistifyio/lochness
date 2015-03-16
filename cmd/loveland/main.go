@@ -58,8 +58,7 @@ func main() {
 	flag.Parse()
 
 	// set with flag?
-	err := logx.DefaultSetup(*logLevel)
-	if err != nil {
+	if err := logx.DefaultSetup(*logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "logx.DefaultSetup",
