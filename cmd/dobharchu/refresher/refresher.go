@@ -13,12 +13,9 @@ import (
 
 type (
 	Refresher struct {
-		Domain      string
-		Context     *lochness.Context
-		EtcdClient  *etcd.Client
-		hypervisors *map[string]*lochness.Hypervisor
-		subnets     *map[string]*lochness.Subnet
-		guests      *map[string]*lochness.Guest
+		Domain     string
+		Context    *lochness.Context
+		EtcdClient *etcd.Client
 	}
 
 	TemplateHelper struct {
@@ -86,28 +83,31 @@ func NewRefresher(domain string, etcdAddress string) *Refresher {
 	e := etcd.NewClient([]string{etcdAddress})
 	c := lochness.NewContext(e)
 	return &Refresher{
-		Domain:      domain,
-		Context:     c,
-		EtcdClient:  e,
-		hypervisors: nil,
-		subnets:     nil,
-		guests:      nil,
+		Domain:     domain,
+		Context:    c,
+		EtcdClient: e,
 	}
 }
 
 func (r *Refresher) fetchHypervisors() (*map[string]*lochness.Hypervisor, error) {
-	if r.hypervisors != nil {
-		return r.hypervisors, nil
-	}
+	hypervisors := make(map[string]*lochness.Hypervisor)
 	res, err := r.EtcdClient.Get("lochness/hypervisors/", true, true)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "etcd.Get",
-		}).Error("Could not retrieve hypervisors from etcd")
-		return nil, err
+		if err.(*etcd.EtcdError).ErrorCode == 100 {
+			// key missing; log and return empty slice
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "etcd.Get",
+			}).Warning("No hypervisors are stored in etcd")
+			return &hypervisors, nil
+		} else {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "etcd.Get",
+			}).Error("Could not retrieve hypervisors from etcd")
+			return nil, err
+		}
 	}
-	hypervisors := make(map[string]*lochness.Hypervisor)
 	for _, node := range res.Node.Nodes {
 		for _, hnode := range node.Nodes {
 			if strings.Contains(hnode.Key, "metadata") {
@@ -120,23 +120,28 @@ func (r *Refresher) fetchHypervisors() (*map[string]*lochness.Hypervisor, error)
 	log.WithFields(log.Fields{
 		"hypervisorCount": len(hypervisors),
 	}).Debug("Fetched hypervisors metadata")
-	r.hypervisors = &hypervisors
-	return r.hypervisors, nil
+	return &hypervisors, nil
 }
 
 func (r *Refresher) fetchGuests() (*map[string]*lochness.Guest, error) {
-	if r.guests != nil {
-		return r.guests, nil
-	}
+	guests := make(map[string]*lochness.Guest)
 	res, err := r.EtcdClient.Get("lochness/guests/", true, true)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "etcd.Get",
-		}).Error("Could not retrieve guests from etcd")
-		return nil, err
+		if err.(*etcd.EtcdError).ErrorCode == 100 {
+			// key missing; log and return empty slice
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "etcd.Get",
+			}).Warning("No guests are stored in etcd")
+			return &guests, nil
+		} else {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "etcd.Get",
+			}).Error("Could not retrieve guests from etcd")
+			return nil, err
+		}
 	}
-	guests := make(map[string]*lochness.Guest)
 	for _, node := range res.Node.Nodes {
 		for _, gnode := range node.Nodes {
 			if strings.Contains(gnode.Key, "metadata") {
@@ -149,20 +154,28 @@ func (r *Refresher) fetchGuests() (*map[string]*lochness.Guest, error) {
 	log.WithFields(log.Fields{
 		"guestCount": len(guests),
 	}).Debug("Fetched guests metadata")
-	r.guests = &guests
-	return r.guests, nil
+	return &guests, nil
 }
 
 func (r *Refresher) fetchSubnets() (*map[string]*lochness.Subnet, error) {
+	subnets := make(map[string]*lochness.Subnet)
 	res, err := r.EtcdClient.Get("lochness/subnets/", true, true)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "etcd.Get",
-		}).Error("Could not retrieve subnets from etcd")
-		return nil, err
+		if err.(*etcd.EtcdError).ErrorCode == 100 {
+			// key missing; log and return empty slice
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "etcd.Get",
+			}).Warning("No subnets are stored in etcd")
+			return &subnets, nil
+		} else {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "etcd.Get",
+			}).Error("Could not retrieve subnets from etcd")
+			return nil, err
+		}
 	}
-	subnets := make(map[string]*lochness.Subnet)
 	for _, node := range res.Node.Nodes {
 		for _, snode := range node.Nodes {
 			if strings.Contains(snode.Key, "metadata") {
@@ -175,8 +188,7 @@ func (r *Refresher) fetchSubnets() (*map[string]*lochness.Subnet, error) {
 	log.WithFields(log.Fields{
 		"subnetCount": len(subnets),
 	}).Debug("Fetched subnets metadata")
-	r.subnets = &subnets
-	return r.subnets, nil
+	return &subnets, nil
 }
 
 func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer) error {
