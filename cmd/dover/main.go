@@ -14,6 +14,7 @@ import (
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/mistify-agent/config"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
@@ -43,12 +44,13 @@ func main() {
 	flag.Parse()
 
 	// Set up logger
-	log.SetFormatter(&log.JSONFormatter{})
-	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		log.Fatal(err)
+	if err := logx.DefaultSetup(*logLevel); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "logx.DefaultSetup",
+			"level": *logLevel,
+		}).Fatal("unable to to set up logrus")
 	}
-	log.SetLevel(level)
 
 	// Set up beanstalk
 	log.WithField("bstalk", *bstalk).Info("connecting to beanstalk")

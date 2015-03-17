@@ -14,6 +14,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness/pkg/watcher"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
@@ -138,16 +139,13 @@ func main() {
 	flag.Parse()
 
 	// Set up logging
-	log.SetFormatter(&log.JSONFormatter{})
-	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
+	if err := logx.DefaultSetup(*logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "logrus.ParseLevel",
+			"func":  "logx.DefaultSetup",
 			"level": *logLevel,
-		}).Fatal("error parsing log level")
+		}).Fatal("failed to set up logging")
 	}
-	log.SetLevel(level)
 
 	// Load config containing prefixs to watch
 	config, err = loadConfig(*configPath)
