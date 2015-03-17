@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
@@ -16,28 +15,12 @@ import (
 
 func finish(status int, e *etcd.Client, created map[string]string) {
 	fmt.Print("\nExiting test...")
-	var path string
-	for id, t := range created {
-		switch {
-		case t == "flavor":
-			path = filepath.Join(lochness.FlavorPath, id)
-		case t == "network":
-			path = filepath.Join(lochness.NetworkPath, id)
-		case t == "fwgroup":
-			path = filepath.Join(lochness.FWGroupPath, id)
-		case t == "subnet":
-			path = filepath.Join(lochness.SubnetPath, id)
-		case t == "hypervisor":
-			path = filepath.Join(lochness.HypervisorPath, id)
-		case t == "guest":
-			path = filepath.Join(lochness.GuestPath, id)
-		}
-		_, err := e.Delete(path, true)
+	errs := testhelper.Cleanup(e, created)
+	for _, err := range errs {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "etcd.Delete",
-				"path":  path,
 			}).Warning("Could not clear test-created data from etcd")
 		}
 	}

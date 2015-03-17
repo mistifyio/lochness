@@ -3,7 +3,9 @@ package testhelper
 import (
 	"errors"
 	"net"
+	"path/filepath"
 
+	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 )
 
@@ -103,4 +105,30 @@ func NewTestSubnet(context *lochness.Context, cidr string, gateway, start, end n
 		return nil, errors.New("Could not add subnet to network: " + err.Error())
 	}
 	return s, nil
+}
+
+func Cleanup(e *etcd.Client, created map[string]string) []error {
+	var path string
+	errs := make([]error, 0)
+	for id, t := range created {
+		switch {
+		case t == "flavor":
+			path = filepath.Join(lochness.FlavorPath, id)
+		case t == "network":
+			path = filepath.Join(lochness.NetworkPath, id)
+		case t == "fwgroup":
+			path = filepath.Join(lochness.FWGroupPath, id)
+		case t == "subnet":
+			path = filepath.Join(lochness.SubnetPath, id)
+		case t == "hypervisor":
+			path = filepath.Join(lochness.HypervisorPath, id)
+		case t == "guest":
+			path = filepath.Join(lochness.GuestPath, id)
+		}
+		_, err := e.Delete(path, true)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errs
 }
