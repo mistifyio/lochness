@@ -92,7 +92,7 @@ func main() {
 		// Make sure we can actually connect to etcd
 		if !r.EtcdClient.SyncCluster() {
 			log.WithFields(log.Fields{
-				"error":   err,
+				"error":   nil,
 				"func":    "etcd.SyncCluster",
 				"address": etcdAddress,
 			}).Fatal("Could not connect to etcd cluster")
