@@ -17,7 +17,7 @@ import (
 func finish(status int, e *etcd.Client, created map[string]string) {
 	fmt.Print("\nExiting test...")
 	var path string
-	for t, id := range created {
+	for id, t := range created {
 		switch {
 		case t == "flavor":
 			path = filepath.Join(lochness.FlavorPath, id)
@@ -75,22 +75,22 @@ func main() {
 	if err != nil {
 		finish(1, e, d)
 	}
-	d["flavor"] = f1.ID
+	d[f1.ID] = "flavor"
 	f2, err := testhelper.NewTestFlavor(c, 6, 8192, 1024)
 	if err != nil {
 		finish(1, e, d)
 	}
-	d["flavor"] = f2.ID
+	d[f2.ID] = "flavor"
 	n, err := testhelper.NewTestNetwork(c)
 	if err != nil {
 		finish(1, e, d)
 	}
-	d["network"] = n.ID
+	d[n.ID] = "network"
 	fw, err := testhelper.NewTestFirewallGroup(c)
 	if err != nil {
 		finish(1, e, d)
 	}
-	d["fwgroup"] = fw.ID
+	d[fw.ID] = "fwgroup"
 	fmt.Print("Did Dobharchu touch the configs? It shouldn't have. (hit enter to continue)")
 	_, _ = r.ReadString('\n')
 	fmt.Print("\n")
@@ -101,6 +101,7 @@ func main() {
 	if err != nil {
 		finish(1, e, d)
 	}
+	d[s.ID] = "subnet"
 	fmt.Print("Did Dobharchu touch the configs? The mod date should be sooner, but no changes should appear. (hit enter to continue)")
 	_, _ = r.ReadString('\n')
 	fmt.Print("\n")
@@ -111,10 +112,12 @@ func main() {
 	if err != nil {
 		finish(1, e, d)
 	}
+	d[h1.ID] = "hypervisor"
 	h2, err := testhelper.NewTestHypervisor(c, "dc:ba:98:76:54:32", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		finish(1, e, d)
 	}
+	d[h2.ID] = "hypervisor"
 	fmt.Print("Did Dobharchu update the hypervisors config?\n")
 	fmt.Print("You should see two new hosts with these IDs:\n")
 	fmt.Print(h1.ID + "\n")
@@ -129,18 +132,22 @@ func main() {
 	if err != nil {
 		finish(1, e, d)
 	}
+	d[g1.ID] = "guest"
 	g2, err := testhelper.NewTestGuest(c, "98:76:54:32:10:fe", n, s, f2, fw, h1)
 	if err != nil {
 		finish(1, e, d)
 	}
+	d[g2.ID] = "guest"
 	g3, err := testhelper.NewTestGuest(c, "76:54:32:10:fe:dc", n, s, f1, fw, h2)
 	if err != nil {
 		finish(1, e, d)
 	}
+	d[g3.ID] = "guest"
 	g4, err := testhelper.NewTestGuest(c, "54:32:10:fe:dc:ba", n, s, f2, fw, h2)
 	if err != nil {
 		finish(1, e, d)
 	}
+	d[g4.ID] = "guest"
 	fmt.Print("Did Dobharchu update the guests config?\n")
 	fmt.Print("You should see four new hosts with these IDs:\n")
 	fmt.Print(g1.ID + "\n")
