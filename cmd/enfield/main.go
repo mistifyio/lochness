@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -28,16 +29,21 @@ import (
 type server struct {
 	ctx            *lochness.Context
 	t              *template.Template
+	c              *template.Template
+	r              *regexp.Regexp
 	defaultVersion string
 	baseURL        string
 	addOpts        string
 }
+
+const envRegex = "^[_A-Z][_A-Z0-9]*$"
 
 const ipxeTemplate = `#!ipxe
 kernel {{.BaseURL}}/images/{{.Version}}/vmlinuz {{.Options}}
 initrd {{.BaseURL}}/images/{{.Version}}/initrd
 boot
 `
+const configTemplate = `{{range $key, $value := .}}{{ printf "%s=%s\n" $key $value}}{{end}}`
 
 func main() {
 	port := flag.UintP("port", "p", 8888, "address to listen")
@@ -59,6 +65,8 @@ func main() {
 	s := &server{
 		ctx:            c,
 		t:              template.Must(template.New("ipxe").Parse(ipxeTemplate)),
+		c:              template.Must(template.New("config").Parse(configTemplate)),
+		r:              regexp.MustCompile(envRegex),
 		defaultVersion: *defaultVersion,
 		baseURL:        *baseURL,
 		addOpts:        *addOpts,
@@ -87,18 +95,8 @@ func main() {
 	m, _ := metrics.New(conf, fanout)
 	mw := mmw.New(m)
 
-	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then((http.DefaultServeMux)))
+	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then(http.DefaultServeMux))
 	router.PathPrefix("/images").Handler(chain.Append(mw.HandlerWrapper("images")).Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
-
-	router.Handle("/ipxe/{ip}", chain.Append(
-		func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				context.Set(r, "_server_", s)
-				h.ServeHTTP(w, r)
-			})
-		},
-	).Append(mw.HandlerWrapper("ipxe")).ThenFunc(ipxeHandler))
-
 	router.Handle("/metrics", chain.Append(mw.HandlerWrapper("metrics")).ThenFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -106,6 +104,15 @@ func main() {
 				log.WithField("error", err).Error(err)
 			}
 		}))
+
+	chain = chain.Append(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			context.Set(r, "_server_", s)
+			h.ServeHTTP(w, r)
+		})
+	})
+	router.Handle("/ipxe/{ip}", chain.Append(mw.HandlerWrapper("ipxe")).ThenFunc(ipxeHandler))
+	router.Handle("/config/{ip}", chain.Append(mw.HandlerWrapper("config")).ThenFunc(configHandler))
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), router); err != nil {
 		log.WithFields(log.Fields{
@@ -116,33 +123,17 @@ func main() {
 }
 
 func ipxeHandler(w http.ResponseWriter, r *http.Request) {
-
 	s := context.Get(r, "_server_").(*server)
 
-	ip := mux.Vars(r)["ip"]
-
-	if net.ParseIP(ip) == nil {
-		http.Error(w, "invalid address", http.StatusBadRequest)
+	hv, code, msg := getHV(s, mux.Vars(r)["ip"])
+	if code != http.StatusOK {
+		http.Error(w, msg, code)
 		return
 	}
 
-	found, err := s.ctx.FirstHypervisor(func(h *lochness.Hypervisor) bool {
-		return ip == h.IP.String()
-	})
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if found == nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	version := found.Config["version"]
-
+	version := hv.Config["version"]
 	if version == "" {
+		var err error
 		version, err = s.ctx.GetConfig("defaultVersion")
 		if err != nil && !lochness.IsKeyNotFound(err) {
 			// XXX: should be fatal?
@@ -157,24 +148,71 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	options := map[string]string{
-		"uuid": found.ID,
+		"uuid": hv.ID,
 	}
-
 	data := map[string]string{
 		"BaseURL": s.baseURL,
 		"Options": mapToOptions(options) + " " + s.addOpts,
 		"Version": version,
 	}
-	err = s.t.Execute(w, data)
-	if err != nil {
-		// we shouldn not get here
+
+	if err := s.t.Execute(w, data); err != nil {
+		// we should not get here
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 }
 
+func configHandler(w http.ResponseWriter, r *http.Request) {
+	s := context.Get(r, "_server_").(*server)
+
+	hv, code, msg := getHV(s, mux.Vars(r)["ip"])
+	if code != http.StatusOK {
+		http.Error(w, msg, code)
+		return
+	}
+
+	configs := map[string]string{}
+	s.ctx.ForEachConfig(func(key, val string) error {
+		if s.r.MatchString(key) {
+			configs[key] = val
+		}
+		return nil
+	})
+
+	for key, val := range hv.Config {
+		if s.r.MatchString(key) {
+			configs[key] = val
+		}
+	}
+
+	if err := s.c.Execute(w, configs); err != nil {
+		// we should not get here
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func getHV(s *server, ip string) (*lochness.Hypervisor, int, string) {
+	if net.ParseIP(ip) == nil {
+		return nil, http.StatusBadRequest, "invalid address"
+	}
+
+	hv, err := s.ctx.FirstHypervisor(func(h *lochness.Hypervisor) bool {
+		return ip == h.IP.String()
+	})
+
+	if err != nil {
+		return nil, http.StatusInternalServerError, err.Error()
+	}
+
+	if hv == nil {
+		return nil, http.StatusNotFound, "hypervisor not found"
+	}
+
+	return hv, http.StatusOK, ""
+}
+
 func mapToOptions(m map[string]string) string {
-	var parts []string
+	parts := make([]string, 0, len(m))
 
 	for k, v := range m {
 		// need to sanitize ?
