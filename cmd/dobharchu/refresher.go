@@ -1,4 +1,4 @@
-package refresher
+package main
 
 import (
 	"io"

@@ -1,4 +1,4 @@
-package refresher_test
+package main
 
 import (
 	"bufio"
@@ -11,7 +11,6 @@ import (
 	h "github.com/bakins/test-helpers"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/dobharchu/refresher"
 	"github.com/mistifyio/lochness/cmd/dobharchu/testhelper"
 )
 
@@ -131,7 +130,7 @@ func getLines(t *testing.T, b *bytes.Buffer) []string {
 func TestHypervisorsConf(t *testing.T) {
 
 	// Setup
-	r := refresher.NewRefresher("example.com", "http://127.0.0.1:4001")
+	r := NewRefresher("example.com", "http://127.0.0.1:4001")
 	h.Equals(t, r.Domain, "example.com")
 	testData, created, err := doTestSetup(r.Context, r.EtcdClient)
 	defer testhelper.Cleanup(r.EtcdClient, created)
@@ -298,7 +297,7 @@ func TestHypervisorsConf(t *testing.T) {
 func TestGuestsConf(t *testing.T) {
 
 	// Setup
-	r := refresher.NewRefresher("example.com", "http://127.0.0.1:4001")
+	r := NewRefresher("example.com", "http://127.0.0.1:4001")
 	h.Equals(t, r.Domain, "example.com")
 	testData, created, err := doTestSetup(r.Context, r.EtcdClient)
 	defer testhelper.Cleanup(r.EtcdClient, created)

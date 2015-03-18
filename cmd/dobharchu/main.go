@@ -7,13 +7,12 @@ import (
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/mistifyio/lochness/cmd/dobharchu/refresher"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/spf13/pflag"
 )
 
-func updateConfigs(r *refresher.Refresher, hconfPath, gconfPath string) error {
+func updateConfigs(r *Refresher, hconfPath, gconfPath string) error {
 	f1, err := os.Create(hconfPath)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -28,7 +27,7 @@ func updateConfigs(r *refresher.Refresher, hconfPath, gconfPath string) error {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "refresher.WriteHypervisorsConfigFile",
+			"func":  "Refresher.WriteHypervisorsConfigFile",
 		}).Error("Could not refresh hypervisors conf file")
 		return err
 	}
@@ -51,7 +50,7 @@ func updateConfigs(r *refresher.Refresher, hconfPath, gconfPath string) error {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "refresher.WriteGuestsConfigFile",
+			"func":  "Refresher.WriteGuestsConfigFile",
 		}).Error("Could not refresh guests conf file")
 		return err
 	}
@@ -92,7 +91,7 @@ func main() {
 	}
 
 	// Set up refresher
-	r := refresher.NewRefresher(domain, etcdAddress)
+	r := NewRefresher(domain, etcdAddress)
 
 	if !testMode {
 		// Make sure we can actually connect to etcd
