@@ -45,13 +45,13 @@ When you're testing, we recommend that you give Dobharchu alternate config
 files to use:
 
 ```sh
-$ go run cmd/dobharchu/main.go -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf
+$ ./dobharchu -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf
 ```
 
 If you're running etcd locally while you test rather than using a cluster, you
 can bypass Dobharchu's initial sync test by sending it the test-mode flag:
 
 ```sh
-$ go run cmd/dobharchu/main.go -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf -t
+$ ./dobharchu -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf -t
 ```
 
