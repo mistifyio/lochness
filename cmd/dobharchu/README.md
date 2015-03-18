@@ -24,7 +24,6 @@ Dobharchu watches for changes to the following prefixes in etcd:
 | `etcd`             | `e`       | string | `http://127.0.0.1:4001`       | address of etcd server                                    |
 | `hypervisors-path` | *none*    | string | `/etc/dhcpd/hypervisors.conf` | alternative path to hypervisors.conf                      |
 | `guests-path`      | *none*    | string | `/etc/dhcpd/guests.conf`      | alternative path to guests.conf                           |
-| `force`            | `f`       | bool   | false                         | force an update right now                                 |
 | `test`             | `t`       | bool   | false                         | run in test mode; do not require etcd.SyncCluster to work |
 | `log-level`        | `l`       | string | `warning`                     | log level: debug/info/warning/error/critical/fatal        |
 
@@ -54,12 +53,5 @@ can bypass Dobharchu's initial sync test by sending it the test-mode flag:
 
 ```sh
 $ go run cmd/dobharchu/main.go -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf -t
-```
-
-Finally, if you just want Dobharchu to build files based only on what's in etcd
-now, rather than watching for changes, you can send it the force flag:
-
-```sh
-$ go run cmd/dobharchu/main.go -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf -t -f
 ```
 
