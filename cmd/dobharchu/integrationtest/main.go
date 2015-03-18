@@ -9,7 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/dobharchu/testhelper"
+	"github.com/mistifyio/lochness/testhelper"
 	flag "github.com/spf13/pflag"
 )
 
@@ -51,19 +51,19 @@ func main() {
 
 	// Add flavors, network, and firewall group
 	fmt.Print("Creating two flavors, a network, and a firewall group for building the other objects...\n")
-	f1, err := testhelper.NewTestFlavor(c, 4, 4096, 8192)
+	f1, err := testhelper.NewFlavor(c, 4, 4096, 8192)
 	if err != nil {
 		finish(1, e)
 	}
-	f2, err := testhelper.NewTestFlavor(c, 6, 8192, 1024)
+	f2, err := testhelper.NewFlavor(c, 6, 8192, 1024)
 	if err != nil {
 		finish(1, e)
 	}
-	n, err := testhelper.NewTestNetwork(c)
+	n, err := testhelper.NewNetwork(c)
 	if err != nil {
 		finish(1, e)
 	}
-	fw, err := testhelper.NewTestFirewallGroup(c)
+	fw, err := testhelper.NewFirewallGroup(c)
 	if err != nil {
 		finish(1, e)
 	}
@@ -73,7 +73,7 @@ func main() {
 
 	// Add subnet
 	fmt.Print("Creating a new subnet...\n")
-	s, err := testhelper.NewTestSubnet(c, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	s, err := testhelper.NewSubnet(c, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
 	if err != nil {
 		finish(1, e)
 	}
@@ -83,11 +83,11 @@ func main() {
 
 	// Add hypervisors
 	fmt.Print("Creating two new hypervisors...\n")
-	h1, err := testhelper.NewTestHypervisor(c, "fe:dc:ba:98:76:54", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h1, err := testhelper.NewHypervisor(c, "fe:dc:ba:98:76:54", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		finish(1, e)
 	}
-	h2, err := testhelper.NewTestHypervisor(c, "dc:ba:98:76:54:32", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h2, err := testhelper.NewHypervisor(c, "dc:ba:98:76:54:32", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		finish(1, e)
 	}
@@ -101,19 +101,19 @@ func main() {
 
 	// Add guests
 	fmt.Print("Creating four new guests...\n")
-	g1, err := testhelper.NewTestGuest(c, "ba:98:76:54:32:10", n, s, f1, fw, h1)
+	g1, err := testhelper.NewGuest(c, "ba:98:76:54:32:10", n, s, f1, fw, h1)
 	if err != nil {
 		finish(1, e)
 	}
-	g2, err := testhelper.NewTestGuest(c, "98:76:54:32:10:fe", n, s, f2, fw, h1)
+	g2, err := testhelper.NewGuest(c, "98:76:54:32:10:fe", n, s, f2, fw, h1)
 	if err != nil {
 		finish(1, e)
 	}
-	g3, err := testhelper.NewTestGuest(c, "76:54:32:10:fe:dc", n, s, f1, fw, h2)
+	g3, err := testhelper.NewGuest(c, "76:54:32:10:fe:dc", n, s, f1, fw, h2)
 	if err != nil {
 		finish(1, e)
 	}
-	g4, err := testhelper.NewTestGuest(c, "54:32:10:fe:dc:ba", n, s, f2, fw, h2)
+	g4, err := testhelper.NewGuest(c, "54:32:10:fe:dc:ba", n, s, f2, fw, h2)
 	if err != nil {
 		finish(1, e)
 	}

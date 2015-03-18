@@ -11,7 +11,7 @@ import (
 	h "github.com/bakins/test-helpers"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/dobharchu/testhelper"
+	"github.com/mistifyio/lochness/testhelper"
 )
 
 type (
@@ -40,58 +40,58 @@ func doTestSetup(context *lochness.Context, etcdClient *etcd.Client) (*TestingDa
 	}
 
 	// Add flavors, network, and firewall group
-	f1, err := testhelper.NewTestFlavor(context, 4, 4096, 8192)
+	f1, err := testhelper.NewFlavor(context, 4, 4096, 8192)
 	if err != nil {
 		return nil, err
 	}
-	f2, err := testhelper.NewTestFlavor(context, 6, 8192, 1024)
+	f2, err := testhelper.NewFlavor(context, 6, 8192, 1024)
 	if err != nil {
 		return nil, err
 	}
-	n, err := testhelper.NewTestNetwork(context)
+	n, err := testhelper.NewNetwork(context)
 	if err != nil {
 		return nil, err
 	}
-	fw, err := testhelper.NewTestFirewallGroup(context)
+	fw, err := testhelper.NewFirewallGroup(context)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add subnet
-	s, err := testhelper.NewTestSubnet(context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	s, err := testhelper.NewSubnet(context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add hypervisors
-	h1, err := testhelper.NewTestHypervisor(context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h1, err := testhelper.NewHypervisor(context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		return nil, err
 	}
 	data.hypervisors[h1.ID] = &TestingHypervisorData{"DE:AD:BE:EF:7F:21", "192.168.100.200", "192.168.100.1", "255.255.255.0"}
-	h2, err := testhelper.NewTestHypervisor(context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h2, err := testhelper.NewHypervisor(context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		return nil, err
 	}
 	data.hypervisors[h2.ID] = &TestingHypervisorData{"DE:AD:BE:EF:7F:23", "192.168.100.203", "192.168.100.1", "255.255.255.0"}
 
 	// Add guests
-	g1, err := testhelper.NewTestGuest(context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
+	g1, err := testhelper.NewGuest(context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
 	if err != nil {
 		return nil, err
 	}
 	data.guests[g1.ID] = &TestingGuestData{"01:23:45:67:89:AB", g1.IP.String(), "10.10.10.1", "10.10.10.0"}
-	g2, err := testhelper.NewTestGuest(context, "23:45:67:89:ab:cd", n, s, f2, fw, h1)
+	g2, err := testhelper.NewGuest(context, "23:45:67:89:ab:cd", n, s, f2, fw, h1)
 	if err != nil {
 		return nil, err
 	}
 	data.guests[g2.ID] = &TestingGuestData{"23:45:67:89:AB:CD", g2.IP.String(), "10.10.10.1", "10.10.10.0"}
-	g3, err := testhelper.NewTestGuest(context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
+	g3, err := testhelper.NewGuest(context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
 	if err != nil {
 		return nil, err
 	}
 	data.guests[g3.ID] = &TestingGuestData{"45:67:89:AB:CD:EF", g3.IP.String(), "10.10.10.1", "10.10.10.0"}
-	g4, err := testhelper.NewTestGuest(context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
+	g4, err := testhelper.NewGuest(context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
 	if err != nil {
 		return nil, err
 	}
