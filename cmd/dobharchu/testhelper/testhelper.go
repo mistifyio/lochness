@@ -3,9 +3,7 @@ package testhelper
 import (
 	"errors"
 	"net"
-	"path/filepath"
 
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 )
 
@@ -111,31 +109,4 @@ func NewTestGuest(context *lochness.Context, mac string, n *lochness.Network, s 
 	}
 
 	return g, nil
-}
-
-// Cleanup removes a list of objects that have been created during the test
-func Cleanup(e *etcd.Client, created map[string]string) []error {
-	var path string
-	var errs []error
-	for id, t := range created {
-		switch {
-		case t == "flavor":
-			path = filepath.Join(lochness.FlavorPath, id)
-		case t == "network":
-			path = filepath.Join(lochness.NetworkPath, id)
-		case t == "fwgroup":
-			path = filepath.Join(lochness.FWGroupPath, id)
-		case t == "subnet":
-			path = filepath.Join(lochness.SubnetPath, id)
-		case t == "hypervisor":
-			path = filepath.Join(lochness.HypervisorPath, id)
-		case t == "guest":
-			path = filepath.Join(lochness.GuestPath, id)
-		}
-		_, err := e.Delete(path, true)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errs
 }
