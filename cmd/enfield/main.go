@@ -93,7 +93,7 @@ func main() {
 	m, _ := metrics.New(conf, fanout)
 	mw := mmw.New(m)
 
-	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then((http.DefaultServeMux)))
+	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then(http.DefaultServeMux))
 	router.PathPrefix("/images").Handler(chain.Append(mw.HandlerWrapper("images")).Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
 
 	router.Handle("/ipxe/{ip}", chain.Append(
