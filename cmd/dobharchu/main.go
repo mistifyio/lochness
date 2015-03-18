@@ -66,13 +66,10 @@ func main() {
 
 	// Command line options
 	var etcdAddress, domain, hconfPath, gconfPath, logLevel string
-	var force, testMode bool
 	flag.StringVarP(&domain, "domain", "d", "", "domain for lochness; required")
 	flag.StringVarP(&etcdAddress, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
 	flag.StringVarP(&hconfPath, "hypervisors-path", "", "/etc/dhcpd/hypervisors.conf", "alternative path to hypervisors.conf")
 	flag.StringVarP(&gconfPath, "guests-path", "", "/etc/dhcpd/guests.conf", "alternative path to guests.conf")
-	flag.BoolVarP(&force, "force", "f", false, "force an update right now")
-	flag.BoolVarP(&testMode, "test-mode", "t", false, "run in test mode; do not require etcd.SyncCluster to work")
 	flag.StringVarP(&logLevel, "log-level", "l", "warning", "log level: debug/info/warning/error/critical/fatal")
 	flag.Parse()
 
@@ -92,17 +89,6 @@ func main() {
 
 	// Set up refresher
 	r := NewRefresher(domain, etcdAddress)
-
-	if !testMode {
-		// Make sure we can actually connect to etcd
-		if !r.EtcdClient.SyncCluster() {
-			log.WithFields(log.Fields{
-				"error":   nil,
-				"func":    "etcd.SyncCluster",
-				"address": etcdAddress,
-			}).Fatal("Could not connect to etcd cluster")
-		}
-	}
 
 	// Update at the start of each run
 	err := updateConfigs(r, hconfPath, gconfPath)

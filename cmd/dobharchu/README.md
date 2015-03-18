@@ -24,7 +24,6 @@ Dobharchu watches for changes to the following prefixes in etcd:
 | `etcd`             | `e`       | string | `http://127.0.0.1:4001`       | address of etcd server                                    |
 | `hypervisors-path` | *none*    | string | `/etc/dhcpd/hypervisors.conf` | alternative path to hypervisors.conf                      |
 | `guests-path`      | *none*    | string | `/etc/dhcpd/guests.conf`      | alternative path to guests.conf                           |
-| `test`             | `t`       | bool   | false                         | run in test mode; do not require etcd.SyncCluster to work |
 | `log-level`        | `l`       | string | `warning`                     | log level: debug/info/warning/error/critical/fatal        |
 
 ## Testing
@@ -46,12 +45,5 @@ files to use:
 
 ```sh
 $ ./dobharchu -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf
-```
-
-If you're running etcd locally while you test rather than using a cluster, you
-can bypass Dobharchu's initial sync test by sending it the test-mode flag:
-
-```sh
-$ ./dobharchu -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf -t
 ```
 
