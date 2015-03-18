@@ -180,8 +180,8 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 		"Options": mapToOptions(options) + " " + s.addOpts,
 		"Version": version,
 	}
-	err = s.t.Execute(w, data)
-	if err != nil {
+
+	if err := s.t.Execute(w, data); err != nil {
 		// we should not get here
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -226,8 +226,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = s.c.Execute(w, configs)
-	if err != nil {
+	if err := s.c.Execute(w, configs); err != nil {
 		// we should not get here
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
