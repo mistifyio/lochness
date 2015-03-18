@@ -30,12 +30,13 @@ type server struct {
 	ctx            *lochness.Context
 	t              *template.Template
 	c              *template.Template
+	r              *regexp.Regexp
 	defaultVersion string
 	baseURL        string
 	addOpts        string
 }
 
-var envRegex = regexp.MustCompile("^[_A-Z][_A-Z0-9]*$")
+const envRegex = "^[_A-Z][_A-Z0-9]*$"
 
 const ipxeTemplate = `#!ipxe
 kernel {{.BaseURL}}/images/{{.Version}}/vmlinuz {{.Options}}
@@ -65,6 +66,7 @@ func main() {
 		ctx:            c,
 		t:              template.Must(template.New("ipxe").Parse(ipxeTemplate)),
 		c:              template.Must(template.New("config").Parse(configTemplate)),
+		r:              regexp.MustCompile(envRegex),
 		defaultVersion: *defaultVersion,
 		baseURL:        *baseURL,
 		addOpts:        *addOpts,
@@ -214,14 +216,14 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 
 	configs := map[string]string{}
 	s.ctx.ForEachConfig(func(key, val string) error {
-		if envRegex.MatchString(key) {
+		if s.r.MatchString(key) {
 			configs[key] = val
 		}
 		return nil
 	})
 
 	for key, val := range found.Config {
-		if envRegex.MatchString(key) {
+		if s.r.MatchString(key) {
 			configs[key] = val
 		}
 	}
@@ -233,7 +235,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func mapToOptions(m map[string]string) string {
-	var parts []string
+	parts := make([]string, 0, len(m))
 
 	for k, v := range m {
 		// need to sanitize ?
