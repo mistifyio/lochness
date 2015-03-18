@@ -133,33 +133,17 @@ func main() {
 }
 
 func ipxeHandler(w http.ResponseWriter, r *http.Request) {
-
 	s := context.Get(r, "_server_").(*server)
 
-	ip := mux.Vars(r)["ip"]
-
-	if net.ParseIP(ip) == nil {
-		http.Error(w, "invalid address", http.StatusBadRequest)
+	hv, code, msg := getHV(s, mux.Vars(r)["ip"])
+	if code != http.StatusOK {
+		http.Error(w, msg, code)
 		return
 	}
 
-	found, err := s.ctx.FirstHypervisor(func(h *lochness.Hypervisor) bool {
-		return ip == h.IP.String()
-	})
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if found == nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	version := found.Config["version"]
-
+	version := hv.Config["version"]
 	if version == "" {
+		var err error
 		version, err = s.ctx.GetConfig("defaultVersion")
 		if err != nil && !lochness.IsKeyNotFound(err) {
 			// XXX: should be fatal?
@@ -174,9 +158,8 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	options := map[string]string{
-		"uuid": found.ID,
+		"uuid": hv.ID,
 	}
-
 	data := map[string]string{
 		"BaseURL": s.baseURL,
 		"Options": mapToOptions(options) + " " + s.addOpts,
@@ -190,27 +173,11 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func configHandler(w http.ResponseWriter, r *http.Request) {
-
 	s := context.Get(r, "_server_").(*server)
 
-	ip := mux.Vars(r)["ip"]
-
-	if net.ParseIP(ip) == nil {
-		http.Error(w, "invalid address", http.StatusBadRequest)
-		return
-	}
-
-	found, err := s.ctx.FirstHypervisor(func(h *lochness.Hypervisor) bool {
-		return ip == h.IP.String()
-	})
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if found == nil {
-		http.NotFound(w, r)
+	hv, code, msg := getHV(s, mux.Vars(r)["ip"])
+	if code != http.StatusOK {
+		http.Error(w, msg, code)
 		return
 	}
 
@@ -222,7 +189,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	for key, val := range found.Config {
+	for key, val := range hv.Config {
 		if s.r.MatchString(key) {
 			configs[key] = val
 		}
