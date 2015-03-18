@@ -104,13 +104,10 @@ func main() {
 		}
 	}
 
-	// Is this a force-update run?
-	if force {
-		err := updateConfigs(r, hconfPath, gconfPath)
-		if err != nil {
-			os.Exit(1)
-		}
-		os.Exit(0)
+	// Update at the start of each run
+	err := updateConfigs(r, hconfPath, gconfPath)
+	if err != nil {
+		os.Exit(1)
 	}
 
 	// Create the watcher
