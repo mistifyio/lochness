@@ -234,6 +234,26 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getHV(s *server, ip string) (*lochness.Hypervisor, int, string) {
+	if net.ParseIP(ip) == nil {
+		return nil, http.StatusBadRequest, "invalid address"
+	}
+
+	hv, err := s.ctx.FirstHypervisor(func(h *lochness.Hypervisor) bool {
+		return ip == h.IP.String()
+	})
+
+	if err != nil {
+		return nil, http.StatusInternalServerError, err.Error()
+	}
+
+	if hv == nil {
+		return nil, http.StatusNotFound, "hypervisor not found"
+	}
+
+	return hv, http.StatusOK, ""
+}
+
 func mapToOptions(m map[string]string) string {
 	parts := make([]string, 0, len(m))
 
