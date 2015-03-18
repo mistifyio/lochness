@@ -97,25 +97,6 @@ func main() {
 
 	router.PathPrefix("/debug/").Handler(chain.Append(mw.HandlerWrapper("debug")).Then(http.DefaultServeMux))
 	router.PathPrefix("/images").Handler(chain.Append(mw.HandlerWrapper("images")).Then(http.StripPrefix("/images/", http.FileServer(http.Dir(*imageDir)))))
-
-	router.Handle("/ipxe/{ip}", chain.Append(
-		func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				context.Set(r, "_server_", s)
-				h.ServeHTTP(w, r)
-			})
-		},
-	).Append(mw.HandlerWrapper("ipxe")).ThenFunc(ipxeHandler))
-
-	router.Handle("/configs/{ip}", chain.Append(
-		func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				context.Set(r, "_server_", s)
-				h.ServeHTTP(w, r)
-			})
-		},
-	).Append(mw.HandlerWrapper("config")).ThenFunc(configHandler))
-
 	router.Handle("/metrics", chain.Append(mw.HandlerWrapper("metrics")).ThenFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -123,6 +104,15 @@ func main() {
 				log.WithField("error", err).Error(err)
 			}
 		}))
+
+	chain = chain.Append(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			context.Set(r, "_server_", s)
+			h.ServeHTTP(w, r)
+		})
+	})
+	router.Handle("/ipxe/{ip}", chain.Append(mw.HandlerWrapper("ipxe")).ThenFunc(ipxeHandler))
+	router.Handle("/config/{ip}", chain.Append(mw.HandlerWrapper("config")).ThenFunc(configHandler))
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), router); err != nil {
 		log.WithFields(log.Fields{
