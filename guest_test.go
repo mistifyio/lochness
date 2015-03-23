@@ -75,7 +75,7 @@ func TestGuestCandidates(t *testing.T) {
 	err = g.Save()
 	h.Ok(t, err)
 
-	candidates, err := g.Candidates(lochness.DefaultCadidateFuctions...)
+	candidates, err := g.Candidates(lochness.DefaultCandidateFuctions...)
 	h.Ok(t, err)
 
 	h.Equals(t, 1, len(candidates))
