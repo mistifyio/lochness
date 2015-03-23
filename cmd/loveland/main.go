@@ -298,7 +298,7 @@ func checkGuestStatus(t *Task) (bool, error) {
 }
 
 func selectHypervisor(t *Task) (bool, error) {
-	candidates, err := t.Guest.Candidates(lochness.DefaultCandidateFuctions...)
+	candidates, err := t.Guest.Candidates(lochness.DefaultCandidateFunctions...)
 	if err != nil {
 		return true, fmt.Errorf("unable to select candidate %s - %s", t.Guest.ID, err)
 	}

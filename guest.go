@@ -363,8 +363,8 @@ func randomizeHypervisors(s Hypervisors) Hypervisors {
 	return s
 }
 
-// DefaultCandidateFuctions is a default list of CandidateFunctions for general use
-var DefaultCandidateFuctions = []CandidateFunction{
+// DefaultCandidateFunctions is a default list of CandidateFunctions for general use
+var DefaultCandidateFunctions = []CandidateFunction{
 	CandidateIsAlive,
 	CandidateHasSubnet,
 	CandidateHasResources,
