@@ -80,7 +80,7 @@ func main() {
 	}
 
 	// Logging
-	if err := logx.DefaultSetup(logLevel); err != nil {
+	if err := logx.SetLevel(logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "logx.DefaultSetup",
@@ -89,9 +89,13 @@ func main() {
 
 	// Set up refresher
 	r := NewRefresher(domain, etcdAddress)
+	err := r.Fetch()
+	if err != nil {
+		os.Exit(1)
+	}
 
 	// Update at the start of each run
-	err := updateConfigs(r, hconfPath, gconfPath)
+	err = updateConfigs(r, hconfPath, gconfPath)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -126,8 +130,11 @@ func main() {
 		// Remove item to indicate processing has begun
 		done := <-ready
 
-		// Just print out the configs for now
-		updateConfigs(r, hconfPath, gconfPath)
+		// Integrate the response and update the configs if necessary
+		err = r.IntegrateResponse(w.Response())
+		if err != nil {
+			updateConfigs(r, hconfPath, gconfPath)
+		}
 
 		// Return item to indicate processing has completed
 		ready <- done

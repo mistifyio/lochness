@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"net"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -124,7 +126,9 @@ func TestHypervisorsConf(t *testing.T) {
 	defer r.EtcdClient.Delete("/lochness", true)
 	h.Ok(t, err)
 
-	// Write to buffer
+	// Fetch data and write to buffer
+	err = r.Fetch()
+	h.Ok(t, err)
 	b := new(bytes.Buffer)
 	err = r.WriteHypervisorsConfigFile(b)
 	h.Ok(t, err)
@@ -158,7 +162,7 @@ func TestHypervisorsConf(t *testing.T) {
 	groupre := regexp.MustCompile("^group ([0-9a-zA-Z]+) {$")
 	hostre := regexp.MustCompile("^host ([0-9a-f\\-]+) {$")
 	ifre := regexp.MustCompile("^if .* {$")
-	errors := make([]string, 0)
+	var errors []string
 
 	// Check the returned file line by line
 	s := bufio.NewScanner(b)
@@ -291,7 +295,9 @@ func TestGuestsConf(t *testing.T) {
 	defer r.EtcdClient.Delete("/lochness", true)
 	h.Ok(t, err)
 
-	// Write to buffer
+	// Fetch data and write to buffer
+	err = r.Fetch()
+	h.Ok(t, err)
 	b := new(bytes.Buffer)
 	err = r.WriteGuestsConfigFile(b)
 	h.Ok(t, err)
@@ -333,7 +339,7 @@ func TestGuestsConf(t *testing.T) {
 	groupre := regexp.MustCompile("^group ([0-9a-zA-Z]+) {$")
 	hostre := regexp.MustCompile("^host ([0-9a-f\\-]+) {$")
 	ifre := regexp.MustCompile("^if .* {$")
-	errors := make([]string, 0)
+	var errors []string
 
 	// Check the returned file line by line
 	s := bufio.NewScanner(b)
@@ -454,4 +460,110 @@ func TestGuestsConf(t *testing.T) {
 		t.Error(err)
 	}
 
+}
+
+func TestIntegrateResponse(t *testing.T) {
+
+	// Setup
+	r := NewRefresher("example.com", "http://127.0.0.1:4001")
+	h.Equals(t, r.Domain, "example.com")
+	defer r.EtcdClient.Delete("/lochness", true)
+	err := r.Fetch()
+	h.Ok(t, err)
+
+	// Create-hypervisor integration
+	hv := r.Context.NewHypervisor()
+	mac := "55:55:55:55:55:55"
+	hv.MAC, err = net.ParseMAC(mac)
+	if err != nil {
+		t.Error("Could not parse MAC '" + mac + "': " + err.Error())
+	}
+	hj, err := json.Marshal(hv)
+	h.Ok(t, err)
+	key := filepath.Join(lochness.HypervisorPath, hv.ID, "metadata")
+	resp, err := r.EtcdClient.Create(key, string(hj), 0)
+	h.Ok(t, err)
+	err = r.IntegrateResponse(resp)
+	h.Ok(t, err)
+	hvs, err := r.GetHypervisors()
+	h.Ok(t, err)
+	if _, ok := hvs[hv.ID]; !ok {
+		t.Error("Newly integrated hypervisor is missing from list")
+	}
+	h.Equals(t, hvs[hv.ID].MAC.String(), mac)
+
+	// Delete-hypervisor integration (update requires modifiedIndex, which is not exported)
+	resp, err = r.EtcdClient.Delete(filepath.Join(lochness.HypervisorPath, hv.ID), true)
+	h.Ok(t, err)
+	err = r.IntegrateResponse(resp)
+	h.Ok(t, err)
+	hvs, err = r.GetHypervisors()
+	h.Ok(t, err)
+	if _, ok := hvs[hv.ID]; ok {
+		t.Error("Newly deleted hypervisor is present in list")
+	}
+
+	// Create-guest integration
+	g := r.Context.NewGuest()
+	mac = "66:66:66:66:66:66"
+	g.MAC, err = net.ParseMAC(mac)
+	if err != nil {
+		t.Error("Could not parse MAC '" + mac + "': " + err.Error())
+	}
+	gj, err := json.Marshal(g)
+	h.Ok(t, err)
+	key = filepath.Join(lochness.GuestPath, g.ID, "metadata")
+	resp, err = r.EtcdClient.Create(key, string(gj), 0)
+	h.Ok(t, err)
+	err = r.IntegrateResponse(resp)
+	h.Ok(t, err)
+	gs, err := r.GetGuests()
+	h.Ok(t, err)
+	if _, ok := gs[g.ID]; !ok {
+		t.Error("Newly integrated guest is missing from list")
+	}
+	h.Equals(t, gs[g.ID].MAC.String(), mac)
+
+	// Delete-guest integration
+	resp, err = r.EtcdClient.Delete(filepath.Join(lochness.GuestPath, g.ID), true)
+	h.Ok(t, err)
+	err = r.IntegrateResponse(resp)
+	h.Ok(t, err)
+	gs, err = r.GetGuests()
+	h.Ok(t, err)
+	if _, ok := gs[g.ID]; ok {
+		t.Error("Newly deleted guest is present in list")
+	}
+
+	// Create-subnet integration
+	s := r.Context.NewSubnet()
+	cidr := "77.77.77.0/24"
+	_, s.CIDR, err = net.ParseCIDR(cidr)
+	if err != nil {
+		t.Error("Could not parse CIDR '" + cidr + "': " + err.Error())
+	}
+	sj, err := json.Marshal(s)
+	h.Ok(t, err)
+	key = filepath.Join(lochness.SubnetPath, s.ID, "metadata")
+	resp, err = r.EtcdClient.Create(key, string(sj), 0)
+	h.Ok(t, err)
+	err = r.IntegrateResponse(resp)
+	h.Ok(t, err)
+	ss, err := r.GetSubnets()
+	h.Ok(t, err)
+	if _, ok := ss[s.ID]; !ok {
+		t.Error("Newly integrated subnet is missing from list")
+	}
+	h.Equals(t, ss[s.ID].CIDR.String(), cidr)
+
+	// Delete-subnet integration
+	resp, err = r.EtcdClient.Delete(filepath.Join(lochness.SubnetPath, s.ID), true)
+	h.Ok(t, err)
+	err = r.IntegrateResponse(resp)
+	h.Ok(t, err)
+	ss, err = r.GetSubnets()
+	h.Ok(t, err)
+	if _, ok := ss[s.ID]; ok {
+		t.Error("Newly deleted subnet is present in list")
+	}
 }
