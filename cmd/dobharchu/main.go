@@ -160,7 +160,7 @@ func main() {
 
 		// Integrate the response and update the configs if necessary
 		err = f.IntegrateResponse(w.Response())
-		if err != nil {
+		if err == nil {
 			updateConfigs(f, r, hconfPath, gconfPath)
 		}
 
