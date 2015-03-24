@@ -12,7 +12,17 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-func updateConfigs(r *Refresher, hconfPath, gconfPath string) error {
+func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error {
+
+	// Hypervisors
+	hypervisors, err := f.GetHypervisors()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "fetcher.GetHypervisors",
+		}).Error("Could not fetch hypervisors")
+		return err
+	}
 	f1, err := os.Create(hconfPath)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -23,7 +33,7 @@ func updateConfigs(r *Refresher, hconfPath, gconfPath string) error {
 		return err
 	}
 	w1 := bufio.NewWriter(f1)
-	err = r.WriteHypervisorsConfigFile(w1)
+	err = r.WriteHypervisorsConfigFile(w1, hypervisors)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -36,6 +46,23 @@ func updateConfigs(r *Refresher, hconfPath, gconfPath string) error {
 		"path": hconfPath,
 	}).Info("Refreshed hypervisors conf file")
 
+	// Guests
+	guests, err := f.GetGuests()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "fetcher.GetGuests",
+		}).Error("Could not fetch guests")
+		return err
+	}
+	subnets, err := f.GetSubnets()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "fetcher.GetSubnets",
+		}).Error("Could not fetch subnets")
+		return err
+	}
 	f2, err := os.Create(gconfPath)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -46,7 +73,7 @@ func updateConfigs(r *Refresher, hconfPath, gconfPath string) error {
 		return err
 	}
 	w2 := bufio.NewWriter(f2)
-	err = r.WriteGuestsConfigFile(w2)
+	err = r.WriteGuestsConfigFile(w2, guests, subnets)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -87,21 +114,22 @@ func main() {
 		}).Fatal("Could not set up logrus")
 	}
 
-	// Set up refresher
-	r := NewRefresher(domain, etcdAddress)
-	err := r.Fetch()
+	// Set up fetcher and refresher
+	f := NewFetcher(etcdAddress)
+	r := NewRefresher(domain)
+	err := f.FetchAll()
 	if err != nil {
 		os.Exit(1)
 	}
 
 	// Update at the start of each run
-	err = updateConfigs(r, hconfPath, gconfPath)
+	err = updateConfigs(f, r, hconfPath, gconfPath)
 	if err != nil {
 		os.Exit(1)
 	}
 
 	// Create the watcher
-	w, err := watcher.New(r.EtcdClient)
+	w, err := watcher.New(f.EtcdClient)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -131,9 +159,9 @@ func main() {
 		done := <-ready
 
 		// Integrate the response and update the configs if necessary
-		err = r.IntegrateResponse(w.Response())
+		err = f.IntegrateResponse(w.Response())
 		if err != nil {
-			updateConfigs(r, hconfPath, gconfPath)
+			updateConfigs(f, r, hconfPath, gconfPath)
 		}
 
 		// Return item to indicate processing has completed
