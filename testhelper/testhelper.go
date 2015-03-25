@@ -13,8 +13,7 @@ func NewFlavor(context *lochness.Context, cpu uint32, memory, disk uint64) (*loc
 	f.CPU = cpu
 	f.Memory = memory
 	f.Disk = disk
-	err := f.Save()
-	if err != nil {
+	if err := f.Save(); err != nil {
 		return nil, errors.New("Could not save flavor: " + err.Error())
 	}
 	return f, nil

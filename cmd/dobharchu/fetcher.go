@@ -29,7 +29,7 @@ type (
 
 const fetchTimeout = 10 * time.Second
 
-var matchKeys = regexp.MustCompile("^/lochness/(hypervisors|subnets|guests)/([0-9a-f\\-]+)(/([^/]+))?(/.*)?")
+var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
 
 // NewFetcher creates a new fetcher
 func NewFetcher(etcdAddress string) *Fetcher {
@@ -65,30 +65,24 @@ func (f *Fetcher) FetchAll() error {
 // fetchHypervisors pulls the hypervisors from etcd
 func (f *Fetcher) fetchHypervisors() error {
 	f.hypervisors = make(map[string]*lochness.Hypervisor)
-	res, err := f.EtcdClient.Get("lochness/hypervisors/", true, true)
+	err := f.Context.ForEachHypervisor(func(hv *lochness.Hypervisor) error {
+		f.hypervisors[hv.ID] = hv
+		return nil
+	})
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode == 100 {
-			// key missing; log and set empty slice
+			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
-				"func":  "etcd.Get",
+				"func":  "context.ForEachHypervisor",
 			}).Warning("No hypervisors are stored in etcd")
 			return nil
 		}
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "etcd.Get",
+			"func":  "context.ForEachHypervisor",
 		}).Error("Could not retrieve hypervisors from etcd")
 		return err
-	}
-	for _, node := range res.Node.Nodes {
-		for _, hnode := range node.Nodes {
-			if strings.Contains(hnode.Key, "metadata") {
-				hv := f.Context.NewHypervisor()
-				hv.UnmarshalJSON([]byte(hnode.Value))
-				f.hypervisors[hv.ID] = hv
-			}
-		}
 	}
 	log.WithFields(log.Fields{
 		"hypervisorCount": len(f.hypervisors),
@@ -100,30 +94,24 @@ func (f *Fetcher) fetchHypervisors() error {
 // fetchGuests pulls the guests from etcd
 func (f *Fetcher) fetchGuests() error {
 	f.guests = make(map[string]*lochness.Guest)
-	res, err := f.EtcdClient.Get("lochness/guests/", true, true)
+	err := f.Context.ForEachGuest(func(g *lochness.Guest) error {
+		f.guests[g.ID] = g
+		return nil
+	})
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode == 100 {
-			// key missing; log and set empty slice
+			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
-				"func":  "etcd.Get",
+				"func":  "context.ForEachGuest",
 			}).Warning("No guests are stored in etcd")
 			return nil
 		}
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "etcd.Get",
+			"func":  "context.ForEachGuest",
 		}).Error("Could not retrieve guests from etcd")
 		return err
-	}
-	for _, node := range res.Node.Nodes {
-		for _, gnode := range node.Nodes {
-			if strings.Contains(gnode.Key, "metadata") {
-				g := f.Context.NewGuest()
-				g.UnmarshalJSON([]byte(gnode.Value))
-				f.guests[g.ID] = g
-			}
-		}
 	}
 	log.WithFields(log.Fields{
 		"guestCount": len(f.guests),
@@ -138,7 +126,7 @@ func (f *Fetcher) fetchSubnets() error {
 	res, err := f.EtcdClient.Get("lochness/subnets/", true, true)
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode == 100 {
-			// key missing; log and set empty slice
+			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "etcd.Get",
