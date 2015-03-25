@@ -119,8 +119,8 @@ func TestHypervisorsConf(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	testData, err := doTestSetup(f.Context, f.EtcdClient)
-	defer f.EtcdClient.Delete("/lochness", true)
+	testData, err := doTestSetup(f.context, f.etcdClient)
+	defer f.etcdClient.Delete("/lochness", true)
 	h.Ok(t, err)
 	r := NewRefresher("example.com")
 	h.Equals(t, r.Domain, "example.com")
@@ -291,8 +291,8 @@ func TestGuestsConf(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	testData, err := doTestSetup(f.Context, f.EtcdClient)
-	defer f.EtcdClient.Delete("/lochness", true)
+	testData, err := doTestSetup(f.context, f.etcdClient)
+	defer f.etcdClient.Delete("/lochness", true)
 	h.Ok(t, err)
 	r := NewRefresher("example.com")
 	h.Equals(t, r.Domain, "example.com")

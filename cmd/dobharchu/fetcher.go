@@ -16,8 +16,8 @@ type (
 	// Fetcher grabs keys from etcd and maintains lists of hypervisors, guests, and
 	// subnets
 	Fetcher struct {
-		Context            *lochness.Context
-		EtcdClient         *etcd.Client
+		context            *lochness.Context
+		etcdClient         *etcd.Client
 		hypervisors        map[string]*lochness.Hypervisor
 		guests             map[string]*lochness.Guest
 		subnets            map[string]*lochness.Subnet
@@ -36,8 +36,8 @@ func NewFetcher(etcdAddress string) *Fetcher {
 	e := etcd.NewClient([]string{etcdAddress})
 	c := lochness.NewContext(e)
 	return &Fetcher{
-		Context:     c,
-		EtcdClient:  e,
+		context:     c,
+		etcdClient:  e,
 		hypervisors: make(map[string]*lochness.Hypervisor),
 		guests:      make(map[string]*lochness.Guest),
 		subnets:     make(map[string]*lochness.Subnet),
@@ -65,7 +65,7 @@ func (f *Fetcher) FetchAll() error {
 // fetchHypervisors pulls the hypervisors from etcd
 func (f *Fetcher) fetchHypervisors() error {
 	f.hypervisors = make(map[string]*lochness.Hypervisor)
-	err := f.Context.ForEachHypervisor(func(hv *lochness.Hypervisor) error {
+	err := f.context.ForEachHypervisor(func(hv *lochness.Hypervisor) error {
 		f.hypervisors[hv.ID] = hv
 		return nil
 	})
@@ -94,7 +94,7 @@ func (f *Fetcher) fetchHypervisors() error {
 // fetchGuests pulls the guests from etcd
 func (f *Fetcher) fetchGuests() error {
 	f.guests = make(map[string]*lochness.Guest)
-	err := f.Context.ForEachGuest(func(g *lochness.Guest) error {
+	err := f.context.ForEachGuest(func(g *lochness.Guest) error {
 		f.guests[g.ID] = g
 		return nil
 	})
@@ -123,7 +123,7 @@ func (f *Fetcher) fetchGuests() error {
 // fetchSubnets pulls the subnets from etcd
 func (f *Fetcher) fetchSubnets() error {
 	f.subnets = make(map[string]*lochness.Subnet)
-	res, err := f.EtcdClient.Get("lochness/subnets/", true, true)
+	res, err := f.etcdClient.Get("lochness/subnets/", true, true)
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode == 100 {
 			// key missing; log warning but return no error
@@ -142,7 +142,7 @@ func (f *Fetcher) fetchSubnets() error {
 	for _, node := range res.Node.Nodes {
 		for _, snode := range node.Nodes {
 			if strings.Contains(snode.Key, "metadata") {
-				s := f.Context.NewSubnet()
+				s := f.context.NewSubnet()
 				s.UnmarshalJSON([]byte(snode.Value))
 				f.subnets[s.ID] = s
 			}
@@ -277,7 +277,7 @@ func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id
 		if _, ok := f.hypervisors[id]; ok {
 			return f.logIntegrationMessage("warning", "Caught response creating a hypervisor that already exists", e, element, id, vtype)
 		}
-		hv := f.Context.NewHypervisor()
+		hv := f.context.NewHypervisor()
 		hv.UnmarshalJSON([]byte(e.Node.Value))
 		f.hypervisors[id] = hv
 		_ = f.logIntegrationMessage("info", "Added hypervisor", e, element, id, vtype)
@@ -285,7 +285,7 @@ func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id
 		if _, ok := f.hypervisors[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response editing a hypervisor that doesn't exist", e, element, id, vtype)
 		}
-		hv := f.Context.NewHypervisor()
+		hv := f.context.NewHypervisor()
 		hv.UnmarshalJSON([]byte(e.Node.Value))
 		f.hypervisors[id] = hv
 		_ = f.logIntegrationMessage("info", "Updated hypervisor", e, element, id, vtype)
@@ -306,7 +306,7 @@ func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id stri
 		if _, ok := f.guests[id]; ok {
 			return f.logIntegrationMessage("warning", "Caught response creating a guest that already exists", e, element, id, vtype)
 		}
-		g := f.Context.NewGuest()
+		g := f.context.NewGuest()
 		g.UnmarshalJSON([]byte(e.Node.Value))
 		f.guests[id] = g
 		_ = f.logIntegrationMessage("info", "Created guest", e, element, id, vtype)
@@ -314,7 +314,7 @@ func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id stri
 		if _, ok := f.guests[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response editing a guest that doesn't exist", e, element, id, vtype)
 		}
-		g := f.Context.NewGuest()
+		g := f.context.NewGuest()
 		g.UnmarshalJSON([]byte(e.Node.Value))
 		f.guests[id] = g
 		_ = f.logIntegrationMessage("info", "Updated guest", e, element, id, vtype)
@@ -335,7 +335,7 @@ func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id str
 		if _, ok := f.subnets[id]; ok {
 			return f.logIntegrationMessage("warning", "Caught response creating a subnet that already exists", e, element, id, vtype)
 		}
-		s := f.Context.NewSubnet()
+		s := f.context.NewSubnet()
 		s.UnmarshalJSON([]byte(e.Node.Value))
 		f.subnets[id] = s
 		_ = f.logIntegrationMessage("info", "Created subnet", e, element, id, vtype)
@@ -343,7 +343,7 @@ func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id str
 		if _, ok := f.subnets[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response editing a subnet that doesn't exist", e, element, id, vtype)
 		}
-		s := f.Context.NewSubnet()
+		s := f.context.NewSubnet()
 		s.UnmarshalJSON([]byte(e.Node.Value))
 		f.subnets[id] = s
 		_ = f.logIntegrationMessage("info", "Updated subnet", e, element, id, vtype)

@@ -129,7 +129,7 @@ func main() {
 	}
 
 	// Create the watcher
-	w, err := watcher.New(f.EtcdClient)
+	w, err := watcher.New(f.etcdClient)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,

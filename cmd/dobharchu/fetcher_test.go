@@ -15,18 +15,18 @@ func TestFetchHypervisors(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.EtcdClient.Delete("/lochness", true)
+	defer f.etcdClient.Delete("/lochness", true)
 
 	// Create supporting objects
-	n, err := testhelper.NewNetwork(f.Context)
+	n, err := testhelper.NewNetwork(f.context)
 	h.Ok(t, err)
-	s, err := testhelper.NewSubnet(f.Context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	s, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
 	h.Ok(t, err)
 
 	// Create two hypervisors
-	h1, err := testhelper.NewHypervisor(f.Context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h1, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	h.Ok(t, err)
-	h2, err := testhelper.NewHypervisor(f.Context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h2, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	h.Ok(t, err)
 
 	// Fetch and make sure they're present
@@ -47,24 +47,24 @@ func TestFetchGuests(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.EtcdClient.Delete("/lochness", true)
+	defer f.etcdClient.Delete("/lochness", true)
 
 	// Create supporting objects
-	f1, err := testhelper.NewFlavor(f.Context, 4, 4096, 8192)
+	f1, err := testhelper.NewFlavor(f.context, 4, 4096, 8192)
 	h.Ok(t, err)
-	n, err := testhelper.NewNetwork(f.Context)
+	n, err := testhelper.NewNetwork(f.context)
 	h.Ok(t, err)
-	fw, err := testhelper.NewFirewallGroup(f.Context)
+	fw, err := testhelper.NewFirewallGroup(f.context)
 	h.Ok(t, err)
-	s, err := testhelper.NewSubnet(f.Context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	s, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
 	h.Ok(t, err)
-	h1, err := testhelper.NewHypervisor(f.Context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h1, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	h.Ok(t, err)
 
 	// Create two guests
-	g1, err := testhelper.NewGuest(f.Context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
+	g1, err := testhelper.NewGuest(f.context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
 	h.Ok(t, err)
-	g2, err := testhelper.NewGuest(f.Context, "23:45:67:89:ab:cd", n, s, f1, fw, h1)
+	g2, err := testhelper.NewGuest(f.context, "23:45:67:89:ab:cd", n, s, f1, fw, h1)
 	h.Ok(t, err)
 
 	// Fetch and make sure they're present
@@ -85,16 +85,16 @@ func TestFetchSubnets(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.EtcdClient.Delete("/lochness", true)
+	defer f.etcdClient.Delete("/lochness", true)
 
 	// Create supporting object
-	n, err := testhelper.NewNetwork(f.Context)
+	n, err := testhelper.NewNetwork(f.context)
 	h.Ok(t, err)
 
 	// Create two subnets
-	s1, err := testhelper.NewSubnet(f.Context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	s1, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
 	h.Ok(t, err)
-	s2, err := testhelper.NewSubnet(f.Context, "12.12.12.0/24", net.IPv4(12, 12, 12, 1), net.IPv4(12, 12, 12, 12), net.IPv4(12, 12, 12, 250), n)
+	s2, err := testhelper.NewSubnet(f.context, "12.12.12.0/24", net.IPv4(12, 12, 12, 1), net.IPv4(12, 12, 12, 12), net.IPv4(12, 12, 12, 250), n)
 	h.Ok(t, err)
 
 	// Fetch and make sure they're present
@@ -115,30 +115,30 @@ func TestFetchAll(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.EtcdClient.Delete("/lochness", true)
+	defer f.etcdClient.Delete("/lochness", true)
 
 	// Create objects
-	f1, err := testhelper.NewFlavor(f.Context, 4, 4096, 8192)
+	f1, err := testhelper.NewFlavor(f.context, 4, 4096, 8192)
 	h.Ok(t, err)
-	f2, err := testhelper.NewFlavor(f.Context, 6, 8192, 1024)
+	f2, err := testhelper.NewFlavor(f.context, 6, 8192, 1024)
 	h.Ok(t, err)
-	n, err := testhelper.NewNetwork(f.Context)
+	n, err := testhelper.NewNetwork(f.context)
 	h.Ok(t, err)
-	fw, err := testhelper.NewFirewallGroup(f.Context)
+	fw, err := testhelper.NewFirewallGroup(f.context)
 	h.Ok(t, err)
-	s, err := testhelper.NewSubnet(f.Context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	s, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
 	h.Ok(t, err)
-	h1, err := testhelper.NewHypervisor(f.Context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h1, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	h.Ok(t, err)
-	h2, err := testhelper.NewHypervisor(f.Context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h2, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	h.Ok(t, err)
-	g1, err := testhelper.NewGuest(f.Context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
+	g1, err := testhelper.NewGuest(f.context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
 	h.Ok(t, err)
-	g2, err := testhelper.NewGuest(f.Context, "23:45:67:89:ab:cd", n, s, f1, fw, h1)
+	g2, err := testhelper.NewGuest(f.context, "23:45:67:89:ab:cd", n, s, f1, fw, h1)
 	h.Ok(t, err)
-	g3, err := testhelper.NewGuest(f.Context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
+	g3, err := testhelper.NewGuest(f.context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
 	h.Ok(t, err)
-	g4, err := testhelper.NewGuest(f.Context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
+	g4, err := testhelper.NewGuest(f.context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
 	h.Ok(t, err)
 
 	// Fetch and make sure everything expected is present
@@ -190,11 +190,11 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.EtcdClient.Delete("/lochness", true)
+	defer f.etcdClient.Delete("/lochness", true)
 	var err error
 
 	// Create-hypervisor integration
-	hv := f.Context.NewHypervisor()
+	hv := f.context.NewHypervisor()
 	mac := "55:55:55:55:55:55"
 	hv.MAC, err = net.ParseMAC(mac)
 	if err != nil {
@@ -203,7 +203,7 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	hj, err := json.Marshal(hv)
 	h.Ok(t, err)
 	key := filepath.Join(lochness.HypervisorPath, hv.ID, "metadata")
-	resp, err := f.EtcdClient.Create(key, string(hj), 0)
+	resp, err := f.etcdClient.Create(key, string(hj), 0)
 	h.Ok(t, err)
 	err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -215,7 +215,7 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	h.Equals(t, hvs[hv.ID].MAC.String(), mac)
 
 	// Delete-hypervisor integration (update requires modifiedIndex, which is not exported)
-	resp, err = f.EtcdClient.Delete(filepath.Join(lochness.HypervisorPath, hv.ID), true)
+	resp, err = f.etcdClient.Delete(filepath.Join(lochness.HypervisorPath, hv.ID), true)
 	h.Ok(t, err)
 	err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -230,11 +230,11 @@ func TestIntegrateGuestResponses(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.EtcdClient.Delete("/lochness", true)
+	defer f.etcdClient.Delete("/lochness", true)
 	var err error
 
 	// Create-guest integration
-	g := f.Context.NewGuest()
+	g := f.context.NewGuest()
 	mac := "66:66:66:66:66:66"
 	g.MAC, err = net.ParseMAC(mac)
 	if err != nil {
@@ -243,7 +243,7 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	gj, err := json.Marshal(g)
 	h.Ok(t, err)
 	key := filepath.Join(lochness.GuestPath, g.ID, "metadata")
-	resp, err := f.EtcdClient.Create(key, string(gj), 0)
+	resp, err := f.etcdClient.Create(key, string(gj), 0)
 	h.Ok(t, err)
 	err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -255,7 +255,7 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	h.Equals(t, gs[g.ID].MAC.String(), mac)
 
 	// Delete-guest integration
-	resp, err = f.EtcdClient.Delete(filepath.Join(lochness.GuestPath, g.ID), true)
+	resp, err = f.etcdClient.Delete(filepath.Join(lochness.GuestPath, g.ID), true)
 	h.Ok(t, err)
 	err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -270,11 +270,11 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.EtcdClient.Delete("/lochness", true)
+	defer f.etcdClient.Delete("/lochness", true)
 	var err error
 
 	// Create-subnet integration
-	s := f.Context.NewSubnet()
+	s := f.context.NewSubnet()
 	cidr := "77.77.77.0/24"
 	_, s.CIDR, err = net.ParseCIDR(cidr)
 	if err != nil {
@@ -283,7 +283,7 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	sj, err := json.Marshal(s)
 	h.Ok(t, err)
 	key := filepath.Join(lochness.SubnetPath, s.ID, "metadata")
-	resp, err := f.EtcdClient.Create(key, string(sj), 0)
+	resp, err := f.etcdClient.Create(key, string(sj), 0)
 	h.Ok(t, err)
 	err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -295,7 +295,7 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	h.Equals(t, ss[s.ID].CIDR.String(), cidr)
 
 	// Delete-subnet integration
-	resp, err = f.EtcdClient.Delete(filepath.Join(lochness.SubnetPath, s.ID), true)
+	resp, err = f.etcdClient.Delete(filepath.Join(lochness.SubnetPath, s.ID), true)
 	h.Ok(t, err)
 	err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
