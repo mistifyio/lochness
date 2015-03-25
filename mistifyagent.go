@@ -73,6 +73,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	return &client.Guest{
 		Id:       g.ID,
 		Type:     g.Type,
+		Image:    flavor.Image,
 		Nics:     []client.Nic{nic},
 		Disks:    []client.Disk{disk},
 		Memory:   uint(flavor.Memory),
