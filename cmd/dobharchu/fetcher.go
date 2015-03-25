@@ -217,15 +217,15 @@ func (f *Fetcher) IntegrateResponse(e *etcd.Response) error {
 	switch {
 	case e.Action == "create":
 		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Create on something other than the main "+element+"; ignoring", e, element, id, vtype)
+			return f.logIntegrationMessage("debug", "Create on something other than the main element; ignoring", e, element, id, vtype)
 		}
 	case e.Action == "compareAndSwap":
 		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Edit on something other than the main "+element+"; ignoring", e, element, id, vtype)
+			return f.logIntegrationMessage("debug", "Edit on something other than the main element; ignoring", e, element, id, vtype)
 		}
 	case e.Action == "delete":
 		if vtype != "metadata" && vtype != "" {
-			return f.logIntegrationMessage("debug", "Delete on something other than the main "+element+"; ignoring", e, element, id, vtype)
+			return f.logIntegrationMessage("debug", "Delete on something other than the main element; ignoring", e, element, id, vtype)
 		}
 	default:
 		return f.logIntegrationMessage("debug", "Action doesn't affect the config; ignoring", e, element, id, vtype)
