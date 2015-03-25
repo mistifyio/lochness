@@ -4,7 +4,6 @@ import (
 	"errors"
 	"regexp"
 	"strings"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
@@ -21,13 +20,11 @@ type (
 		hypervisors        map[string]*lochness.Hypervisor
 		guests             map[string]*lochness.Guest
 		subnets            map[string]*lochness.Subnet
-		hypervisorsFetched time.Time
-		guestsFetched      time.Time
-		subnetsFetched     time.Time
+		hypervisorsFetched bool
+		guestsFetched      bool
+		subnetsFetched     bool
 	}
 )
-
-const fetchTimeout = 24 * time.Hour
 
 var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
 
@@ -87,7 +84,7 @@ func (f *Fetcher) fetchHypervisors() error {
 	log.WithFields(log.Fields{
 		"hypervisorCount": len(f.hypervisors),
 	}).Info("Fetched hypervisors metadata")
-	f.hypervisorsFetched = time.Now()
+	f.hypervisorsFetched = true
 	return nil
 }
 
@@ -116,7 +113,7 @@ func (f *Fetcher) fetchGuests() error {
 	log.WithFields(log.Fields{
 		"guestCount": len(f.guests),
 	}).Info("Fetched guests metadata")
-	f.guestsFetched = time.Now()
+	f.guestsFetched = true
 	return nil
 }
 
@@ -151,16 +148,15 @@ func (f *Fetcher) fetchSubnets() error {
 	log.WithFields(log.Fields{
 		"subnetCount": len(f.subnets),
 	}).Info("Fetched subnets metadata")
-	f.subnetsFetched = time.Now()
+	f.subnetsFetched = true
 	return nil
 }
 
 // GetHypervisors retrieves the stored hypervisors, or re-fetches them if the
 // timeout window has passed
 func (f *Fetcher) GetHypervisors() (map[string]*lochness.Hypervisor, error) {
-	if time.Now().Sub(f.hypervisorsFetched) > fetchTimeout {
-		err := f.fetchHypervisors()
-		if err != nil {
+	if !f.hypervisorsFetched {
+		if err := f.fetchHypervisors(); err != nil {
 			return nil, err
 		}
 	}
@@ -170,9 +166,8 @@ func (f *Fetcher) GetHypervisors() (map[string]*lochness.Hypervisor, error) {
 // GetGuests retrieves the stored guests, or re-fetches them if the timeout
 // window has passed
 func (f *Fetcher) GetGuests() (map[string]*lochness.Guest, error) {
-	if time.Now().Sub(f.guestsFetched) > fetchTimeout {
-		err := f.fetchGuests()
-		if err != nil {
+	if !f.guestsFetched {
+		if err := f.fetchGuests(); err != nil {
 			return nil, err
 		}
 	}
@@ -182,9 +177,8 @@ func (f *Fetcher) GetGuests() (map[string]*lochness.Guest, error) {
 // GetSubnets retrieves the stored subnets, or re-fetches them if the
 // timeout window has passed
 func (f *Fetcher) GetSubnets() (map[string]*lochness.Subnet, error) {
-	if time.Now().Sub(f.subnetsFetched) > fetchTimeout {
-		err := f.fetchSubnets()
-		if err != nil {
+	if !f.subnetsFetched {
+		if err := f.fetchSubnets(); err != nil {
 			return nil, err
 		}
 	}
