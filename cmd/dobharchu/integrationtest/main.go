@@ -15,8 +15,7 @@ import (
 
 func finish(status int, e *etcd.Client) {
 	fmt.Print("\nExiting test...")
-	_, err := e.Delete("/lochness", true)
-	if err != nil {
+	if _, err := e.Delete("/lochness", true); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "etcd.Delete",

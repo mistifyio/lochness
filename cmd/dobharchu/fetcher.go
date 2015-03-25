@@ -44,16 +44,13 @@ func NewFetcher(etcdAddress string) *Fetcher {
 // FetchAll pulls the hypervisors, guests, and subnets from etcd
 func (f *Fetcher) FetchAll() error {
 	var errs *multierror.Error
-	err := f.fetchHypervisors()
-	if err != nil {
+	if err := f.fetchHypervisors(); err != nil {
 		errs = multierror.Append(errs, err)
 	}
-	err = f.fetchSubnets()
-	if err != nil {
+	if err := f.fetchSubnets(); err != nil {
 		errs = multierror.Append(errs, err)
 	}
-	err = f.fetchGuests()
-	if err != nil {
+	if err := f.fetchGuests(); err != nil {
 		errs = multierror.Append(errs, err)
 	}
 	return errs.ErrorOrNil()

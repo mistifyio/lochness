@@ -33,8 +33,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 		return err
 	}
 	w1 := bufio.NewWriter(f1)
-	err = r.WriteHypervisorsConfigFile(w1, hypervisors)
-	if err != nil {
+	if err = r.WriteHypervisorsConfigFile(w1, hypervisors); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "Refresher.WriteHypervisorsConfigFile",
@@ -73,8 +72,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 		return err
 	}
 	w2 := bufio.NewWriter(f2)
-	err = r.WriteGuestsConfigFile(w2, guests, subnets)
-	if err != nil {
+	if err = r.WriteGuestsConfigFile(w2, guests, subnets); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "Refresher.WriteGuestsConfigFile",
