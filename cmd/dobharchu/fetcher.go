@@ -27,7 +27,7 @@ type (
 	}
 )
 
-const fetchTimeout = 10 * time.Second
+const fetchTimeout = 24 * time.Hour
 
 var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
 
