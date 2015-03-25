@@ -169,8 +169,8 @@ func main() {
 		done := <-ready
 
 		// Integrate the response and update the configs if necessary
-		err = f.IntegrateResponse(w.Response())
-		if err == nil {
+		refresh, err := f.IntegrateResponse(w.Response())
+		if err == nil && refresh {
 			_ = updateConfigs(f, r, hconfPath, gconfPath)
 		}
 

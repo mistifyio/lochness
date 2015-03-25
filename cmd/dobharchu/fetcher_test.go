@@ -205,8 +205,9 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	key := filepath.Join(lochness.HypervisorPath, hv.ID, "metadata")
 	resp, err := f.etcdClient.Create(key, string(hj), 0)
 	h.Ok(t, err)
-	err = f.IntegrateResponse(resp)
+	refresh, err := f.IntegrateResponse(resp)
 	h.Ok(t, err)
+	h.Equals(t, refresh, true)
 	hvs, err := f.GetHypervisors()
 	h.Ok(t, err)
 	if _, ok := hvs[hv.ID]; !ok {
@@ -217,8 +218,9 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	// Delete-hypervisor integration (update requires modifiedIndex, which is not exported)
 	resp, err = f.etcdClient.Delete(filepath.Join(lochness.HypervisorPath, hv.ID), true)
 	h.Ok(t, err)
-	err = f.IntegrateResponse(resp)
+	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
+	h.Equals(t, refresh, true)
 	hvs, err = f.GetHypervisors()
 	h.Ok(t, err)
 	if _, ok := hvs[hv.ID]; ok {
@@ -245,8 +247,9 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	key := filepath.Join(lochness.GuestPath, g.ID, "metadata")
 	resp, err := f.etcdClient.Create(key, string(gj), 0)
 	h.Ok(t, err)
-	err = f.IntegrateResponse(resp)
+	refresh, err := f.IntegrateResponse(resp)
 	h.Ok(t, err)
+	h.Equals(t, refresh, true)
 	gs, err := f.GetGuests()
 	h.Ok(t, err)
 	if _, ok := gs[g.ID]; !ok {
@@ -257,8 +260,9 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	// Delete-guest integration
 	resp, err = f.etcdClient.Delete(filepath.Join(lochness.GuestPath, g.ID), true)
 	h.Ok(t, err)
-	err = f.IntegrateResponse(resp)
+	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
+	h.Equals(t, refresh, true)
 	gs, err = f.GetGuests()
 	h.Ok(t, err)
 	if _, ok := gs[g.ID]; ok {
@@ -285,7 +289,9 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	key := filepath.Join(lochness.SubnetPath, s.ID, "metadata")
 	resp, err := f.etcdClient.Create(key, string(sj), 0)
 	h.Ok(t, err)
-	err = f.IntegrateResponse(resp)
+	refresh, err := f.IntegrateResponse(resp)
+	h.Ok(t, err)
+	h.Equals(t, refresh, true)
 	h.Ok(t, err)
 	ss, err := f.GetSubnets()
 	h.Ok(t, err)
@@ -297,8 +303,9 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	// Delete-subnet integration
 	resp, err = f.etcdClient.Delete(filepath.Join(lochness.SubnetPath, s.ID), true)
 	h.Ok(t, err)
-	err = f.IntegrateResponse(resp)
+	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
+	h.Equals(t, refresh, true)
 	ss, err = f.GetSubnets()
 	h.Ok(t, err)
 	if _, ok := ss[s.ID]; ok {
