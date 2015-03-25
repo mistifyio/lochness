@@ -170,7 +170,15 @@ func main() {
 
 		// Integrate the response and update the configs if necessary
 		refresh, err := f.IntegrateResponse(w.Response())
-		if err == nil && refresh {
+		if err != nil {
+			log.Info("Error on integration; re-fetching")
+			err := f.FetchAll()
+			if err != nil {
+				os.Exit(1)
+			}
+			refresh = true
+		}
+		if refresh {
 			_ = updateConfigs(f, r, hconfPath, gconfPath)
 		}
 
