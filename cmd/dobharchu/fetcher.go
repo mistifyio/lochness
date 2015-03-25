@@ -193,6 +193,8 @@ func (f *Fetcher) GetSubnets() (map[string]*lochness.Subnet, error) {
 
 // IntegrateResponse takes an etcd reponse and updates our list of hypervisors, subnets, or guests
 func (f *Fetcher) IntegrateResponse(e *etcd.Response) error {
+
+	// Parse the key
 	matches := matchKeys.FindStringSubmatch(e.Node.Key)
 	if len(matches) < 2 {
 		err := errors.New("Caught response from etcd that did not match; re-fetching")
@@ -214,6 +216,26 @@ func (f *Fetcher) IntegrateResponse(e *etcd.Response) error {
 	id := matches[2]
 	vtype := matches[4]
 	_ = f.logIntegrationMessage("debug", "Response received", e, element, id, vtype)
+
+	// Filter out actions we don't care about
+	switch {
+	case e.Action == "create":
+		if vtype != "metadata" {
+			return f.logIntegrationMessage("debug", "Create on something other than the main "+element+"; ignoring", e, element, id, vtype)
+		}
+	case e.Action == "compareAndSwap":
+		if vtype != "metadata" {
+			return f.logIntegrationMessage("debug", "Edit on something other than the main "+element+"; ignoring", e, element, id, vtype)
+		}
+	case e.Action == "delete":
+		if vtype != "metadata" && vtype != "" {
+			return f.logIntegrationMessage("debug", "Delete on something other than the main "+element+"; ignoring", e, element, id, vtype)
+		}
+	default:
+		return f.logIntegrationMessage("debug", "Action doesn't affect the config; ignoring", e, element, id, vtype)
+	}
+
+	// Process each element
 	switch {
 	case element == "hypervisors":
 		return f.integrateHypervisorChange(e, element, id, vtype)
@@ -252,9 +274,6 @@ func (f *Fetcher) logIntegrationMessage(level string, message string, e *etcd.Re
 func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id string, vtype string) error {
 	switch {
 	case e.Action == "create":
-		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Create on something other than the main hypervisor; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.hypervisors[id]; ok {
 			return f.logIntegrationMessage("warning", "Caught response creating a hypervisor that already exists", e, element, id, vtype)
 		}
@@ -262,11 +281,7 @@ func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id
 		hv.UnmarshalJSON([]byte(e.Node.Value))
 		f.hypervisors[id] = hv
 		_ = f.logIntegrationMessage("info", "Added hypervisor", e, element, id, vtype)
-
 	case e.Action == "compareAndSwap":
-		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Edit on something other than the main hypervisor; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.hypervisors[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response editing a hypervisor that doesn't exist", e, element, id, vtype)
 		}
@@ -274,19 +289,12 @@ func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id
 		hv.UnmarshalJSON([]byte(e.Node.Value))
 		f.hypervisors[id] = hv
 		_ = f.logIntegrationMessage("info", "Updated hypervisor", e, element, id, vtype)
-
 	case e.Action == "delete":
-		if vtype != "metadata" && vtype != "" {
-			return f.logIntegrationMessage("debug", "Delete on something other than the main hypervisor; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.hypervisors[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response deleting a hypervisor that doesn't exist", e, element, id, vtype)
 		}
 		delete(f.hypervisors, id)
 		_ = f.logIntegrationMessage("info", "Deleted hypervisor", e, element, id, vtype)
-
-	default:
-		return f.logIntegrationMessage("debug", "Action doesn't affect the config; ignoring", e, element, id, vtype)
 	}
 	return nil
 }
@@ -295,9 +303,6 @@ func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id
 func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id string, vtype string) error {
 	switch {
 	case e.Action == "create":
-		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Create on something other than the main guest; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.guests[id]; ok {
 			return f.logIntegrationMessage("warning", "Caught response creating a guest that already exists", e, element, id, vtype)
 		}
@@ -305,11 +310,7 @@ func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id stri
 		g.UnmarshalJSON([]byte(e.Node.Value))
 		f.guests[id] = g
 		_ = f.logIntegrationMessage("info", "Created guest", e, element, id, vtype)
-
 	case e.Action == "compareAndSwap":
-		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Edit on something other than the main guest; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.guests[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response editing a guest that doesn't exist", e, element, id, vtype)
 		}
@@ -317,19 +318,12 @@ func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id stri
 		g.UnmarshalJSON([]byte(e.Node.Value))
 		f.guests[id] = g
 		_ = f.logIntegrationMessage("info", "Updated guest", e, element, id, vtype)
-
 	case e.Action == "delete":
-		if vtype != "metadata" && vtype != "" {
-			return f.logIntegrationMessage("debug", "Delete on something other than the main guest; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.guests[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response deleting a guest that doesn't exist", e, element, id, vtype)
 		}
 		delete(f.guests, id)
 		_ = f.logIntegrationMessage("info", "Deleted guest", e, element, id, vtype)
-
-	default:
-		return f.logIntegrationMessage("debug", "Action doesn't affect the config; ignoring", e, element, id, vtype)
 	}
 	return nil
 }
@@ -338,9 +332,6 @@ func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id stri
 func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id string, vtype string) error {
 	switch {
 	case e.Action == "create":
-		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Create on something other than the main subnet; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.subnets[id]; ok {
 			return f.logIntegrationMessage("warning", "Caught response creating a subnet that already exists", e, element, id, vtype)
 		}
@@ -348,11 +339,7 @@ func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id str
 		s.UnmarshalJSON([]byte(e.Node.Value))
 		f.subnets[id] = s
 		_ = f.logIntegrationMessage("info", "Created subnet", e, element, id, vtype)
-
 	case e.Action == "compareAndSwap":
-		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Edit on something other than the main subnet; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.subnets[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response editing a subnet that doesn't exist", e, element, id, vtype)
 		}
@@ -360,19 +347,12 @@ func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id str
 		s.UnmarshalJSON([]byte(e.Node.Value))
 		f.subnets[id] = s
 		_ = f.logIntegrationMessage("info", "Updated subnet", e, element, id, vtype)
-
 	case e.Action == "delete":
-		if vtype != "metadata" && vtype != "" {
-			return f.logIntegrationMessage("debug", "Delete on something other than the main subnet; ignoring", e, element, id, vtype)
-		}
 		if _, ok := f.subnets[id]; !ok {
 			return f.logIntegrationMessage("warning", "Caught response deleting a subnet that doesn't exist", e, element, id, vtype)
 		}
 		delete(f.subnets, id)
 		_ = f.logIntegrationMessage("info", "Deleted subnet", e, element, id, vtype)
-
-	default:
-		return f.logIntegrationMessage("debug", "Action doesn't affect the config; ignoring", e, element, id, vtype)
 	}
 	return nil
 }
