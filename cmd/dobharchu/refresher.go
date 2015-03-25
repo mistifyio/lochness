@@ -124,7 +124,13 @@ func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer, hypervisors map[stri
 		}).Error("Could not parse hypervisors.conf template")
 		return err
 	}
-	t.Execute(w, vals)
+	if err = t.Execute(w, vals); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "template.Execute",
+		}).Error("Could not execute hypervisors.conf template")
+		return err
+	}
 	return nil
 }
 
@@ -171,6 +177,12 @@ func (r *Refresher) WriteGuestsConfigFile(w io.Writer, guests map[string]*lochne
 		}).Error("Could not parse guests.conf template")
 		return err
 	}
-	t.Execute(w, vals)
+	if err = t.Execute(w, vals); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "template.Execute",
+		}).Error("Could not execute guests.conf template")
+		return err
+	}
 	return nil
 }

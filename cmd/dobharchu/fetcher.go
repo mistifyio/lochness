@@ -137,7 +137,12 @@ func (f *Fetcher) fetchSubnets() error {
 		for _, snode := range node.Nodes {
 			if strings.Contains(snode.Key, "metadata") {
 				s := f.context.NewSubnet()
-				s.UnmarshalJSON([]byte(snode.Value))
+				if err := s.UnmarshalJSON([]byte(snode.Value)); err != nil {
+					log.WithFields(log.Fields{
+						"error": err,
+						"func":  "subnet.UnmarshalJSON",
+					}).Error("Could not unmarshal subnet json")
+				}
 				f.subnets[s.ID] = s
 			}
 		}
@@ -269,7 +274,13 @@ func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id
 			return f.logIntegrationMessage("warning", "Caught response creating a hypervisor that already exists", e, element, id, vtype)
 		}
 		hv := f.context.NewHypervisor()
-		hv.UnmarshalJSON([]byte(e.Node.Value))
+		if err := hv.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "hypervisor.UnmarshalJSON",
+			}).Error("Could not unmarshal etcd response")
+			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		}
 		f.hypervisors[id] = hv
 		_ = f.logIntegrationMessage("info", "Added hypervisor", e, element, id, vtype)
 	case e.Action == "compareAndSwap":
@@ -277,7 +288,13 @@ func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id
 			return f.logIntegrationMessage("warning", "Caught response editing a hypervisor that doesn't exist", e, element, id, vtype)
 		}
 		hv := f.context.NewHypervisor()
-		hv.UnmarshalJSON([]byte(e.Node.Value))
+		if err := hv.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "hypervisor.UnmarshalJSON",
+			}).Error("Could not unmarshal etcd response")
+			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		}
 		f.hypervisors[id] = hv
 		_ = f.logIntegrationMessage("info", "Updated hypervisor", e, element, id, vtype)
 	case e.Action == "delete":
@@ -298,7 +315,13 @@ func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id stri
 			return f.logIntegrationMessage("warning", "Caught response creating a guest that already exists", e, element, id, vtype)
 		}
 		g := f.context.NewGuest()
-		g.UnmarshalJSON([]byte(e.Node.Value))
+		if err := g.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "guest.UnmarshalJSON",
+			}).Error("Could not unmarshal etcd response")
+			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		}
 		f.guests[id] = g
 		_ = f.logIntegrationMessage("info", "Created guest", e, element, id, vtype)
 	case e.Action == "compareAndSwap":
@@ -306,7 +329,13 @@ func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id stri
 			return f.logIntegrationMessage("warning", "Caught response editing a guest that doesn't exist", e, element, id, vtype)
 		}
 		g := f.context.NewGuest()
-		g.UnmarshalJSON([]byte(e.Node.Value))
+		if err := g.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "guest.UnmarshalJSON",
+			}).Error("Could not unmarshal etcd response")
+			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		}
 		f.guests[id] = g
 		_ = f.logIntegrationMessage("info", "Updated guest", e, element, id, vtype)
 	case e.Action == "delete":
@@ -327,7 +356,13 @@ func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id str
 			return f.logIntegrationMessage("warning", "Caught response creating a subnet that already exists", e, element, id, vtype)
 		}
 		s := f.context.NewSubnet()
-		s.UnmarshalJSON([]byte(e.Node.Value))
+		if err := s.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "subnet.UnmarshalJSON",
+			}).Error("Could not unmarshal etcd response")
+			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		}
 		f.subnets[id] = s
 		_ = f.logIntegrationMessage("info", "Created subnet", e, element, id, vtype)
 	case e.Action == "compareAndSwap":
@@ -335,7 +370,13 @@ func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id str
 			return f.logIntegrationMessage("warning", "Caught response editing a subnet that doesn't exist", e, element, id, vtype)
 		}
 		s := f.context.NewSubnet()
-		s.UnmarshalJSON([]byte(e.Node.Value))
+		if err := s.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "subnet.UnmarshalJSON",
+			}).Error("Could not unmarshal etcd response")
+			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		}
 		f.subnets[id] = s
 		_ = f.logIntegrationMessage("info", "Updated subnet", e, element, id, vtype)
 	case e.Action == "delete":

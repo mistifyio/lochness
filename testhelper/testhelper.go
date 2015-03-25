@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net"
 
+	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 )
 
@@ -108,4 +110,15 @@ func NewGuest(context *lochness.Context, mac string, n *lochness.Network, s *loc
 	}
 
 	return g, nil
+}
+
+// Cleanup removes everything under "/lochness" from etcd after your tests
+// e.g., defer testhelper.Cleanup(etcdClient)
+func Cleanup(e *etcd.Client) {
+	if _, err := e.Delete("/lochness", true); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "etcd.Client.Delete",
+		}).Error("Could not clear out etcd")
+	}
 }

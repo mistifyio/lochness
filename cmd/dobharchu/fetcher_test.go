@@ -15,7 +15,7 @@ func TestFetchHypervisors(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.etcdClient.Delete("/lochness", true)
+	defer testhelper.Cleanup(f.etcdClient)
 
 	// Create supporting objects
 	n, err := testhelper.NewNetwork(f.context)
@@ -47,7 +47,7 @@ func TestFetchGuests(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.etcdClient.Delete("/lochness", true)
+	defer testhelper.Cleanup(f.etcdClient)
 
 	// Create supporting objects
 	f1, err := testhelper.NewFlavor(f.context, 4, 4096, 8192)
@@ -85,7 +85,7 @@ func TestFetchSubnets(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.etcdClient.Delete("/lochness", true)
+	defer testhelper.Cleanup(f.etcdClient)
 
 	// Create supporting object
 	n, err := testhelper.NewNetwork(f.context)
@@ -115,7 +115,7 @@ func TestFetchAll(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.etcdClient.Delete("/lochness", true)
+	defer testhelper.Cleanup(f.etcdClient)
 
 	// Create objects
 	f1, err := testhelper.NewFlavor(f.context, 4, 4096, 8192)
@@ -190,7 +190,7 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.etcdClient.Delete("/lochness", true)
+	defer testhelper.Cleanup(f.etcdClient)
 	var err error
 
 	// Create-hypervisor integration
@@ -230,7 +230,7 @@ func TestIntegrateGuestResponses(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.etcdClient.Delete("/lochness", true)
+	defer testhelper.Cleanup(f.etcdClient)
 	var err error
 
 	// Create-guest integration
@@ -270,7 +270,7 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
-	defer f.etcdClient.Delete("/lochness", true)
+	defer testhelper.Cleanup(f.etcdClient)
 	var err error
 
 	// Create-subnet integration

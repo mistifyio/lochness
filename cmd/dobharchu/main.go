@@ -40,7 +40,13 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 		}).Error("Could not refresh hypervisors conf file")
 		return err
 	}
-	w1.Flush()
+	if err = w1.Flush(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "bufio.Writer.Flush",
+		}).Error("Could not flush buffer for hypervisors conf file")
+		return err
+	}
 	log.WithFields(log.Fields{
 		"path": hconfPath,
 	}).Info("Refreshed hypervisors conf file")
@@ -79,7 +85,13 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 		}).Error("Could not refresh guests conf file")
 		return err
 	}
-	w2.Flush()
+	if err = w2.Flush(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "bufio.Writer.Flush",
+		}).Error("Could not flush buffer for guests conf file")
+		return err
+	}
 	log.WithFields(log.Fields{
 		"path": gconfPath,
 	}).Info("Refreshed guests conf file")
@@ -159,7 +171,7 @@ func main() {
 		// Integrate the response and update the configs if necessary
 		err = f.IntegrateResponse(w.Response())
 		if err == nil {
-			updateConfigs(f, r, hconfPath, gconfPath)
+			_ = updateConfigs(f, r, hconfPath, gconfPath)
 		}
 
 		// Return item to indicate processing has completed
