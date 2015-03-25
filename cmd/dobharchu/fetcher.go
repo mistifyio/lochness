@@ -24,6 +24,16 @@ type (
 		guestsFetched      bool
 		subnetsFetched     bool
 	}
+
+	// ilogFields defines what needs to be passed to logIntegrationMessage()
+	ilogFields struct {
+		r *etcd.Response
+		m string
+		i string
+		v string
+		e error
+		f string
+	}
 )
 
 var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
@@ -188,15 +198,15 @@ func (f *Fetcher) GetSubnets() (map[string]*lochness.Subnet, error) {
 }
 
 // IntegrateResponse takes an etcd reponse and updates our list of hypervisors, subnets, or guests
-func (f *Fetcher) IntegrateResponse(e *etcd.Response) error {
+func (f *Fetcher) IntegrateResponse(r *etcd.Response) error {
 
 	// Parse the key
-	matches := matchKeys.FindStringSubmatch(e.Node.Key)
+	matches := matchKeys.FindStringSubmatch(r.Node.Key)
 	if len(matches) < 2 {
 		err := errors.New("Caught response from etcd that did not match; re-fetching")
 		log.WithFields(log.Fields{
-			"key":    e.Node.Key,
-			"action": e.Action,
+			"key":    r.Node.Key,
+			"action": r.Action,
 			"regexp": matchKeys.String(),
 		}).Warning(err.Error())
 		err2 := f.FetchAll()
@@ -211,180 +221,196 @@ func (f *Fetcher) IntegrateResponse(e *etcd.Response) error {
 	element := matches[1]
 	id := matches[2]
 	vtype := matches[4]
-	_ = f.logIntegrationMessage("debug", "Response received", e, element, id, vtype)
+	f.logIntegrationMessage("debug", "Response received", ilogFields{r: r, m: element, i: id, v: vtype})
 
 	// Filter out actions we don't care about
 	switch {
-	case e.Action == "create":
+	case r.Action == "create":
 		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Create on something other than the main element; ignoring", e, element, id, vtype)
+			msg := "Create on something other than the main element; ignoring"
+			f.logIntegrationMessage("debug", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
-	case e.Action == "compareAndSwap":
+	case r.Action == "compareAndSwap":
 		if vtype != "metadata" {
-			return f.logIntegrationMessage("debug", "Edit on something other than the main element; ignoring", e, element, id, vtype)
+			msg := "Edit on something other than the main element; ignoring"
+			f.logIntegrationMessage("debug", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
-	case e.Action == "delete":
+	case r.Action == "delete":
 		if vtype != "metadata" && vtype != "" {
-			return f.logIntegrationMessage("debug", "Delete on something other than the main element; ignoring", e, element, id, vtype)
+			msg := "Delete on something other than the main element; ignoring"
+			f.logIntegrationMessage("debug", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 	default:
-		return f.logIntegrationMessage("debug", "Action doesn't affect the config; ignoring", e, element, id, vtype)
+		msg := "Action doesn't affect the config; ignoring"
+		f.logIntegrationMessage("debug", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+		return errors.New(msg)
 	}
 
 	// Process each element
 	switch {
 	case element == "hypervisors":
-		return f.integrateHypervisorChange(e, element, id, vtype)
+		return f.integrateHypervisorChange(r, element, id, vtype)
 	case element == "guests":
-		return f.integrateGuestChange(e, element, id, vtype)
+		return f.integrateGuestChange(r, element, id, vtype)
 	case element == "subnets":
-		return f.integrateSubnetChange(e, element, id, vtype)
+		return f.integrateSubnetChange(r, element, id, vtype)
 	}
 	return nil
 }
 
 // logIntegrationMessage logs a uniform message when a response is not
-// integrated and returns the error
-func (f *Fetcher) logIntegrationMessage(level string, message string, e *etcd.Response, element string, id string, vtype string) error {
-	err := errors.New(message)
-	fields := log.Fields{
-		"action":  e.Action,
-		"element": element,
-		"id":      id,
-		"vtype":   vtype,
-		"key":     e.Node.Key,
+// integrated
+func (f *Fetcher) logIntegrationMessage(level string, message string, fields ilogFields) {
+	logfields := log.Fields{
+		"action":  fields.r.Action,
+		"element": fields.m,
+		"id":      fields.i,
+		"vtype":   fields.v,
+		"key":     fields.r.Node.Key,
+	}
+	if fields.e != nil {
+		logfields["error"] = fields.e
+		logfields["func"] = fields.f
 	}
 	if level == "debug" {
-		log.WithFields(fields).Debug(err.Error())
+		log.WithFields(logfields).Debug(message)
 	} else if level == "info" {
-		log.WithFields(fields).Info(err.Error())
+		log.WithFields(logfields).Info(message)
 	} else if level == "warning" {
-		log.WithFields(fields).Warning(err.Error())
+		log.WithFields(logfields).Warning(message)
 	} else if level == "error" {
-		log.WithFields(fields).Error(err.Error())
+		log.WithFields(logfields).Error(message)
 	}
-	return err
 }
 
 // integrateHypervisorChange updates our hypervisors using an etcd response
-func (f *Fetcher) integrateHypervisorChange(e *etcd.Response, element string, id string, vtype string) error {
+func (f *Fetcher) integrateHypervisorChange(r *etcd.Response, element string, id string, vtype string) error {
 	switch {
-	case e.Action == "create":
+	case r.Action == "create":
 		if _, ok := f.hypervisors[id]; ok {
-			return f.logIntegrationMessage("warning", "Caught response creating a hypervisor that already exists", e, element, id, vtype)
+			msg := "Caught response creating an element that already exists"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		hv := f.context.NewHypervisor()
-		if err := hv.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "hypervisor.UnmarshalJSON",
-			}).Error("Could not unmarshal etcd response")
-			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		if err := hv.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+			msg := "Could not unmarshal etcd response"
+			f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype, e: err, f: "hypervisor.UnmarshalJSON"})
+			return errors.New(msg)
 		}
 		f.hypervisors[id] = hv
-		_ = f.logIntegrationMessage("info", "Added hypervisor", e, element, id, vtype)
-	case e.Action == "compareAndSwap":
+		f.logIntegrationMessage("info", "Added hypervisor", ilogFields{r: r, m: element, i: id, v: vtype})
+	case r.Action == "compareAndSwap":
 		if _, ok := f.hypervisors[id]; !ok {
-			return f.logIntegrationMessage("warning", "Caught response editing a hypervisor that doesn't exist", e, element, id, vtype)
+			msg := "Caught response editing an element that doesn't exist"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		hv := f.context.NewHypervisor()
-		if err := hv.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "hypervisor.UnmarshalJSON",
-			}).Error("Could not unmarshal etcd response")
-			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		if err := hv.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+			msg := "Could not unmarshal etcd response"
+			f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype, e: err, f: "hypervisor.UnmarshalJSON"})
+			return errors.New(msg)
 		}
 		f.hypervisors[id] = hv
-		_ = f.logIntegrationMessage("info", "Updated hypervisor", e, element, id, vtype)
-	case e.Action == "delete":
+		f.logIntegrationMessage("info", "Updated hypervisor", ilogFields{r: r, m: element, i: id, v: vtype})
+	case r.Action == "delete":
 		if _, ok := f.hypervisors[id]; !ok {
-			return f.logIntegrationMessage("warning", "Caught response deleting a hypervisor that doesn't exist", e, element, id, vtype)
+			msg := "Caught response deleting an element that doesn't exist"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		delete(f.hypervisors, id)
-		_ = f.logIntegrationMessage("info", "Deleted hypervisor", e, element, id, vtype)
+		f.logIntegrationMessage("info", "Deleted hypervisor", ilogFields{r: r, m: element, i: id, v: vtype})
 	}
 	return nil
 }
 
 // integrateGuestChange updates our guests using an etcd response
-func (f *Fetcher) integrateGuestChange(e *etcd.Response, element string, id string, vtype string) error {
+func (f *Fetcher) integrateGuestChange(r *etcd.Response, element string, id string, vtype string) error {
 	switch {
-	case e.Action == "create":
+	case r.Action == "create":
 		if _, ok := f.guests[id]; ok {
-			return f.logIntegrationMessage("warning", "Caught response creating a guest that already exists", e, element, id, vtype)
+			msg := "Caught response creating an element that already exists"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		g := f.context.NewGuest()
-		if err := g.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "guest.UnmarshalJSON",
-			}).Error("Could not unmarshal etcd response")
-			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		if err := g.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+			msg := "Could not unmarshal etcd response"
+			f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype, e: err, f: "guest.UnmarshalJSON"})
+			return errors.New(msg)
 		}
 		f.guests[id] = g
-		_ = f.logIntegrationMessage("info", "Created guest", e, element, id, vtype)
-	case e.Action == "compareAndSwap":
+		f.logIntegrationMessage("info", "Created guest", ilogFields{r: r, m: element, i: id, v: vtype})
+	case r.Action == "compareAndSwap":
 		if _, ok := f.guests[id]; !ok {
-			return f.logIntegrationMessage("warning", "Caught response editing a guest that doesn't exist", e, element, id, vtype)
+			msg := "Caught response editing an element that doesn't exist"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		g := f.context.NewGuest()
-		if err := g.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "guest.UnmarshalJSON",
-			}).Error("Could not unmarshal etcd response")
-			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		if err := g.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+			msg := "Could not unmarshal etcd response"
+			f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype, e: err, f: "guest.UnmarshalJSON"})
+			return errors.New(msg)
 		}
 		f.guests[id] = g
-		_ = f.logIntegrationMessage("info", "Updated guest", e, element, id, vtype)
-	case e.Action == "delete":
+		f.logIntegrationMessage("info", "Updated guest", ilogFields{r: r, m: element, i: id, v: vtype})
+	case r.Action == "delete":
 		if _, ok := f.guests[id]; !ok {
-			return f.logIntegrationMessage("warning", "Caught response deleting a guest that doesn't exist", e, element, id, vtype)
+			msg := "Caught response deleting an element that doesn't exist"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		delete(f.guests, id)
-		_ = f.logIntegrationMessage("info", "Deleted guest", e, element, id, vtype)
+		f.logIntegrationMessage("info", "Deleted guest", ilogFields{r: r, m: element, i: id, v: vtype})
 	}
 	return nil
 }
 
 // integrateSubnetChange updates our subnets using an etcd response
-func (f *Fetcher) integrateSubnetChange(e *etcd.Response, element string, id string, vtype string) error {
+func (f *Fetcher) integrateSubnetChange(r *etcd.Response, element string, id string, vtype string) error {
 	switch {
-	case e.Action == "create":
+	case r.Action == "create":
 		if _, ok := f.subnets[id]; ok {
-			return f.logIntegrationMessage("warning", "Caught response creating a subnet that already exists", e, element, id, vtype)
+			msg := "Caught response creating an element that already exists"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		s := f.context.NewSubnet()
-		if err := s.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "subnet.UnmarshalJSON",
-			}).Error("Could not unmarshal etcd response")
-			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		if err := s.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+			msg := "Could not unmarshal etcd response"
+			f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype, e: err, f: "subnet.UnmarshalJSON"})
+			return errors.New(msg)
 		}
 		f.subnets[id] = s
-		_ = f.logIntegrationMessage("info", "Created subnet", e, element, id, vtype)
-	case e.Action == "compareAndSwap":
+		f.logIntegrationMessage("info", "Created subnet", ilogFields{r: r, m: element, i: id, v: vtype})
+	case r.Action == "compareAndSwap":
 		if _, ok := f.subnets[id]; !ok {
-			return f.logIntegrationMessage("warning", "Caught response editing a subnet that doesn't exist", e, element, id, vtype)
+			msg := "Caught response editing an element that doesn't exist"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		s := f.context.NewSubnet()
-		if err := s.UnmarshalJSON([]byte(e.Node.Value)); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "subnet.UnmarshalJSON",
-			}).Error("Could not unmarshal etcd response")
-			return f.logIntegrationMessage("error", "Could not unmarshal etcd response", e, element, id, vtype)
+		if err := s.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+			msg := "Could not unmarshal etcd response"
+			f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype, e: err, f: "subnet.UnmarshalJSON"})
+			return errors.New(msg)
 		}
 		f.subnets[id] = s
-		_ = f.logIntegrationMessage("info", "Updated subnet", e, element, id, vtype)
-	case e.Action == "delete":
+		f.logIntegrationMessage("info", "Updated subnet", ilogFields{r: r, m: element, i: id, v: vtype})
+	case r.Action == "delete":
 		if _, ok := f.subnets[id]; !ok {
-			return f.logIntegrationMessage("warning", "Caught response deleting a subnet that doesn't exist", e, element, id, vtype)
+			msg := "Caught response deleting an element that doesn't exist"
+			f.logIntegrationMessage("warning", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+			return errors.New(msg)
 		}
 		delete(f.subnets, id)
-		_ = f.logIntegrationMessage("info", "Deleted subnet", e, element, id, vtype)
+		f.logIntegrationMessage("info", "Deleted subnet", ilogFields{r: r, m: element, i: id, v: vtype})
 	}
 	return nil
 }
