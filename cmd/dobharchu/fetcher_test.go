@@ -191,7 +191,8 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
 	defer testhelper.Cleanup(f.etcdClient)
-	var err error
+	_, err := f.GetHypervisors()
+	h.Ok(t, err)
 
 	// Create-hypervisor integration
 	hv := f.context.NewHypervisor()
@@ -233,7 +234,8 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
 	defer testhelper.Cleanup(f.etcdClient)
-	var err error
+	_, err := f.GetGuests()
+	h.Ok(t, err)
 
 	// Create-guest integration
 	g := f.context.NewGuest()
@@ -275,7 +277,8 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
 	defer testhelper.Cleanup(f.etcdClient)
-	var err error
+	_, err := f.GetSubnets()
+	h.Ok(t, err)
 
 	// Create-subnet integration
 	s := f.context.NewSubnet()

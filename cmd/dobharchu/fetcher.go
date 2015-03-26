@@ -15,14 +15,11 @@ type (
 	// Fetcher grabs keys from etcd and maintains lists of hypervisors, guests, and
 	// subnets
 	Fetcher struct {
-		context            *lochness.Context
-		etcdClient         *etcd.Client
-		hypervisors        map[string]*lochness.Hypervisor
-		guests             map[string]*lochness.Guest
-		subnets            map[string]*lochness.Subnet
-		hypervisorsFetched bool
-		guestsFetched      bool
-		subnetsFetched     bool
+		context     *lochness.Context
+		etcdClient  *etcd.Client
+		hypervisors map[string]*lochness.Hypervisor
+		guests      map[string]*lochness.Guest
+		subnets     map[string]*lochness.Subnet
 	}
 
 	// ilogFields defines what needs to be passed to logIntegrationMessage()
@@ -45,9 +42,9 @@ func NewFetcher(etcdAddress string) *Fetcher {
 	return &Fetcher{
 		context:     c,
 		etcdClient:  e,
-		hypervisors: make(map[string]*lochness.Hypervisor),
-		guests:      make(map[string]*lochness.Guest),
-		subnets:     make(map[string]*lochness.Subnet),
+		hypervisors: nil,
+		guests:      nil,
+		subnets:     nil,
 	}
 }
 
@@ -91,7 +88,6 @@ func (f *Fetcher) fetchHypervisors() error {
 	log.WithFields(log.Fields{
 		"hypervisorCount": len(f.hypervisors),
 	}).Info("Fetched hypervisors metadata")
-	f.hypervisorsFetched = true
 	return nil
 }
 
@@ -120,7 +116,6 @@ func (f *Fetcher) fetchGuests() error {
 	log.WithFields(log.Fields{
 		"guestCount": len(f.guests),
 	}).Info("Fetched guests metadata")
-	f.guestsFetched = true
 	return nil
 }
 
@@ -160,14 +155,13 @@ func (f *Fetcher) fetchSubnets() error {
 	log.WithFields(log.Fields{
 		"subnetCount": len(f.subnets),
 	}).Info("Fetched subnets metadata")
-	f.subnetsFetched = true
 	return nil
 }
 
 // GetHypervisors retrieves the stored hypervisors, or fetches them if they
 // aren't stored yet
 func (f *Fetcher) GetHypervisors() (map[string]*lochness.Hypervisor, error) {
-	if !f.hypervisorsFetched {
+	if f.hypervisors == nil {
 		if err := f.fetchHypervisors(); err != nil {
 			return nil, err
 		}
@@ -178,7 +172,7 @@ func (f *Fetcher) GetHypervisors() (map[string]*lochness.Hypervisor, error) {
 // GetGuests retrieves the stored guests, or fetches them if they aren't stored
 // yet
 func (f *Fetcher) GetGuests() (map[string]*lochness.Guest, error) {
-	if !f.guestsFetched {
+	if f.guests == nil {
 		if err := f.fetchGuests(); err != nil {
 			return nil, err
 		}
@@ -189,7 +183,7 @@ func (f *Fetcher) GetGuests() (map[string]*lochness.Guest, error) {
 // GetSubnets retrieves the stored subnets, or fetches them if they aren't
 // stored yet
 func (f *Fetcher) GetSubnets() (map[string]*lochness.Subnet, error) {
-	if !f.subnetsFetched {
+	if f.subnets == nil {
 		if err := f.fetchSubnets(); err != nil {
 			return nil, err
 		}
@@ -216,6 +210,13 @@ func (f *Fetcher) IntegrateResponse(r *etcd.Response) (bool, error) {
 	id := matches[2]
 	vtype := matches[4]
 	f.logIntegrationMessage("debug", "Response received", ilogFields{r: r, m: element, i: id, v: vtype})
+
+	// Error out if we haven't fetched the element in question yet
+	if (element == "hypervisors" && f.hypervisors == nil) || (element == "guests" && f.guests == nil) || (element == "subnets" && f.subnets == nil) {
+		msg := "Cannot integrate elements when no initial fetch has occurred"
+		f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+		return false, errors.New(msg)
+	}
 
 	// Filter out actions we don't care about
 	switch {
