@@ -39,11 +39,8 @@ func NewFetcher(etcdAddress string) *Fetcher {
 	e := etcd.NewClient([]string{etcdAddress})
 	c := lochness.NewContext(e)
 	return &Fetcher{
-		context:     c,
-		etcdClient:  e,
-		hypervisors: nil,
-		guests:      nil,
-		subnets:     nil,
+		context:    c,
+		etcdClient: e,
 	}
 }
 
