@@ -100,21 +100,6 @@ func doTestSetup(context *lochness.Context, etcdClient *etcd.Client) (*TestingDa
 	return data, nil
 }
 
-func getLines(t *testing.T, b *bytes.Buffer) []string {
-	s := bufio.NewScanner(b)
-	re := regexp.MustCompile("\\s+")
-	var lines []string
-	for s.Scan() {
-		line := s.Text()
-		if line != "" {
-			cleaned := re.ReplaceAllString(strings.TrimSpace(line), " ")
-			lines = append(lines, cleaned)
-		}
-	}
-	h.Ok(t, s.Err())
-	return lines
-}
-
 func TestHypervisorsConf(t *testing.T) {
 
 	// Setup

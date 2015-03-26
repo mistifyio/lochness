@@ -47,6 +47,13 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 		}).Error("Could not flush buffer for hypervisors conf file")
 		return err
 	}
+	if err = f1.Close(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.File.Close",
+		}).Error("Could not close hypervisors conf file")
+		return err
+	}
 	log.WithFields(log.Fields{
 		"path": hconfPath,
 	}).Info("Refreshed hypervisors conf file")
@@ -92,6 +99,13 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 		}).Error("Could not flush buffer for guests conf file")
 		return err
 	}
+	if err = f2.Close(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.File.Close",
+		}).Error("Could not close guests conf file")
+		return err
+	}
 	log.WithFields(log.Fields{
 		"path": gconfPath,
 	}).Info("Refreshed guests conf file")
@@ -117,7 +131,7 @@ func main() {
 	}
 
 	// Logging
-	if err := logx.SetLevel(logLevel); err != nil {
+	if err := logx.DefaultSetup(logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "logx.DefaultSetup",
