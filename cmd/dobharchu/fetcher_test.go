@@ -30,7 +30,7 @@ func TestFetchHypervisors(t *testing.T) {
 	h.Ok(t, err)
 
 	// Fetch and make sure they're present
-	hvs, err := f.GetHypervisors()
+	hvs, err := f.Hypervisors()
 	h.Ok(t, err)
 	if _, ok := hvs[h1.ID]; !ok {
 		t.Error("Hypervisor #1 is missing from list")
@@ -68,7 +68,7 @@ func TestFetchGuests(t *testing.T) {
 	h.Ok(t, err)
 
 	// Fetch and make sure they're present
-	gs, err := f.GetGuests()
+	gs, err := f.Guests()
 	h.Ok(t, err)
 	if _, ok := gs[g1.ID]; !ok {
 		t.Error("Guest #1 is missing from list")
@@ -98,7 +98,7 @@ func TestFetchSubnets(t *testing.T) {
 	h.Ok(t, err)
 
 	// Fetch and make sure they're present
-	ss, err := f.GetSubnets()
+	ss, err := f.Subnets()
 	h.Ok(t, err)
 	if _, ok := ss[s1.ID]; !ok {
 		t.Error("Subnet #1 is missing from list")
@@ -146,7 +146,7 @@ func TestFetchAll(t *testing.T) {
 	h.Ok(t, err)
 
 	// Check hypervisors
-	hvs, err := f.GetHypervisors()
+	hvs, err := f.Hypervisors()
 	h.Ok(t, err)
 	if _, ok := hvs[h1.ID]; !ok {
 		t.Error("Hypervisor #1 is missing from list")
@@ -158,7 +158,7 @@ func TestFetchAll(t *testing.T) {
 	h.Equals(t, hvs[h2.ID].MAC.String(), "de:ad:be:ef:7f:23")
 
 	// Check guests
-	gs, err := f.GetGuests()
+	gs, err := f.Guests()
 	if _, ok := gs[g1.ID]; !ok {
 		t.Error("Guest #1 is missing from list")
 	}
@@ -177,7 +177,7 @@ func TestFetchAll(t *testing.T) {
 	h.Equals(t, gs[g4.ID].MAC.String(), "67:89:ab:cd:ef:01")
 
 	// Check subnet
-	ss, err := f.GetSubnets()
+	ss, err := f.Subnets()
 	h.Ok(t, err)
 	if _, ok := ss[s.ID]; !ok {
 		t.Error("Subnet is missing from list")
@@ -191,7 +191,7 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
 	defer testhelper.Cleanup(f.etcdClient)
-	_, err := f.GetHypervisors()
+	_, err := f.Hypervisors()
 	h.Ok(t, err)
 
 	// Create-hypervisor integration
@@ -209,7 +209,7 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	refresh, err := f.IntegrateResponse(resp)
 	h.Ok(t, err)
 	h.Equals(t, refresh, true)
-	hvs, err := f.GetHypervisors()
+	hvs, err := f.Hypervisors()
 	h.Ok(t, err)
 	if _, ok := hvs[hv.ID]; !ok {
 		t.Error("Newly integrated hypervisor is missing from list")
@@ -222,7 +222,7 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
 	h.Equals(t, refresh, true)
-	hvs, err = f.GetHypervisors()
+	hvs, err = f.Hypervisors()
 	h.Ok(t, err)
 	if _, ok := hvs[hv.ID]; ok {
 		t.Error("Newly deleted hypervisor is present in list")
@@ -234,7 +234,7 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
 	defer testhelper.Cleanup(f.etcdClient)
-	_, err := f.GetGuests()
+	_, err := f.Guests()
 	h.Ok(t, err)
 
 	// Create-guest integration
@@ -252,7 +252,7 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	refresh, err := f.IntegrateResponse(resp)
 	h.Ok(t, err)
 	h.Equals(t, refresh, true)
-	gs, err := f.GetGuests()
+	gs, err := f.Guests()
 	h.Ok(t, err)
 	if _, ok := gs[g.ID]; !ok {
 		t.Error("Newly integrated guest is missing from list")
@@ -265,7 +265,7 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
 	h.Equals(t, refresh, true)
-	gs, err = f.GetGuests()
+	gs, err = f.Guests()
 	h.Ok(t, err)
 	if _, ok := gs[g.ID]; ok {
 		t.Error("Newly deleted guest is present in list")
@@ -277,7 +277,7 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	// Setup
 	f := NewFetcher("http://127.0.0.1:4001")
 	defer testhelper.Cleanup(f.etcdClient)
-	_, err := f.GetSubnets()
+	_, err := f.Subnets()
 	h.Ok(t, err)
 
 	// Create-subnet integration
@@ -296,7 +296,7 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	h.Ok(t, err)
 	h.Equals(t, refresh, true)
 	h.Ok(t, err)
-	ss, err := f.GetSubnets()
+	ss, err := f.Subnets()
 	h.Ok(t, err)
 	if _, ok := ss[s.ID]; !ok {
 		t.Error("Newly integrated subnet is missing from list")
@@ -309,7 +309,7 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
 	h.Equals(t, refresh, true)
-	ss, err = f.GetSubnets()
+	ss, err = f.Subnets()
 	h.Ok(t, err)
 	if _, ok := ss[s.ID]; ok {
 		t.Error("Newly deleted subnet is present in list")

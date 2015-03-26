@@ -15,11 +15,11 @@ import (
 func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error {
 
 	// Hypervisors
-	hypervisors, err := f.GetHypervisors()
+	hypervisors, err := f.Hypervisors()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "fetcher.GetHypervisors",
+			"func":  "fetcher.Hypervisors",
 		}).Error("Could not fetch hypervisors")
 		return err
 	}
@@ -52,19 +52,19 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 	}).Info("Refreshed hypervisors conf file")
 
 	// Guests
-	guests, err := f.GetGuests()
+	guests, err := f.Guests()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "fetcher.GetGuests",
+			"func":  "fetcher.Guests",
 		}).Error("Could not fetch guests")
 		return err
 	}
-	subnets, err := f.GetSubnets()
+	subnets, err := f.Subnets()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "fetcher.GetSubnets",
+			"func":  "fetcher.Subnets",
 		}).Error("Could not fetch subnets")
 		return err
 	}

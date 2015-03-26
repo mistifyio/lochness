@@ -158,9 +158,9 @@ func (f *Fetcher) fetchSubnets() error {
 	return nil
 }
 
-// GetHypervisors retrieves the stored hypervisors, or fetches them if they
+// Hypervisors retrieves the stored hypervisors, or fetches them if they
 // aren't stored yet
-func (f *Fetcher) GetHypervisors() (map[string]*lochness.Hypervisor, error) {
+func (f *Fetcher) Hypervisors() (map[string]*lochness.Hypervisor, error) {
 	if f.hypervisors == nil {
 		if err := f.fetchHypervisors(); err != nil {
 			return nil, err
@@ -169,9 +169,9 @@ func (f *Fetcher) GetHypervisors() (map[string]*lochness.Hypervisor, error) {
 	return f.hypervisors, nil
 }
 
-// GetGuests retrieves the stored guests, or fetches them if they aren't stored
+// Guests retrieves the stored guests, or fetches them if they aren't stored
 // yet
-func (f *Fetcher) GetGuests() (map[string]*lochness.Guest, error) {
+func (f *Fetcher) Guests() (map[string]*lochness.Guest, error) {
 	if f.guests == nil {
 		if err := f.fetchGuests(); err != nil {
 			return nil, err
@@ -180,9 +180,9 @@ func (f *Fetcher) GetGuests() (map[string]*lochness.Guest, error) {
 	return f.guests, nil
 }
 
-// GetSubnets retrieves the stored subnets, or fetches them if they aren't
+// Subnets retrieves the stored subnets, or fetches them if they aren't
 // stored yet
-func (f *Fetcher) GetSubnets() (map[string]*lochness.Subnet, error) {
+func (f *Fetcher) Subnets() (map[string]*lochness.Subnet, error) {
 	if f.subnets == nil {
 		if err := f.fetchSubnets(); err != nil {
 			return nil, err

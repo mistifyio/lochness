@@ -128,7 +128,7 @@ func TestHypervisorsConf(t *testing.T) {
 	// Fetch data and write to buffer
 	err = f.FetchAll()
 	h.Ok(t, err)
-	hvs, err := f.GetHypervisors()
+	hvs, err := f.Hypervisors()
 	h.Ok(t, err)
 	b := new(bytes.Buffer)
 	err = r.WriteHypervisorsConfigFile(b, hvs)
@@ -300,9 +300,9 @@ func TestGuestsConf(t *testing.T) {
 	// Fetch data and write to buffer
 	err = f.FetchAll()
 	h.Ok(t, err)
-	gs, err := f.GetGuests()
+	gs, err := f.Guests()
 	h.Ok(t, err)
-	ss, err := f.GetSubnets()
+	ss, err := f.Subnets()
 	h.Ok(t, err)
 	b := new(bytes.Buffer)
 	err = r.WriteGuestsConfigFile(b, gs, ss)
