@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"regexp"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
@@ -122,7 +121,10 @@ func (f *Fetcher) fetchGuests() error {
 // fetchSubnets pulls the subnets from etcd
 func (f *Fetcher) fetchSubnets() error {
 	f.subnets = make(map[string]*lochness.Subnet)
-	res, err := f.etcdClient.Get("lochness/subnets/", true, true)
+	err := f.context.ForEachSubnet(func(s *lochness.Subnet) error {
+		f.subnets[s.ID] = s
+		return nil
+	})
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode == 100 {
 			// key missing; log warning but return no error
@@ -137,20 +139,6 @@ func (f *Fetcher) fetchSubnets() error {
 			"func":  "etcd.Get",
 		}).Error("Could not retrieve subnets from etcd")
 		return err
-	}
-	for _, node := range res.Node.Nodes {
-		for _, snode := range node.Nodes {
-			if strings.Contains(snode.Key, "metadata") {
-				s := f.context.NewSubnet()
-				if err := s.UnmarshalJSON([]byte(snode.Value)); err != nil {
-					log.WithFields(log.Fields{
-						"error": err,
-						"func":  "subnet.UnmarshalJSON",
-					}).Error("Could not unmarshal subnet json")
-				}
-				f.subnets[s.ID] = s
-			}
-		}
 	}
 	log.WithFields(log.Fields{
 		"subnetCount": len(f.subnets),
