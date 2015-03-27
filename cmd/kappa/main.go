@@ -148,7 +148,7 @@ func main() {
 	}
 
 	// Load config containing prefixs to watch
-	config, err = loadConfig(*configPath)
+	config, err := loadConfig(*configPath)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":      err,
