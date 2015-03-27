@@ -27,6 +27,8 @@ const etcdPeerAddress = "http://localhost:29001"
 var testDir, hconfPath, gconfPath string
 var confLastMod = make(map[string]time.Time)
 var confLastSize = make(map[string]int64)
+var selfLog *os.File
+var testOk bool
 
 // testProcess describes a long-running process whose output we're logging
 type testProcess struct {
@@ -309,39 +311,64 @@ func getLines(path string) ([]string, error) {
 }
 
 func cleanup(r *bytes.Buffer, e *etcd.Client, ep *testProcess, dp *testProcess) {
-	log.Debug("Writing report")
-	rpath := testDir + "/report.txt"
-	if err := ioutil.WriteFile(rpath, r.Bytes(), 0644); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "ioutil.WriteFile",
-			"path":  rpath,
-		}).Warning("Could not write report")
+	if r != nil {
+		log.Debug("Writing report")
+		rpath := testDir + "/report.txt"
+		if err := ioutil.WriteFile(rpath, r.Bytes(), 0644); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "ioutil.WriteFile",
+				"path":  rpath,
+			}).Warning("Could not write report")
+		}
 	}
-	log.Debug("Exiting Dobharchu")
-	_ = dp.finish()
-	time.Sleep(time.Second)
-	log.Debug("Clearing test data")
-	if _, err := e.Delete("/lochness", true); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "etcd.Delete",
-		}).Warning("Could not clear test-created data from etcd")
+	if dp != nil {
+		log.Debug("Exiting Dobharchu")
+		_ = dp.finish()
+		time.Sleep(time.Second)
 	}
-	time.Sleep(time.Second)
-	log.Debug("Exiting etcd")
-	_ = ep.finish()
+	if e != nil {
+		log.Debug("Clearing test data")
+		if _, err := e.Delete("/lochness", true); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "etcd.Delete",
+			}).Warning("Could not clear test-created data from etcd")
+		}
+		time.Sleep(time.Second)
+	}
+	if ep != nil {
+		log.Debug("Exiting etcd")
+		_ = ep.finish()
+	}
 	log.Info("Done")
-	os.Exit(0)
 }
 
 func cleanupAfterError(err error, errfunc string, r *bytes.Buffer, e *etcd.Client, ep *testProcess, dp *testProcess) {
-	_, _ = r.WriteString("Finished with error: " + err.Error() + "\n")
+	testOk = false
+	if r != nil {
+		_, _ = r.WriteString("Finished with error: " + err.Error() + "\n")
+	}
 	log.WithFields(log.Fields{
 		"error": err,
 		"func":  errfunc,
 	}).Error(err)
+	showTestStatus(false)
 	cleanup(r, e, ep, dp)
+	os.Exit(1)
+}
+
+func showTestStatus(completed bool) {
+	status := "incomplete"
+	if completed {
+		status = "complete"
+	}
+	outcome := "PASS"
+	if !testOk {
+		outcome = "FAIL"
+	}
+	fmt.Println("Test " + status + " [" + outcome + "]")
+	fmt.Println("Details may be found in test directory: " + testDir)
 }
 
 func main() {
@@ -361,7 +388,6 @@ func main() {
 
 	// Write logs to this directory
 	testDir = "dobharchu-integration-test-" + uuid.New()
-	log.Info("Creating directory " + testDir)
 	if err := os.Mkdir(testDir, 0755); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -372,10 +398,31 @@ func main() {
 	hconfPath = testDir + "/hypervisors.conf"
 	gconfPath = testDir + "/guests.conf"
 
-	// Set up the report
+	// From now on, write the logs from this script to a file in the test directory as well
+	var err error
+	selfLog, err = os.Create(testDir + "/integrationtest.log")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.Open",
+		}).Fatal("Could not open self-log file for writing")
+	}
+	defer func() {
+		if err := selfLog.Sync(); err != nil {
+			fmt.Println("Could not sync self-log file")
+		}
+		if err := selfLog.Close(); err != nil {
+			fmt.Println("Could not close self-log file")
+			os.Exit(1)
+		}
+	}()
+	log.SetOutput(selfLog)
+
+	// Set up report and global ok
 	r := &bytes.Buffer{}
 	_, _ = r.WriteString("Dobharchu Integration Test Results\n")
 	_, _ = r.WriteString("==================================\n")
+	testOk = true
 
 	// Start up processes
 	log.Info("Starting etcd")
@@ -387,10 +434,10 @@ func main() {
 		"--advertise-client-urls", etcdClientAddress,
 	))
 	if err := ep.captureOutput(true); err != nil {
-		log.Fatal("Could not capture output from etcd")
+		cleanupAfterError(err, "testProcess.captureOutput", r, nil, ep, nil)
 	}
 	if err := ep.start(); err != nil {
-		log.Fatal("Could not start etcd")
+		cleanupAfterError(err, "testProcess.start", r, nil, ep, nil)
 	}
 	log.Info("Starting dobharchu")
 	dp := newTestProcess("dobharchu", exec.Command("dobharchu", "-e", etcdClientAddress,
@@ -403,13 +450,13 @@ func main() {
 		if err := ep.finish(); err != nil {
 			log.Error("Could not close out etcd")
 		}
-		log.Fatal("Could not capture output from dobharchu")
+		cleanupAfterError(err, "testProcess.captureOutput", r, nil, ep, dp)
 	}
 	if err := dp.start(); err != nil {
 		if err := ep.finish(); err != nil {
 			log.Error("Could not close out etcd")
 		}
-		log.Fatal("Could not start dobharchu")
+		cleanupAfterError(err, "testProcess.start", r, nil, ep, dp)
 	}
 
 	// Begin test
@@ -417,6 +464,7 @@ func main() {
 	time.Sleep(time.Second)
 	if ok := reportConfStatus(r, "on start", "created", "created"); !ok {
 		log.Warning("Failure testing conf status on start")
+		testOk = false
 	}
 
 	// Set up context
@@ -444,6 +492,7 @@ func main() {
 	time.Sleep(time.Second)
 	if ok := reportConfStatus(r, "after setup", "not touched", "not touched"); !ok {
 		log.Warning("Failure testing conf status after setup")
+		testOk = false
 	}
 
 	// Add subnet
@@ -455,6 +504,7 @@ func main() {
 	time.Sleep(time.Second)
 	if ok := reportConfStatus(r, "after subnet creation", "touched", "touched"); !ok {
 		log.Warning("Failure testing conf status after subnet creation")
+		testOk = false
 	}
 
 	// Add hypervisors
@@ -474,9 +524,11 @@ func main() {
 	time.Sleep(time.Second)
 	if ok := reportConfStatus(r, "after hypervisor creation", "changed", "touched"); !ok {
 		log.Warning("Failure testing conf status after hypervisor creation")
+		testOk = false
 	}
 	if ok := reportHasHosts(r, "after hypervisor creation", hs, gs); !ok {
 		log.Warning("Failure testing for hosts in confs after hypervisor creation")
+		testOk = false
 	}
 
 	// Add guests
@@ -504,12 +556,16 @@ func main() {
 	time.Sleep(time.Second)
 	if ok := reportConfStatus(r, "after group creation", "touched", "changed"); !ok {
 		log.Warning("Failure testing conf status after group creation")
+		testOk = false
 	}
 	if ok := reportHasHosts(r, "after group creation", hs, gs); !ok {
 		log.Warning("Failure testing for hosts in confs after group creation")
+		testOk = false
 	}
 
 	// Sleep for a few seconds to make sure everything finished, then clean up
 	time.Sleep(2 * time.Second)
+	log.WithField("path", testDir).Info("Creating test output directory")
+	showTestStatus(true)
 	cleanup(r, e, ep, dp)
 }
