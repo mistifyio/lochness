@@ -108,17 +108,7 @@ func (p *testProcess) finish() error {
 		}).Error("Could not kill process")
 		return err
 	}
-	if err := p.cmd.Wait(); err != nil {
-		// There will be an error because we killed it; we only care if it didn't actually exit.
-		if !err.(*exec.ExitError).Exited() {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "exec.Cmd.Wait",
-				"name":  p.name,
-			}).Error("Process did not exit")
-			return err
-		}
-	}
+	_ = p.cmd.Wait()
 	return nil
 }
 
