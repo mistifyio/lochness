@@ -67,7 +67,7 @@ func (f *Fetcher) fetchHypervisors() error {
 		return nil
 	})
 	if err != nil {
-		if err.(*etcd.EtcdError).ErrorCode == 100 {
+		if _, ok := err.(*etcd.EtcdError); ok && err.(*etcd.EtcdError).ErrorCode == 100 {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
