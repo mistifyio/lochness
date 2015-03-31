@@ -311,3 +311,22 @@ func (s *Subnet) ReleaseAddress(ip net.IP) error {
 	}
 	return err
 }
+
+// ForEachSubnet will run f on each Subnet. It will stop iteration if f returns an error.
+func (c *Context) ForEachSubnet(f func(*Subnet) error) error {
+	resp, err := c.etcd.Get(SubnetPath, false, false)
+	if err != nil {
+		return err
+	}
+	for _, n := range resp.Node.Nodes {
+		s, err := c.Subnet(filepath.Base(n.Key))
+		if err != nil {
+			return err
+		}
+
+		if err := f(s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
