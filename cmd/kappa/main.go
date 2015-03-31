@@ -169,6 +169,9 @@ func main() {
 		}).Fatal("failed to connect to etcd cluster")
 	}
 
+	// always run initially
+	runAnsible("")
+
 	// set up watcher
 	w := watchKeys(etcdClient)
 
