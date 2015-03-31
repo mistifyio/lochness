@@ -33,6 +33,10 @@ var config Config
 // prefixs to watch and ansible tags to run. An empty tag array means a full
 // playbook run. The config file should not be empty
 func loadConfig(path string) (Config, error) {
+	if path == "" {
+		return Config{}, nil
+	}
+
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
