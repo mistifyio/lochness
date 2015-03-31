@@ -136,6 +136,7 @@ func main() {
 	flag.StringVarP(&ansibleDir, "ansible", "a", ansibleDir, "directory containing the ansible run command")
 	eaddr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
 	configPath := flag.StringP("config", "c", "", "path to config file with prefixs")
+	once := flag.BoolP("once", "o", false, "run only once and then exit")
 	flag.Parse()
 
 	// Set up logging
@@ -171,6 +172,9 @@ func main() {
 
 	// always run initially
 	runAnsible("")
+	if *once {
+		return
+	}
 
 	// set up watcher
 	w := watchKeys(etcdClient)
