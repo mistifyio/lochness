@@ -19,6 +19,7 @@ type (
 		context       *Context
 		modifiedIndex uint64
 		ID            string            `json:"id"`
+		Image         string            `json:"image"`
 		Metadata      map[string]string `json:"metadata"`
 		Resources
 	}
