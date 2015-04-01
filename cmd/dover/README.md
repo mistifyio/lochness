@@ -1,1 +1,20 @@
-[Dover](http://en.wikipedia.org/wiki/Dover_Demon) is the worker daemon for guest actions. It takes tasks off of a queue, communicates with agents, and updates guest metadata.
+# Dover
+
+[Dover](http://en.wikipedia.org/wiki/Dover_Demon) is the worker daemon for
+guest actions. It takes tasks off of a beanstalk queue, communicates with
+agents to perform the work, and updates guest metadata.
+
+## Usage
+
+```
+$ dover -h
+Usage of dover:
+  -b, --beanstalk="127.0.0.1:11300": address of beanstalkd server
+  -e, --etcd="http://127.0.0.1:4001": address of etcd server
+  -p, --http=7544: http port to publish metrics. set to 0 to disable
+  -l, --log-level="warn": log level
+```
+
+Multiple instances may be run at the same time.
+
+## [Guest Action Workflow](https://github.com/mistifyio/lochness/wiki/Guest-Action-%22Workflows%22)

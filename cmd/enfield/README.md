@@ -1,7 +1,3 @@
----
-title: Enfield
----
-
 # Enfield
 
 Enfield is a three legged, short bodied, short clawed armed grayish cryptid with
@@ -16,9 +12,21 @@ Current service endpoints served by enfield are:
  - `/images` - boot images (_kernel_, _rootfs_)
  - `/configs` - pre-init node configuration (_zfs_, _etcd_, ...)
 
-# ipxe
+## Usage
 
-## GET /ipxe/:ip
+    $ enfield -h
+    Usage of enfield:
+    -b, --base="http://ipxe.mistify.local:8888": base address of bits request
+    -e, --etcd="http://127.0.0.1:4001": address of etcd machine
+    -i, --images="/var/lib/images": directory containing the images
+    -o, --options="": additional options to add to boot kernel
+    -p, --port=8888: address to listen
+    -s, --statsd="": statsd address
+    -v, --version="0.1.0": If all else fails, what version to serve
+
+## ipxe
+
+### GET /ipxe/:ip
 
 Get an ipxe script that corresponds to this hv.
 
@@ -33,9 +41,9 @@ Get an ipxe script that corresponds to this hv.
     initrd http://192.168.100.100:8888/images/0.1.0/initrd
     boot
 
-# images
+## images
 
-## GET /images/:version/:file
+### GET /images/:version/:file
 
 Get kernel/rootfs
 
@@ -57,9 +65,9 @@ Get kernel/rootfs
 
     2015-03-12 19:24:49 (426 MB/s) - 'vmlinuz' saved [5765360/5765360]
 
-# configs
+## configs
 
-## GET /configs/:ip
+### GET /configs/:ip
 
 Get a shell style file of K=V pairs for pre-init configuration
 

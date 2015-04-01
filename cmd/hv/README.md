@@ -9,6 +9,35 @@ All commands support dual output formats, a `tree` like output for humans
 Most commands accept 0 or many arguments, a couple require at least 1 argument.
 Run `hv help` for more information.
 
+## Usage
+
+```
+$ hv -h
+hv is the cli interface to grootslang. All commands support arguments via command line or stdin
+
+Usage:
+  hv [flags]
+  hv [command]
+
+Available Commands:
+  list        List the hypervisors
+  create      Create new hypervisors
+  delete      Delete hypervisors
+  modify      Modify hypervisors
+  guests      Operate on hypervisor guests
+  config      Operate on hypervisor config
+  subnets     Operate on hypervisor subnets
+  help        Help about any command
+
+Flags:
+  -h, --help=false: help for hv
+  -j, --json=false: output in json
+  -s, --server="http://localhost:17000": server address to connect to
+
+
+Use "hv help [command]" for more information about a command.
+```
+
 ## Examples
 
 ### List
@@ -49,6 +78,16 @@ $ hv guests list -j
 {"guests":["333434fe-2743-4b35-87cc-13fd62ba13fc","9c931fd1-9851-4658-83c3-0cb994266264"],"id":"aa44c6e8-3ee3-4671-86da-31b6b060795c"}
 {"guests":["5e32dada-fc99-4ad9-88ec-563e3639a751","12d9f8af-dfa0-4dba-805e-2c528c3f05f9"],"id":"f403a417-f973-48f1-bea4-0283da8645a2"}
 {"guests":["6d01bcdc-7985-4c0e-9436-2e726932ee13","ede86f63-8008-4a09-a432-71e4c21742e8"],"id":"f718449c-ed60-4e70-ac70-9b7710d2d68d"}
+```
+
+### Create
+
+```
+$ hv create '{"id":"bbcd1234-abcd-1234-abcd-1234abcd1234","metadata":{},"ip":"10.100.101.35","netmask":"255.255.255.255","gateway":"10.100.101.35","mac":"01:23:45:67:89:ac","total_resources":{"memory":1024,"disk":1024,"cpu":1}, "available_resources": {"memory":1024,"disk":1024,"cpu":1}}'
+bbcd1234-abcd-1234-abcd-1234abcd1234
+
+$ hv create -j '{"id":"cbcd1234-abcd-1234-abcd-1234abcd1234","metadata":{},"ip":"10.100.101.35","netmask":"255.255.255.255","gateway":"10.100.101.35","mac":"01:23:45:67:89:ac","total_resources":{"memory":1024,"disk":1024,"cpu":1}, "available_resources": {"memory":1024,"disk":1024,"cpu":1}}'
+{"available_resources":{"cpu":1,"disk":1024,"memory":1024},"gateway":"10.100.101.35","id":"cbcd1234-abcd-1234-abcd-1234abcd1234","ip":"10.100.101.35","mac":"01:23:45:67:89:ac","metadata":{},"netmask":"255.255.255.255","total_resources":{"cpu":1,"disk":1024,"memory":1024}}
 ```
 
 ### Modify

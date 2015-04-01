@@ -1,6 +1,6 @@
-= Lock
+# Lock
 
-== Overview
+## Overview
 The `lock` command gurantees cluster wide singleton services for non-cluster
 aware programs. The service is run by systemd, but does not need to have any
 integration with it. We use systemd in order to make use of its
@@ -21,6 +21,16 @@ configured with `BindsTo=locker.service` so that if the _locker service_ dies
 services are in their own cgroup, when the service dies all child processes will
 be killed, *hooray*!
 
-=== Implemenation Details
+## Usage
 
-Just a couple explainations of some quirks/details.
+```
+$ lock -h
+Usage of lock: [options] -- command args
+  -b, --block=false: Block if we failed to acquire the lock
+  -e, --etcd="http://localhost:4001": address of etcd machine
+  -i, --interval=30: Interval in seconds to refresh lock
+  -k, --key="/lock": Key to use as lock
+  -t, --ttl=0: TTL for key in seconds, leave 0 for (2 * interval)
+
+command will be run with args via fork/exec not a shell
+```
