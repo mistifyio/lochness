@@ -75,9 +75,10 @@ func getTags(key string) []string {
 }
 
 // runAnsible kicks off an ansible run
-func runAnsible(key string) {
+func runAnsible(etcdaddr, key string) {
 	keyTags := getTags(key)
-	args := make([]string, 0, len(keyTags)*2)
+	args := make([]string, 0, 2+len(keyTags)*2)
+	args = append(args, "--etcd", etcdaddr)
 	for _, tag := range keyTags {
 		args = append(args, "-t", tag)
 	}
@@ -98,14 +99,14 @@ func runAnsible(key string) {
 }
 
 // consumeResponses consumes etcd respones from a watcher and kicks off ansible
-func consumeResponses(w *watcher.Watcher, ready chan struct{}) {
+func consumeResponses(eaddr string, w *watcher.Watcher, ready chan struct{}) {
 	for w.Next() {
 		// remove item to indicate processing has begun
 		done := <-ready
 
 		resp := w.Response()
 		log.WithField("response", resp).Info("response received")
-		runAnsible(resp.Node.Key)
+		runAnsible(eaddr, resp.Node.Key)
 		log.WithField("response", resp).Info("response processed")
 
 		// return item to indicate processing has completed
@@ -188,7 +189,7 @@ func main() {
 	}
 
 	// always run initially
-	runAnsible("")
+	runAnsible(eaddr, "")
 	if *once {
 		return
 	}
@@ -201,7 +202,7 @@ func main() {
 	ready <- struct{}{}
 
 	// handle events
-	go consumeResponses(w, ready)
+	go consumeResponses(eaddr, w, ready)
 
 	// handle signals for clean shutdown
 	sigs := make(chan os.Signal)
