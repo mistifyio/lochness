@@ -26,6 +26,8 @@ type (
 	Config map[string]Tags
 )
 
+const eaddress = "http://127.0.0.1:4001"
+
 var ansibleDir = "/root/lochness-ansible"
 var config Config
 
@@ -136,12 +138,23 @@ func watchKeys(etcdClient *etcd.Client) *watcher.Watcher {
 }
 
 func main() {
+	// environment can only override default address
+	eaddr := os.Getenv("KAPPA_ETCD_ADDRESS")
+	if eaddr == "" {
+		eaddr = eaddress
+	}
+
 	logLevel := flag.StringP("log-level", "l", "warn", "log level")
 	flag.StringVarP(&ansibleDir, "ansible", "a", ansibleDir, "directory containing the ansible run command")
-	eaddr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	flag.StringP("etcd", "e", eaddress, "address of etcd server")
 	configPath := flag.StringP("config", "c", "", "path to config file with prefixs")
 	once := flag.BoolP("once", "o", false, "run only once and then exit")
 	flag.Parse()
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "etcd" {
+			eaddr = f.Value.String()
+		}
+	})
 
 	// Set up logging
 	if err := logx.DefaultSetup(*logLevel); err != nil {
@@ -164,13 +177,13 @@ func main() {
 	log.WithField("config", config).Info("config loaded")
 
 	// set up etcd connection
-	log.WithField("address", *eaddr).Info("connection to etcd")
-	etcdClient := etcd.NewClient([]string{*eaddr})
+	log.WithField("address", eaddr).Info("connection to etcd")
+	etcdClient := etcd.NewClient([]string{eaddr})
 	// make sure we can actually connect to etcd
 	if !etcdClient.SyncCluster() {
 		log.WithFields(log.Fields{
 			"error":   err,
-			"address": *eaddr,
+			"address": eaddr,
 		}).Fatal("failed to connect to etcd cluster")
 	}
 
