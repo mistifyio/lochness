@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -56,18 +55,7 @@ func main() {
 				"ttl":   *ttl,
 			}).Error("failed to beat heart")
 		}
-		if _, err := os.Stdout.WriteString("♥ "); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "os.Stdout.WriteString",
-			}).Error("failed to write heartbeat to stdout")
-		}
-		if err := os.Stdout.Sync(); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "os.Stdout.Sync",
-			}).Error("failed to sync stdout")
-		}
+		log.Info("♥")
 		time.Sleep(time.Duration(*interval) * time.Second)
 	}
 }
