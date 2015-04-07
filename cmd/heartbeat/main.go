@@ -15,7 +15,7 @@ func main() {
 	ttl := flag.IntP("ttl", "t", 0, "heartbeat ttl in seconds")
 	eaddr := flag.StringP("etcd", "e", "http://localhost:4001", "address of etcd machine")
 	id := flag.StringP("id", "d", "", "hypervisor id")
-	logLevel := flag.StringP("logLevel", "l", "info", "log level")
+	logLevel := flag.StringP("log-level", "l", "info", "log level")
 	flag.Parse()
 
 	if err := logx.DefaultSetup(*logLevel); err != nil {
