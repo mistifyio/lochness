@@ -65,7 +65,6 @@ func main() {
 				"ttl":   *ttl,
 			}).Error("failed to beat heart")
 		}
-		log.Info("♥")
 		time.Sleep(time.Duration(*interval) * time.Second)
 	}
 }
