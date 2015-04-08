@@ -1,18 +1,11 @@
-# Enfield
+# enfield
 
-Enfield is a three legged, short bodied, short clawed armed grayish cryptid with
-big reddish eyes ([Wikipedia](http://en.wikipedia.org/wiki/Enfield_Monster)).
+[![enfield](https://godoc.org/github.com/mistifyio/lochness/cmd/enfield?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/enfield)
 
-Also a simple web service to enable boot and pre-init configuration of LochNess
+A simple web service to enable boot and pre-init configuration of LochNess
 nodes.
 
-Current service endpoints served by enfield are:
-
- - `/ipxe` - iPXE config
- - `/images` - boot images (_kernel_, _rootfs_)
- - `/configs` - pre-init node configuration (_zfs_, _etcd_, ...)
-
-## Usage
+### Command Usage
 
     $ enfield -h
     Usage of enfield:
@@ -24,34 +17,35 @@ Current service endpoints served by enfield are:
     -s, --statsd="": statsd address
     -v, --version="0.1.0": If all else fails, what version to serve
 
-## ipxe
+### HTTP API Endpoints
 
-### GET /ipxe/:ip
+    /ipxe/{ip}
+    	iPXE config
+    	* GET - Get an ipxe script that corresponds to this hv
 
-Get an ipxe script that corresponds to this hv.
+    /images/{version}/{file}
+    	boot images (kernel, rootfs)
+    	* GET - Get kernel/rootfs
 
-#### request
+    /configs/{ip}
+    	pre-init node configuration (zfs, etcd, ...)
+    	* GET - Get a shell style file of K=V pairs for pre-init configuration
 
-    curl http://192.168.100.100:8888/ipxe/192.168.100.200
 
-#### response
+### Example Requests
+
+GET /ipxe/:ip
+
+    $ curl http://192.168.100.100:8888/ipxe/192.168.100.200
 
     #!ipxe
     kernel http://192.168.100.100:8888/images/0.1.0/vmlinuz uuid=ed5df266-1416-497b-ac96-da42a77c5410
     initrd http://192.168.100.100:8888/images/0.1.0/initrd
     boot
 
-## images
+GET /images/:version/:file
 
-### GET /images/:version/:file
-
-Get kernel/rootfs
-
-#### request
-
-    wget http://192.168.100.100:8888/images/0.1.0/vmlinuz
-
-#### response
+    $ wget http://192.168.100.100:8888/images/0.1.0/vmlinuz
 
     wget ipxe.services.lochness.local:8888/images/0.1.0/vmlinuz
     --2015-03-12 19:24:49--  http://ipxe.services.lochness.local:8888/images/0.1.0/vmlinuz
@@ -61,21 +55,17 @@ Get kernel/rootfs
     Length: 5765360 (5.5M) [application/octet-stream]
     Saving to: 'vmlinuz'
 
-    vmlinuz                        100%[=========================================================>]   5.50M  --.-KB/s   in 0.01s
+    vmlinuz	100%[=========================================================>]   5.50M  --.-KB/s   in 0.01s
 
     2015-03-12 19:24:49 (426 MB/s) - 'vmlinuz' saved [5765360/5765360]
 
-## configs
+GET /configs/:ip
 
-### GET /configs/:ip
-
-Get a shell style file of K=V pairs for pre-init configuration
-
-#### request
-
-    curl http://192.168.100.100:8888/configs/192.168.100.200
-
-#### response
+    $ curl http://192.168.100.100:8888/configs/192.168.100.200
 
     ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
     ZFS_POOL=raid0
+## Usage
+
+--
+*Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

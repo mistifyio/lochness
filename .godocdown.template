@@ -1,0 +1,9 @@
+# {{ .Name }}
+
+[![{{ .Name }}](https://godoc.org/{{ .ImportPath }}?status.png)](https://godoc.org/{{ .ImportPath }})
+
+{{ .EmitSynopsis }}
+{{ .EmitUsage }}
+
+--
+*Generated with [godocdown](https://github.com/robertkrimen/godocdown)*
