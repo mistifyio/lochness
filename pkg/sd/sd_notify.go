@@ -1,5 +1,5 @@
-// Package sd implements some systemd interaction, namely the equivalent of sd_notify and
-// sd_watchdog_enabled
+// Package sd implements some systemd interaction, namely the equivalent of
+// sd_notify and sd_watchdog_enabled
 package sd
 
 // adapted from https://raw.githubusercontent.com/docker/docker/master/pkg/systemd/sd_notify.go
