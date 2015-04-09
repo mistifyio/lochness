@@ -6,7 +6,9 @@ or stdin.
 All commands support two output formats, a list of guest ids or a list of guest
 json objects, line separated.
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	Usage:
 	guest [flags]

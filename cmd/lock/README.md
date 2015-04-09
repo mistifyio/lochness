@@ -2,11 +2,11 @@
 
 [![lock](https://godoc.org/github.com/mistifyio/lochness/cmd/lock?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/lock)
 
-The `lock` command gurantees cluster wide singleton services for non-cluster
-aware programs. The service is run by systemd, but does not need to have any
-integration with it. We use systemd in order to make use of its
-one-cgroup-per-service functionality and the automatic killing of everything in
-said cgroup when the service is done.
+`lock` gurantees cluster wide singleton services for non-cluster aware programs.
+The service is run by systemd, but does not need to have any integration with
+it. We use systemd in order to make use of its one-cgroup-per-service
+functionality and the automatic killing of everything in said cgroup when the
+service is done.
 
 The `lock` command is not the program that actually starts the service; it takes
 care of parsing the command line, finding the program to run, and acquiring the
@@ -21,7 +21,10 @@ to do work systemd will kill it. Meanwhile, the user service is configured with
 other) the user service is killed. And since all the services are in their own
 cgroup, when the service dies all child processes will be killed, *hooray*!
 
-### Command Usage
+
+### Usage
+
+The following arguments are understood:
 
     $ lock -h
     Usage of lock: [options] -- command args
@@ -32,7 +35,7 @@ cgroup, when the service dies all child processes will be killed, *hooray*!
     -t, --ttl=0: TTL for key in seconds, leave 0 for (2 * interval)
 
     command will be run with args via fork/exec not a shell
-## Usage
+
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

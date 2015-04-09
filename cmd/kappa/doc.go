@@ -1,8 +1,10 @@
 /*
 kappa is a service to monitor etcd and run ansible on change. The prefixes to
-watch and which ansible role(s) to run for each are specified in a config file
+watch and which ansible role(s) to run for each are specified in a config file.
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	$ kappa -h
 	Usage of kappa:

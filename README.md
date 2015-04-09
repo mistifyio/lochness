@@ -26,8 +26,8 @@ single flavor.
 A FW Group is a collection of firewall rules for incoming IP traffic. A Guest
 has a single fwgroup.
 
-A guest is a virtual machine. At create time, a network, fwgroup, and network is
-required.
+A guest is a virtual machine. At creation time, a network, fwgroup, and network
+is required.
 ## Usage
 
 ```go

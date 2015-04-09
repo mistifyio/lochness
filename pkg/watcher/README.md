@@ -2,7 +2,8 @@
 
 [![watcher](https://godoc.org/github.com/mistifyio/lochness/pkg/watcher?status.png)](https://godoc.org/github.com/mistifyio/lochness/pkg/watcher)
 
-Package watcher provides etcd prefix watching capabilities
+Package watcher provides etcd prefix watching capabilities.
+
 ## Usage
 
 ```go

@@ -2,10 +2,13 @@
 
 [![dover](https://godoc.org/github.com/mistifyio/lochness/cmd/dover?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/dover)
 
-Dover is the worker daemon for guest actions. It takes tasks off of a beanstalk
+dover is the worker daemon for guest actions. It takes tasks out of a beanstalk
 queue, communicates with agents to perform the work, and updates guest metadata.
 
+
 ### Command Usage
+
+The following arguments are understood:
 
     $ dover -h
     Usage of dover:
@@ -18,27 +21,7 @@ Multiple instances may be run at the same time.
 
 ### Guest Action Workflow
 https://github.com/mistifyio/lochness/wiki/Guest-Action-%22Workflows%22
-## Usage
 
-```go
-const (
-	// WorkTube is the name of the beanstalk tube for work tasks
-	WorkTube = "work"
-)
-```
-
-#### type Task
-
-```go
-type Task struct {
-	ID    uint64 //id from beanstalkd
-	Body  []byte // body from beanstalkd
-	Job   *lochness.Job
-	Guest *lochness.Guest
-}
-```
-
-Task is a "helper" struct to pull together information from beanstalk and etcd
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

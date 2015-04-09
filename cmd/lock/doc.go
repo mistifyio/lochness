@@ -1,5 +1,5 @@
 /*
-The `lock` command gurantees cluster wide singleton services for non-cluster
+`lock` gurantees cluster wide singleton services for non-cluster
 aware programs. The service is run by systemd, but does not need to have any
 integration with it. We use systemd in order to make use of its
 one-cgroup-per-service functionality and the automatic killing of everything in
@@ -19,7 +19,9 @@ configured with `BindsTo=locker.service` so that if the locker service dies
 services are in their own cgroup, when the service dies all child processes will
 be killed, *hooray*!
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	$ lock -h
 	Usage of lock: [options] -- command args

@@ -4,7 +4,9 @@ requests to create new guests. It then decides which hypervisor a new guest
 should be created under based on a variety of criteria. It does not actually
 communicate with the hypervisor, but creates the job for `dover` to process.
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	$ loveland -h
 	Usage of loveland:

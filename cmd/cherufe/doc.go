@@ -4,7 +4,9 @@ configuration. The firewall is implemented using nftables. When guests or
 firewall groups are added, modified, or removed, a new firewall configuration
 is generated and nftables is reloaded.
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	$ cherufe -h
 	Usage of cherufe:

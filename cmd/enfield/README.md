@@ -2,10 +2,13 @@
 
 [![enfield](https://godoc.org/github.com/mistifyio/lochness/cmd/enfield?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/enfield)
 
-A simple web service to enable boot and pre-init configuration of LochNess
-nodes.
+enfield is a simple web service to enable boot and pre-init configuration of
+LochNess nodes.
 
-### Command Usage
+
+### Usage
+
+The following arguments are understood:
 
     $ enfield -h
     Usage of enfield:
@@ -34,7 +37,7 @@ nodes.
 
 ### Example Requests
 
-GET /ipxe/:ip
+GET /ipxe/{ip}
 
     $ curl http://192.168.100.100:8888/ipxe/192.168.100.200
 
@@ -43,7 +46,7 @@ GET /ipxe/:ip
     initrd http://192.168.100.100:8888/images/0.1.0/initrd
     boot
 
-GET /images/:version/:file
+GET /images/{version}/{file}
 
     $ wget http://192.168.100.100:8888/images/0.1.0/vmlinuz
 
@@ -59,13 +62,13 @@ GET /images/:version/:file
 
     2015-03-12 19:24:49 (426 MB/s) - 'vmlinuz' saved [5765360/5765360]
 
-GET /configs/:ip
+GET /configs/{ip}
 
     $ curl http://192.168.100.100:8888/configs/192.168.100.200
 
     ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
     ZFS_POOL=raid0
-## Usage
+
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

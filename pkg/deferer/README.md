@@ -5,7 +5,8 @@
 Package deferer provides a way to use defer calls with log.Fatal. Using
 log.Fatal() is effecively the same as calling fmt.Println() followed by
 os.Exit(1). The normal defer methods are not run when os.Exit() is called but
-sometimes it is necessary (e.g. release a lock)
+sometimes it is necessary (e.g. release a lock).
+
 ## Usage
 
 #### type Deferer

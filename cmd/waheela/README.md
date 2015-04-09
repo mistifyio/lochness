@@ -5,7 +5,7 @@
 waheela is the guest management service. It exposes functionality over an HTTP
 API with JSON formatting.
 
-### Command Usage
+### Usage
 
     $ waheela -h
     Usage of waheela:
@@ -75,130 +75,7 @@ DELETE /guests/{guestID}
     $ curl -X DELETE http://localhost:18000/guests/94ea0ba1-5ec2-460e-9c2e-8269593cdad3
 
     {"id":"94ea0ba1-5ec2-460e-9c2e-8269593cdad3","metadata":{"foo":"bar"},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
-## Usage
 
-#### func  CreateGuest
-
-```go
-func CreateGuest(w http.ResponseWriter, r *http.Request)
-```
-CreateGuest creates a new guest
-
-#### func  DestroyGuest
-
-```go
-func DestroyGuest(w http.ResponseWriter, r *http.Request)
-```
-DestroyGuest removes a guest and frees its IP
-
-#### func  GetContext
-
-```go
-func GetContext(r *http.Request) *lochness.Context
-```
-GetContext retrieves a lochness.Context value for a request
-
-#### func  GetGuest
-
-```go
-func GetGuest(w http.ResponseWriter, r *http.Request)
-```
-GetGuest gets a particular guest
-
-#### func  GetRequestGuest
-
-```go
-func GetRequestGuest(r *http.Request) *lochness.Guest
-```
-GetRequestGuest retrieves the guest from teh request context
-
-#### func  ListGuests
-
-```go
-func ListGuests(w http.ResponseWriter, r *http.Request)
-```
-ListGuests gets a list of all guests
-
-#### func  RegisterGuestRoutes
-
-```go
-func RegisterGuestRoutes(prefix string, router *mux.Router, m *metricsContext)
-```
-RegisterGuestRoutes registers the guest routes and handlers
-
-#### func  Run
-
-```go
-func Run(port uint, ctx *lochness.Context, m *metricsContext) error
-```
-Run starts the server
-
-#### func  SetContext
-
-```go
-func SetContext(r *http.Request, ctx *lochness.Context)
-```
-SetContext sets a lochness.Context value for a request
-
-#### func  SetRequestGuest
-
-```go
-func SetRequestGuest(r *http.Request, g *lochness.Guest)
-```
-SetRequestGuest saves the guest to the request context
-
-#### func  UpdateGuest
-
-```go
-func UpdateGuest(w http.ResponseWriter, r *http.Request)
-```
-UpdateGuest updates an existing guest
-
-#### type HTTPError
-
-```go
-type HTTPError struct {
-	Message string   `json:"message"`
-	Code    int      `json:"code"`
-	Stack   []string `json:"stack"`
-}
-```
-
-HTTPError contains information for http error responses
-
-#### type HTTPResponse
-
-```go
-type HTTPResponse struct {
-	http.ResponseWriter
-}
-```
-
-HTTPResponse is a wrapper for http.ResponseWriter which provides access to
-several convenience methods
-
-#### func (*HTTPResponse) JSON
-
-```go
-func (hr *HTTPResponse) JSON(code int, obj interface{})
-```
-JSON writes appropriate headers and JSON body to the http response
-
-#### func (*HTTPResponse) JSONError
-
-```go
-func (hr *HTTPResponse) JSONError(code int, err error)
-```
-JSONError prepares an HTTPError with a stack trace and writes it with
-HTTPResponse.JSON
-
-#### func (*HTTPResponse) JSONMsg
-
-```go
-func (hr *HTTPResponse) JSONMsg(code int, msg string)
-```
-JSONMsg is a convenience method to write a JSON response with just a message
-string
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

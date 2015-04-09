@@ -1,7 +1,9 @@
 /*
-dobharchu is a service to monitor etcd for changes to hyperviors and guests and rebuild the DHCP config files as needed
+dobharchu is a service to monitor etcd for changes to hyperviors and guests and rebuild the DHCP config files as needed.
 
-Command Usage
+Usage
+
+The following arguments are accepted:
 
 	$ dobharchu -h
 	Usage of dobharchu:
@@ -11,9 +13,9 @@ Command Usage
 		--hypervisors-path="/etc/dhcpd/hypervisors.conf": alternative path to hypervisors.conf
 	-l, --log-level="warning": log level: debug/info/warning/error/critical/fatal
 
-Watching
+Watched
 
-Dobharchu watches for changes to the following prefixes in etcd:
+The following etcd prefixes are watched for changes:
 
 	/lochness/hypervisors
 	/lochness/guests

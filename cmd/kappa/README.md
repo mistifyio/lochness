@@ -3,9 +3,12 @@
 [![kappa](https://godoc.org/github.com/mistifyio/lochness/cmd/kappa?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/kappa)
 
 kappa is a service to monitor etcd and run ansible on change. The prefixes to
-watch and which ansible role(s) to run for each are specified in a config file
+watch and which ansible role(s) to run for each are specified in a config file.
 
-### Command Usage
+
+### Usage
+
+The following arguments are understood:
 
     $ kappa -h
     Usage of kappa:
@@ -29,23 +32,7 @@ Example config
     	"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/dhcrelay": ["dhcrelay"],
     	"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/tftpd": ["tftpd"]
     }
-## Usage
 
-#### type Config
-
-```go
-type Config map[string]Tags
-```
-
-Config is a map of etcd prefixes to watch to ansible tags to run
-
-#### type Tags
-
-```go
-type Tags []string
-```
-
-Tags is a list of ansible tags
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

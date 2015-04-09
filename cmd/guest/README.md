@@ -9,7 +9,10 @@ or stdin.
 All commands support two output formats, a list of guest ids or a list of guest
 json objects, line separated.
 
-### Command Usage
+
+### Usage
+
+The following arguments are understood:
 
     Usage:
     guest [flags]
@@ -70,7 +73,7 @@ Delete guests
 
     $ guest delete -j e2aae131-eff7-41ae-8541-73a48eb5295d
     {"bridge":"br0","flavor":"1","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","hypervisor":"","id":"e2aae131-eff7-41ae-8541-73a48eb5295d","ip":"10.100.101.66","mac":"a4:75:c1:6b:e3:49","metadata":{},"network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","type":"qwerty"}
-## Usage
+
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

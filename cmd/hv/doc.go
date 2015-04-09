@@ -8,7 +8,9 @@ All commands support dual output formats, a tree like output for humans
 
 Most commands accept 0 or many arguments, a couple require at least 1 argument.
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	$ hv -h
 	hv is the cli interface to grootslang. All commands support arguments via command line or stdin

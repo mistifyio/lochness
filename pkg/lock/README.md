@@ -3,6 +3,7 @@
 [![lock](https://godoc.org/github.com/mistifyio/lochness/pkg/lock?status.png)](https://godoc.org/github.com/mistifyio/lochness/pkg/lock)
 
 Package lock implements a lock in an etcd cluster using CAS semantics.
+
 ## Usage
 
 ```go

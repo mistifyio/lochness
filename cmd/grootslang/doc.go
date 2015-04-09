@@ -2,7 +2,9 @@
 grootslang is the hypervisor management service. It exposes functionality over
 an HTTP API with JSON formatting.
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	$ grootslang -h
 	Usage of grootslang:

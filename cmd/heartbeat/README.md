@@ -2,9 +2,12 @@
 
 [![heartbeat](https://godoc.org/github.com/mistifyio/lochness/cmd/heartbeat?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/heartbeat)
 
-heartbeat periodically confirms that the hypervisor node is alive
+heartbeat periodically confirms that the hypervisor node is alive.
 
-### Command Usage
+
+### Usage
+
+The following arguments are understood:
 
     $ heartbeat -h
     Usage of heartbeat:
@@ -12,7 +15,7 @@ heartbeat periodically confirms that the hypervisor node is alive
     -d, --id="": hypervisor id
     -i, --interval=60: update interval in seconds
     -t, --ttl=0: heartbeat ttl in seconds
-## Usage
+
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

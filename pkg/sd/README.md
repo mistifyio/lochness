@@ -3,7 +3,8 @@
 [![sd](https://godoc.org/github.com/mistifyio/lochness/pkg/sd?status.png)](https://godoc.org/github.com/mistifyio/lochness/pkg/sd)
 
 Package sd implements some systemd interaction, namely the equivalent of
-sd_notify and sd_watchdog_enabled
+sd_notify and sd_watchdog_enabled.
+
 ## Usage
 
 ```go

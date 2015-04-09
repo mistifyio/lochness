@@ -1,7 +1,9 @@
 /*
-heartbeat periodically confirms that the hypervisor node is alive
+heartbeat periodically confirms that the hypervisor node is alive.
 
-Command Usage
+Usage
+
+The following arguments are understood:
 
 	$ heartbeat -h
 	Usage of heartbeat:

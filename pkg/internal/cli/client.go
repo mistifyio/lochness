@@ -1,5 +1,5 @@
 // Package cli provides a client and utilities for lochness cli applications to
-// interact with agents
+// interact with agents.
 package cli
 
 import (

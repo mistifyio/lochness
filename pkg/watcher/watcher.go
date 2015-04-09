@@ -1,4 +1,4 @@
-// Package watcher provides etcd prefix watching capabilities
+// Package watcher provides etcd prefix watching capabilities.
 package watcher
 
 import (

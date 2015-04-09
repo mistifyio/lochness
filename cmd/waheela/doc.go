@@ -2,7 +2,7 @@
 waheela is the guest management service. It exposes functionality over an HTTP
 API with JSON formatting.
 
-Command Usage
+Usage
 
 	$ waheela -h
 	Usage of waheela:

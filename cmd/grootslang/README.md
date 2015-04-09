@@ -5,7 +5,10 @@
 grootslang is the hypervisor management service. It exposes functionality over
 an HTTP API with JSON formatting.
 
-### Command Usage
+
+### Usage
+
+The following arguments are understood:
 
     $ grootslang -h
     Usage of grootslang:
@@ -142,158 +145,7 @@ GET /hypervisors/{hypervisorID}/guests
     $ curl http://localhost:17000/hypervisors/e88a75a6-7ae6-487c-9634-6553d3793437/guests
 
     ["ad762efc-3c23-402b-8e1f-a248a005efb9","f2011319-ad59-42fb-9bad-92e261f0651c"]
-## Usage
 
-#### func  AddHypervisorSubnets
-
-```go
-func AddHypervisorSubnets(w http.ResponseWriter, r *http.Request)
-```
-AddHypervisorSubnets associates subnets with a hypervisor
-
-#### func  CreateHypervisor
-
-```go
-func CreateHypervisor(w http.ResponseWriter, r *http.Request)
-```
-CreateHypervisor creates a new hypervisor
-
-#### func  DestroyHypervisor
-
-```go
-func DestroyHypervisor(w http.ResponseWriter, r *http.Request)
-```
-DestroyHypervisor deletes an existing hypervisor
-
-#### func  GetContext
-
-```go
-func GetContext(r *http.Request) *lochness.Context
-```
-GetContext retrieves a lochness.Context value for a request
-
-#### func  GetHypervisor
-
-```go
-func GetHypervisor(w http.ResponseWriter, r *http.Request)
-```
-GetHypervisor gets a particular hypervisor
-
-#### func  GetHypervisorConfig
-
-```go
-func GetHypervisorConfig(w http.ResponseWriter, r *http.Request)
-```
-GetHypervisorConfig gets the set of key/value config options
-
-#### func  ListHypervisorGuests
-
-```go
-func ListHypervisorGuests(w http.ResponseWriter, r *http.Request)
-```
-ListHypervisorGuests returns a list of guests of the Hypervisor
-
-#### func  ListHypervisorSubnets
-
-```go
-func ListHypervisorSubnets(w http.ResponseWriter, r *http.Request)
-```
-ListHypervisorSubnets lists the subnets associated with a hypervisor
-
-#### func  ListHypervisors
-
-```go
-func ListHypervisors(w http.ResponseWriter, r *http.Request)
-```
-ListHypervisors gets a list of all hypervisors
-
-#### func  RegisterHypervisorRoutes
-
-```go
-func RegisterHypervisorRoutes(prefix string, router *mux.Router)
-```
-RegisterHypervisorRoutes registers the hypervisor routes and handlers
-
-#### func  RemoveHypervisorSubnet
-
-```go
-func RemoveHypervisorSubnet(w http.ResponseWriter, r *http.Request)
-```
-RemoveHypervisorSubnet removes a subnet from a Hypervisor
-
-#### func  Run
-
-```go
-func Run(port uint, ctx *lochness.Context) error
-```
-Run starts the server
-
-#### func  SetContext
-
-```go
-func SetContext(r *http.Request, ctx *lochness.Context)
-```
-SetContext sets a lochness.Context value for a request
-
-#### func  UpdateHypervisor
-
-```go
-func UpdateHypervisor(w http.ResponseWriter, r *http.Request)
-```
-UpdateHypervisor updates an existing hypervisor
-
-#### func  UpdateHypervisorConfig
-
-```go
-func UpdateHypervisorConfig(w http.ResponseWriter, r *http.Request)
-```
-UpdateHypervisorConfig sets key/value config options
-
-#### type HTTPError
-
-```go
-type HTTPError struct {
-	Message string   `json:"message"`
-	Code    int      `json:"code"`
-	Stack   []string `json:"stack"`
-}
-```
-
-HTTPError contains information for http error responses
-
-#### type HTTPResponse
-
-```go
-type HTTPResponse struct {
-	http.ResponseWriter
-}
-```
-
-HTTPResponse is a wrapper for http.ResponseWriter which provides access to
-several convenience methods
-
-#### func (*HTTPResponse) JSON
-
-```go
-func (hr *HTTPResponse) JSON(code int, obj interface{})
-```
-JSON writes appropriate headers and JSON body to the http response
-
-#### func (*HTTPResponse) JSONError
-
-```go
-func (hr *HTTPResponse) JSONError(code int, err error)
-```
-JSONError prepares an HTTPError with a stack trace and writes it with
-HTTPResponse.JSON
-
-#### func (*HTTPResponse) JSONMsg
-
-```go
-func (hr *HTTPResponse) JSONMsg(code int, msg string)
-```
-JSONMsg is a convenience method to write a JSON response with just a message
-string
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

@@ -11,7 +11,10 @@ All commands support dual output formats, a tree like output for humans
 
 Most commands accept 0 or many arguments, a couple require at least 1 argument.
 
-### Command Usage
+
+### Usage
+
+The following arguments are understood:
 
     $ hv -h
     hv is the cli interface to grootslang. All commands support arguments via command line or stdin
@@ -134,7 +137,7 @@ Delete subnet from hypervisor
     $ hv subnets delete -j aa44c6e8-3ee3-4671-86da-31b6b060795c dae637b7-8abd-41d9-b7a2-9d7c2bdd3ef9 f718449c-ed60-4e70-ac70-9b7710d2d68d f6ac4816-b9c8-4b77-b976-d4be70507754
     {}
     {}
-## Usage
+
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*
