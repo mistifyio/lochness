@@ -166,8 +166,9 @@ func main() {
 		}).Fatal("failed to set up logging")
 	}
 
+	var err error
 	// Load config containing prefixs to watch
-	config, err := loadConfig(*configPath)
+	config, err = loadConfig(*configPath)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":      err,
