@@ -29,7 +29,6 @@ type (
 const eaddress = "http://127.0.0.1:4001"
 
 var ansibleDir = "/root/lochness-ansible"
-var config Config
 
 // loadConfig reads the config file and unmarshals it into a map containing
 // prefixs to watch and ansible tags to run. An empty tag array means a full
@@ -57,7 +56,7 @@ func loadConfig(path string) (Config, error) {
 }
 
 // getTags returns the ansible tags, if any, associated with a key
-func getTags(key string) []string {
+func getTags(config Config, key string) []string {
 	// Check for exact match
 	if tags, ok := config[key]; ok {
 		return tags
@@ -75,8 +74,8 @@ func getTags(key string) []string {
 }
 
 // runAnsible kicks off an ansible run
-func runAnsible(etcdaddr, key string) {
-	keyTags := getTags(key)
+func runAnsible(config Config, etcdaddr, key string) {
+	keyTags := getTags(config, key)
 	args := make([]string, 0, 2+len(keyTags)*2)
 	args = append(args, "--etcd", etcdaddr)
 	for _, tag := range keyTags {
@@ -99,14 +98,14 @@ func runAnsible(etcdaddr, key string) {
 }
 
 // consumeResponses consumes etcd respones from a watcher and kicks off ansible
-func consumeResponses(eaddr string, w *watcher.Watcher, ready chan struct{}) {
+func consumeResponses(config Config, eaddr string, w *watcher.Watcher, ready chan struct{}) {
 	for w.Next() {
 		// remove item to indicate processing has begun
 		done := <-ready
 
 		resp := w.Response()
 		log.WithField("response", resp).Info("response received")
-		runAnsible(eaddr, resp.Node.Key)
+		runAnsible(config, eaddr, resp.Node.Key)
 		log.WithField("response", resp).Info("response processed")
 
 		// return item to indicate processing has completed
@@ -118,7 +117,7 @@ func consumeResponses(eaddr string, w *watcher.Watcher, ready chan struct{}) {
 }
 
 // watchKeys creates a new Watcher and adds all configured keys
-func watchKeys(etcdClient *etcd.Client) *watcher.Watcher {
+func watchKeys(config Config, etcdClient *etcd.Client) *watcher.Watcher {
 	w, err := watcher.New(etcdClient)
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to create watcher")
@@ -166,9 +165,8 @@ func main() {
 		}).Fatal("failed to set up logging")
 	}
 
-	var err error
 	// Load config containing prefixs to watch
-	config, err = loadConfig(*configPath)
+	config, err := loadConfig(*configPath)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":      err,
@@ -190,20 +188,20 @@ func main() {
 	}
 
 	// always run initially
-	runAnsible(eaddr, "")
+	runAnsible(config, eaddr, "")
 	if *once {
 		return
 	}
 
 	// set up watcher
-	w := watchKeys(etcdClient)
+	w := watchKeys(config, etcdClient)
 
 	// to coordinate clean exiting between the consumer and the signal handler
 	ready := make(chan struct{}, 1)
 	ready <- struct{}{}
 
 	// handle events
-	go consumeResponses(eaddr, w, ready)
+	go consumeResponses(config, eaddr, w, ready)
 
 	// handle signals for clean shutdown
 	sigs := make(chan os.Signal)
