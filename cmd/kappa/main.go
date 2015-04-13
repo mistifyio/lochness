@@ -75,8 +75,22 @@ func getTags(config Config, key string) []string {
 }
 
 // runAnsible kicks off an ansible run
-func runAnsible(config Config, etcdaddr, key string) {
-	keyTags := getTags(config, key)
+func runAnsible(config Config, etcdaddr string, keys ...string) {
+	tagSet := map[string]struct{}{}
+	for _, key := range keys {
+		tags := getTags(config, key)
+		if len(tags) == 0 {
+			tagSet = map[string]struct{}{}
+			break
+		}
+		for _, tag := range tags {
+			tagSet[tag] = struct{}{}
+		}
+	}
+	keyTags := make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		keyTags = append(keyTags, tag)
+	}
 	sort.Strings(keyTags)
 
 	args := make([]string, 0, 2+len(keyTags)*2)
@@ -91,7 +105,7 @@ func runAnsible(config Config, etcdaddr, key string) {
 
 	if err := cmd.Run(); err != nil {
 		log.WithFields(log.Fields{
-			"key":        key,
+			"keys":       keys,
 			"ansibleDir": ansibleDir,
 			"args":       args,
 			"error":      err,
