@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -76,6 +77,8 @@ func getTags(config Config, key string) []string {
 // runAnsible kicks off an ansible run
 func runAnsible(config Config, etcdaddr, key string) {
 	keyTags := getTags(config, key)
+	sort.Strings(keyTags)
+
 	args := make([]string, 0, 2+len(keyTags)*2)
 	args = append(args, "--etcd", etcdaddr)
 	for _, tag := range keyTags {
