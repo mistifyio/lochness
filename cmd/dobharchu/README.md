@@ -1,49 +1,32 @@
-# Dobharchu
+# dobharchu
 
-Dobharchu is a script that watches for changes to hypervisors and groups and
-rebuilds the DHCP config files when needed.
+[![dobharchu](https://godoc.org/github.com/mistifyio/lochness/cmd/dobharchu?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/dobharchu)
 
-#### Watching
+dobharchu is a service to monitor etcd for changes to hyperviors and guests and
+rebuild the DHCP config files as needed.
 
-Dobharchu watches for changes to the following prefixes in etcd:
 
-* `/lochness/hypervisors`
-* `/lochness/guests`
-* `/lochness/subnets`
+### Usage
 
-#### Config files built by Dobharchu
+The following arguments are accepted:
 
-* `/etc/dhcpd/hypervisors.conf`
-* `/etc/dhcpd/guests.conf`
+    $ dobharchu -h
+    Usage of dobharchu:
+    -d, --domain="": domain for lochness; required
+    -e, --etcd="http://127.0.0.1:4001": address of etcd server
+    	--guests-path="/etc/dhcpd/guests.conf": alternative path to guests.conf
+    	--hypervisors-path="/etc/dhcpd/hypervisors.conf": alternative path to hypervisors.conf
+    -l, --log-level="warning": log level: debug/info/warning/error/critical/fatal
 
-## Flags
 
-| Flag               | Shorthand | Type   | Default                       | Description                                               |
-| ------------------ | --------- | ------ | ----------------------------- | --------------------------------------------------------- |
-| `domain`           | `d`       | string | *none*                        | domain for lochness; required                             |
-| `etcd`             | `e`       | string | `http://127.0.0.1:4001`       | address of etcd server                                    |
-| `hypervisors-path` | *none*    | string | `/etc/dhcpd/hypervisors.conf` | alternative path to hypervisors.conf                      |
-| `guests-path`      | *none*    | string | `/etc/dhcpd/guests.conf`      | alternative path to guests.conf                           |
-| `log-level`        | `l`       | string | `warning`                     | log level: debug/info/warning/error/critical/fatal        |
+### Watched
 
-## Testing
+The following etcd prefixes are watched for changes:
 
-Dobharchu has unit tests for its primary work package `refresher` and a manual
-integration test for ensuring that the watch mechanism works properly.
+    /lochness/hypervisors
+    /lochness/guests
+    /lochness/subnets
 
-To run the integration test:
 
-```sh
-$ go run cmd/dobharchu/integrationtest/main.go
-```
-
-It will create a new set of hypervisors and guests and give you the IDs so that
-you can check that they appear correctly in the conf files.
-
-When you're testing, we recommend that you give Dobharchu alternate config
-files to use:
-
-```sh
-$ ./dobharchu -d example.com --hypervisors-path=htest.conf --guests-path=gtest.conf
-```
-
+--
+*Generated with [godocdown](https://github.com/robertkrimen/godocdown)*
