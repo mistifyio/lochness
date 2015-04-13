@@ -2,7 +2,7 @@
 
 [![lock](https://godoc.org/github.com/mistifyio/lochness/cmd/lock?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/lock)
 
-`lock` gurantees cluster wide singleton services for non-cluster aware programs.
+lock gurantees cluster wide singleton services for non-cluster aware programs.
 The service is run by systemd, but does not need to have any integration with
 it. We use systemd in order to make use of its one-cgroup-per-service
 functionality and the automatic killing of everything in said cgroup when the

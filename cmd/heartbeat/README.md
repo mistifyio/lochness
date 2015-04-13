@@ -2,7 +2,8 @@
 
 [![heartbeat](https://godoc.org/github.com/mistifyio/lochness/cmd/heartbeat?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/heartbeat)
 
-heartbeat periodically confirms that the hypervisor node is alive.
+heartbeat periodically confirms that the hypervisor node is alive and updates
+the resource usage in etcd.
 
 
 ### Usage

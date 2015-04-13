@@ -28,6 +28,7 @@ has a single fwgroup.
 
 A guest is a virtual machine. At creation time, a network, fwgroup, and network
 is required.
+
 ## Usage
 
 ```go
