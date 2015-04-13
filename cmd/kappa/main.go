@@ -133,14 +133,29 @@ func consumeResponses(config Config, eaddr string, w *watcher.Watcher, ready cha
 	keys := map[string]struct{}{}
 	timer := time.NewTimer(100 * time.Millisecond)
 	timer.Stop()
+	max := time.NewTimer(1 * time.Second)
+	max.Stop()
+	maxStopped := true
 	for {
 		select {
 		case k := <-key:
 			timer.Reset(100 * time.Millisecond)
+			if maxStopped {
+				max.Reset(1 * time.Second)
+				maxStopped = false
+			}
 			keys[k] = struct{}{}
 			continue
+		case <-max.C:
+			if !timer.Stop() {
+				<-timer.C
+			}
 		case <-timer.C:
+			if !max.Stop() {
+				<-max.C
+			}
 		}
+		maxStopped = true
 		// remove item to indicate processing has begun
 		done := <-ready
 		aKeys := make([]string, 0, len(keys))
