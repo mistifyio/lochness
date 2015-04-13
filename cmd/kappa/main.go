@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
@@ -116,20 +117,40 @@ func runAnsible(config Config, etcdaddr string, keys ...string) {
 
 // consumeResponses consumes etcd respones from a watcher and kicks off ansible
 func consumeResponses(config Config, eaddr string, w *watcher.Watcher, ready chan struct{}) {
-	for w.Next() {
+	key := make(chan string, 1)
+	go func() {
+		for w.Next() {
+			resp := w.Response()
+			log.WithField("response", resp).Info("response received")
+			key <- resp.Node.Key
+			log.WithField("response", resp).Info("response processed")
+		}
+		if err := w.Err(); err != nil {
+			log.WithField("error", err).Fatal("watcher error")
+		}
+	}()
+
+	keys := map[string]struct{}{}
+	timer := time.NewTimer(100 * time.Millisecond)
+	timer.Stop()
+	for {
+		select {
+		case k := <-key:
+			timer.Reset(100 * time.Millisecond)
+			keys[k] = struct{}{}
+			continue
+		case <-timer.C:
+		}
 		// remove item to indicate processing has begun
 		done := <-ready
-
-		resp := w.Response()
-		log.WithField("response", resp).Info("response received")
-		runAnsible(config, eaddr, resp.Node.Key)
-		log.WithField("response", resp).Info("response processed")
-
+		aKeys := make([]string, 0, len(keys))
+		for key := range keys {
+			aKeys = append(aKeys, key)
+		}
+		runAnsible(config, eaddr, aKeys...)
 		// return item to indicate processing has completed
 		ready <- done
-	}
-	if err := w.Err(); err != nil {
-		log.WithField("error", err).Fatal("watcher error")
+		keys = map[string]struct{}{}
 	}
 }
 
