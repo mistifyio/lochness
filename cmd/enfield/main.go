@@ -34,6 +34,7 @@ type server struct {
 	defaultVersion string
 	baseURL        string
 	addOpts        string
+	etcdAddr       string
 }
 
 const envRegex = "^[_A-Z][_A-Z0-9]*$"
@@ -70,6 +71,7 @@ func main() {
 		defaultVersion: *defaultVersion,
 		baseURL:        *baseURL,
 		addOpts:        *addOpts,
+		etcdAddr:       *eaddr,
 	}
 
 	chain := alice.New(
@@ -171,7 +173,9 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	configs := map[string]string{}
+	configs := map[string]string{
+		"ETCD_ADDRESS": s.etcdAddr,
+	}
 	s.ctx.ForEachConfig(func(key, val string) error {
 		if s.r.MatchString(key) {
 			configs[key] = val
