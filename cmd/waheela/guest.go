@@ -53,10 +53,14 @@ func CreateGuest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Hypervisor will be selected automatically
+	guest.HypervisorID = ""
+
 	if !saveGuestHelper(hr, guest) {
 		return
 	}
-	hr.JSON(http.StatusCreated, guest)
+
+	guestNewJobHelper(hr, r, guest, "select-hypervisor")
 }
 
 // GetGuest gets a particular guest
@@ -87,9 +91,5 @@ func DestroyGuest(w http.ResponseWriter, r *http.Request) {
 	hr := HTTPResponse{w}
 	guest := GetRequestGuest(r)
 
-	if err := guest.Destroy(); err != nil {
-		hr.JSONError(http.StatusInternalServerError, err)
-		return
-	}
-	hr.JSON(http.StatusOK, guest)
+	guestNewJobHelper(hr, r, guest, "delete")
 }

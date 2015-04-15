@@ -7,13 +7,14 @@ import (
 	"github.com/mistifyio/lochness"
 )
 
-// Beanstalk parameters
+// Default parameters
 const (
 	priority     = uint32(0)
 	delay        = 5 * time.Second
 	ttr          = 5 * time.Second
 	timeout      = 10 * time.Hour
 	reserveDelay = 5 * time.Second
+	jobTTL       = 24 * time.Hour
 )
 
 // Client is for interacting with the job queue
@@ -41,7 +42,7 @@ func NewClient(bstalk string, ctx *lochness.Context) (*Client, error) {
 // AddTask creates a new task in the appropriate beanstalk queue
 func (c *Client) AddTask(j *lochness.Job) (uint64, error) {
 	ts := c.tubes.work
-	if j.Action != "select-hypervisor" {
+	if j.Action == "select-hypervisor" {
 		ts = c.tubes.create
 	}
 	id, err := ts.Put(j.ID)
@@ -89,4 +90,16 @@ func (c *Client) nextTask(ts *tubeSet) (*Task, error) {
 	}
 
 	return task, err
+}
+
+// AddJob creates a new job for a guest and adds a task for it
+func (c *Client) AddJob(guestID, action string) (*lochness.Job, error) {
+	job := c.ctx.NewJob()
+	job.Guest = guestID
+	job.Action = action
+	if err := job.Save(jobTTL); err != nil {
+		return nil, err
+	}
+	_, err := c.AddTask(job)
+	return job, err
 }

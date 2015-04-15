@@ -14,9 +14,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/jobqueue"
 )
 
-const ctxKey string = "lochnessContext"
+const (
+	ctxKey string = "lochnessContext"
+	jQKey  string = "lochnessJobQueue"
+)
 
 type (
 	// HTTPResponse is a wrapper for http.ResponseWriter which provides access
@@ -34,7 +38,7 @@ type (
 )
 
 // Run starts the server
-func Run(port uint, ctx *lochness.Context, m *metricsContext) error {
+func Run(port uint, ctx *lochness.Context, jobQueue *jobqueue.Client, m *metricsContext) error {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
@@ -53,6 +57,7 @@ func Run(port uint, ctx *lochness.Context, m *metricsContext) error {
 		func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				context.Set(r, ctxKey, ctx)
+				context.Set(r, jQKey, jobQueue)
 				h.ServeHTTP(w, r)
 			})
 		},
@@ -126,6 +131,14 @@ func SetContext(r *http.Request, ctx *lochness.Context) {
 func GetContext(r *http.Request) *lochness.Context {
 	if value := context.Get(r, ctxKey); value != nil {
 		return value.(*lochness.Context)
+	}
+	return nil
+}
+
+// GetJobQueue retrieves a lochness.Context value for a request
+func GetJobQueue(r *http.Request) *jobqueue.Client {
+	if value := context.Get(r, jQKey); value != nil {
+		return value.(*jobqueue.Client)
 	}
 	return nil
 }
