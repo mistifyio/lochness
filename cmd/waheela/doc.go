@@ -15,11 +15,11 @@ HTTP API Endpoints
 
 	/guests
 		* GET  - Retrieve a list of guests
-		* POST - Async - Create a new guest
+		* POST - Create a new guest - Async
 	/guests/{guestID}
 		* GET    - Retrieve information about a guest
 		* PATCH  - Update information for a guest
-		* DELETE - Async - Delete a guest
+		* DELETE - Delete a guest - Async
 
 The endpoints labeled Async run asynchronous actions, such as creating or
 deleting a guest. In such a case, the return status will be `HTTP/1.1 202
