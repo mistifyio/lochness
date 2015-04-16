@@ -69,6 +69,7 @@ func Run(port uint, ctx *lochness.Context, jobQueue *jobqueue.Client, m *metrics
 	// the main router before setting subhandlers on either main or subrouter
 
 	RegisterGuestRoutes("/guests", router, m)
+	RegisterJobRoutes("/jobs", router, m)
 
 	router.HandleFunc("/metrics",
 		func(w http.ResponseWriter, r *http.Request) {

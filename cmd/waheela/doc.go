@@ -23,6 +23,8 @@ HTTP API Endpoints
 	/guests/{guestID}/{action}
 		* POST - Perform the action for the guest - Async
 			Actions: shutdown, reboot, restart, poweroff, start, suspend
+	/jobs/{jobID}
+		* GET - Check job status
 
 The endpoints labeled Async run asynchronous actions, such as creating or
 deleting a guest. In such a case, the return status will be `HTTP/1.1 202
@@ -100,5 +102,10 @@ POST /guests/{guestID}/{action}
 	...
 
 	{"id":"5f5538a9-c712-4dde-83d6-abdeebece444","metadata":{},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
+
+GET /jobs/{jobID}
+
+	$ curl http://localhost:18000/jobs/011dc937-1b11-4790-903d-1fc6d8e8708e
+	{"id":"011dc937-1b11-4790-903d-1fc6d8e8708e","remote":"","action":"shutdown","guest":"5f5538a9-c712-4dde-83d6-abdeebece444","status":"new","started_at":"0001-01-01T00:00:00Z","finished_at":"0001-01-01T00:00:00Z"}
 */
 package main
