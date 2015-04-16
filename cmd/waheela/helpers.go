@@ -67,12 +67,25 @@ func decodeGuest(r *http.Request, guest *lochness.Guest) (*lochness.Guest, error
 
 }
 
+// guestNewJobHelper creates a new job for a guest action and handles sending a
+// response
+func guestNewJobHelper(hr HTTPResponse, r *http.Request, guest *lochness.Guest, action string) {
+	jobQueue := GetJobQueue(r)
+	job, err := jobQueue.AddJob(guest.ID, action)
+	if err != nil {
+		hr.JSONError(http.StatusInternalServerError, err)
+		return
+	}
+	hr.Header().Set("X-Guest-Job-ID", job.ID)
+	hr.JSON(http.StatusAccepted, guest)
+}
+
 // SetRequestGuest saves the guest to the request context
 func SetRequestGuest(r *http.Request, g *lochness.Guest) {
 	context.Set(r, guestKey, g)
 }
 
-// GetRequestGuest retrieves the guest from teh request context
+// GetRequestGuest retrieves the guest from the request context
 func GetRequestGuest(r *http.Request) *lochness.Guest {
 	return context.Get(r, guestKey).(*lochness.Guest)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/bakins/go-metrics-middleware"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/jobqueue"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
@@ -21,10 +22,11 @@ const defaultEtcdAddr = "http://localhost:4001"
 
 func main() {
 	var port uint
-	var etcdAddr, logLevel, statsd string
+	var etcdAddr, bstalk, logLevel, statsd string
 
 	flag.UintVarP(&port, "port", "p", 18000, "listen port")
 	flag.StringVarP(&etcdAddr, "etcd", "e", defaultEtcdAddr, "address of etcd machine")
+	flag.StringVarP(&bstalk, "beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.StringVarP(&statsd, "statsd", "s", "", "statsd address")
 	flag.Parse()
@@ -47,6 +49,17 @@ func main() {
 		}).Fatal("unable to sync etcd cluster")
 	}
 
+	ctx := lochness.NewContext(etcdClient)
+
+	log.WithField("address", bstalk).Info("connection to beanstalk")
+	jobQueue, err := jobqueue.NewClient(bstalk, ctx)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": bstalk,
+		}).Fatal("failed to create jobQueue client")
+	}
+
 	// setup metrics
 	sink := mapsink.New()
 	fanout := metrics.FanoutSink{sink}
@@ -64,7 +77,10 @@ func main() {
 		metrics: m,
 		mmw:     mmw.New(m),
 	}
-	ctx := lochness.NewContext(etcdClient)
 
-	_ = Run(port, ctx, mctx)
+	if err := Run(port, ctx, jobQueue, mctx); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Fatal("failed to run server")
+	}
 }
