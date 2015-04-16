@@ -95,7 +95,7 @@ DELETE /guests/{guestID}
 
     {"id":"94ea0ba1-5ec2-460e-9c2e-8269593cdad3","metadata":{"foo":"bar"},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
 
-POST /guests/{guestID}/{action
+POST /guests/{guestID}/{action}
 
     $ curl -v -XPOST http://localhost:18000/guests/5f5538a9-c712-4dde-83d6-abdeebece444/shutdown
 
@@ -105,7 +105,6 @@ POST /guests/{guestID}/{action
     ...
 
     {"id":"5f5538a9-c712-4dde-83d6-abdeebece444","metadata":{},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
-    * Connection #0 to host localhost left intact
 
 
 --
