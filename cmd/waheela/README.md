@@ -17,12 +17,18 @@ API with JSON formatting.
 ### HTTP API Endpoints
 
     /guests
-    	* GET - Retrieve a list of guests
-    	* POST - Create a new guest
+    	* GET  - Retrieve a list of guests
+    	* POST - Async - Create a new guest
     /guests/{guestID}
     	* GET    - Retrieve information about a guest
     	* PATCH  - Update information for a guest
-    	* DELETE - Delete a guest
+    	* DELETE - Async - Delete a guest
+
+The endpoints labeled Async run asynchronous actions, such as creating or
+deleting a guest. In such a case, the return status will be `HTTP/1.1 202
+Accepted` and a header `X-Guest-Job-Id` will be included for status lookups.
+Endpoints not labeled as async, such as getting a guest or updating the guest
+information, will occur synchronously before the response is sent.
 
 
 ### Example Structs
@@ -54,7 +60,12 @@ GET /guests
 
 POST /guests
 
-    $ curl -XPOST http://localhost:18000/guests --data-binary '{"bridge":"br0", "flavor":"1","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234", "ip":"10.100.101.66", "mac":"A4-75-C1-6B-E3-49", "network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","type":"foo"}'
+    $ curl -v -XPOST http://localhost:18000/guests --data-binary '{"bridge":"br0", "flavor":"1","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234", "ip":"10.100.101.66", "mac":"A4-75-C1-6B-E3-49", "network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","type":"foo"}'
+
+    ...
+    < HTTP/1.1 202 Accepted
+    < X-Guest-Job-Id: 332a128a-ab00-49eb-aef6-8f12e15afe0c
+    ...
 
     {"id":"94ea0ba1-5ec2-460e-9c2e-8269593cdad3","metadata":{},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
 
@@ -73,6 +84,11 @@ PATCH /guests/{guestID}
 DELETE /guests/{guestID}
 
     $ curl -X DELETE http://localhost:18000/guests/94ea0ba1-5ec2-460e-9c2e-8269593cdad3
+
+    ...
+    < HTTP/1.1 202 Accepted
+    < X-Guest-Job-Id: 332a128a-ab00-49eb-aef6-8f12e15afe0c
+    ...
 
     {"id":"94ea0ba1-5ec2-460e-9c2e-8269593cdad3","metadata":{"foo":"bar"},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
 
