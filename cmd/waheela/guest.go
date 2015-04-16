@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -24,7 +25,14 @@ func RegisterGuestRoutes(prefix string, router *mux.Router, m *metricsContext) {
 	sub.Handle("/{guestID}", guestMiddleware.Append(m.mmw.HandlerWrapper("get")).ThenFunc(GetGuest)).Methods("GET")
 	sub.Handle("/{guestID}", guestMiddleware.Append(m.mmw.HandlerWrapper("update")).ThenFunc(UpdateGuest)).Methods("PATCH")
 	sub.Handle("/{guestID}", guestMiddleware.Append(m.mmw.HandlerWrapper("destroy")).ThenFunc(DestroyGuest)).Methods("DELETE")
-
+	// Limit actions and have specific action metrics while sharing a handler
+	for _, action := range []string{"shutdown", "reboot", "restart", "poweroff", "start", "suspend"} {
+		sub.Handle(fmt.Sprintf("/{guestID}/{action:%s}", action),
+			guestMiddleware.
+				Append(m.mmw.HandlerWrapper(action)).
+				ThenFunc(GuestAction),
+		).Methods("POST")
+	}
 }
 
 // ListGuests gets a list of all guests
@@ -92,4 +100,14 @@ func DestroyGuest(w http.ResponseWriter, r *http.Request) {
 	guest := GetRequestGuest(r)
 
 	guestNewJobHelper(hr, r, guest, "delete")
+}
+
+// GuestAction handles all of the generic guest actions
+func GuestAction(w http.ResponseWriter, r *http.Request) {
+	hr := HTTPResponse{w}
+	guest := GetRequestGuest(r)
+
+	vars := mux.Vars(r)
+
+	guestNewJobHelper(hr, r, guest, vars["action"])
 }
