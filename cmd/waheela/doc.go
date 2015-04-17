@@ -20,6 +20,9 @@ HTTP API Endpoints
 		* GET    - Retrieve information about a guest
 		* PATCH  - Update information for a guest
 		* DELETE - Delete a guest - Async
+	/guests/{guestID}/{action}
+		* POST - Perform the action for the guest - Async
+			Actions: shutdown, reboot, restart, poweroff, start, suspend
 
 The endpoints labeled Async run asynchronous actions, such as creating or
 deleting a guest. In such a case, the return status will be `HTTP/1.1 202
@@ -86,5 +89,16 @@ DELETE /guests/{guestID}
 	...
 
 	{"id":"94ea0ba1-5ec2-460e-9c2e-8269593cdad3","metadata":{"foo":"bar"},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
+
+POST /guests/{guestID}/{action}
+
+	$ curl -v -XPOST http://localhost:18000/guests/5f5538a9-c712-4dde-83d6-abdeebece444/shutdown
+
+	...
+	< HTTP/1.1 202 Accepted
+	< X-Guest-Job-Id: a01ab1f7-2553-4d88-a8b0-887c7bf57ddd
+	...
+
+	{"id":"5f5538a9-c712-4dde-83d6-abdeebece444","metadata":{},"type":"foo","flavor":"1","hypervisor":"","network":"1234asdf-1234-asdf-1234-asdf1234asdf1234","subnet":"1234asdf-1234-asdf-1234-asdf1234asdf1234","fwgroup":"1234asdf-1234-asdf-1234-asdf1234asdf1234","mac":"a4:75:c1:6b:e3:49","ip":"10.100.101.66","bridge":"br0"}
 */
 package main
