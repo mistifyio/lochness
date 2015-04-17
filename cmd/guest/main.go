@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sort"
 
@@ -23,7 +24,7 @@ func help(cmd *cobra.Command, _ []string) {
 }
 
 func getGuests(c *cli.Client) []cli.JMap {
-	ret := c.GetMany("guests", "guests")
+	ret, _ := c.GetMany("guests", "guests")
 	guests := make([]cli.JMap, len(ret))
 	for i := range ret {
 		guests[i] = ret[i]
@@ -32,19 +33,23 @@ func getGuests(c *cli.Client) []cli.JMap {
 }
 
 func getGuest(c *cli.Client, id string) cli.JMap {
-	return c.Get("guest", "guests/"+id)
+	guest, _ := c.Get("guest", "guests/"+id)
+	return guest
 }
 
-func createGuest(c *cli.Client, spec string) cli.JMap {
-	return c.Post("guest", "guests", spec)
+func createGuest(c *cli.Client, spec string) (cli.JMap, string) {
+	guest, resp := c.Post("guest", "guests", spec)
+	return guest, resp.Header.Get("x-guest-job-id")
 }
 
 func modifyGuest(c *cli.Client, id string, spec string) cli.JMap {
-	return c.Patch("guest", "guests/"+id, spec)
+	guest, _ := c.Patch("guest", "guests/"+id, spec)
+	return guest
 }
 
-func deleteGuest(c *cli.Client, id string) cli.JMap {
-	return c.Delete("guest", "guests/"+id)
+func deleteGuest(c *cli.Client, id string) (cli.JMap, string) {
+	guest, resp := c.Delete("guest", "guests/"+id)
+	return guest, resp.Header.Get("x-guest-job-id")
 }
 
 func list(cmd *cobra.Command, args []string) {
@@ -78,7 +83,8 @@ func create(cmd *cobra.Command, specs []string) {
 
 	for _, spec := range specs {
 		cli.AssertSpec(spec)
-		guest := createGuest(c, spec)
+		guest, jobID := createGuest(c, spec)
+		fmt.Println("Job ID:", jobID)
 		guest.Print(jsonout)
 	}
 }
@@ -111,7 +117,8 @@ func del(cmd *cobra.Command, ids []string) {
 
 	for _, id := range ids {
 		cli.AssertID(id)
-		guest := deleteGuest(c, id)
+		guest, jobID := deleteGuest(c, id)
+		fmt.Println("Job ID:", jobID)
 		guest.Print(jsonout)
 	}
 }

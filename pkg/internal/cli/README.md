@@ -47,42 +47,42 @@ NewClient creates a new Client
 #### func (*Client) Delete
 
 ```go
-func (c *Client) Delete(title, endpoint string) map[string]interface{}
+func (c *Client) Delete(title, endpoint string) (map[string]interface{}, *http.Response)
 ```
 Delete DELETEs a resource
 
 #### func (*Client) Get
 
 ```go
-func (c *Client) Get(title, endpoint string) map[string]interface{}
+func (c *Client) Get(title, endpoint string) (map[string]interface{}, *http.Response)
 ```
 Get GETs a single resource
 
 #### func (*Client) GetList
 
 ```go
-func (c *Client) GetList(title, endpoint string) []string
+func (c *Client) GetList(title, endpoint string) ([]string, *http.Response)
 ```
 GetList GETs an array of string (e.g. IDs)
 
 #### func (*Client) GetMany
 
 ```go
-func (c *Client) GetMany(title, endpoint string) []map[string]interface{}
+func (c *Client) GetMany(title, endpoint string) ([]map[string]interface{}, *http.Response)
 ```
 GetMany GETs a set of resources
 
 #### func (*Client) Patch
 
 ```go
-func (c *Client) Patch(title, endpoint, body string) map[string]interface{}
+func (c *Client) Patch(title, endpoint, body string) (map[string]interface{}, *http.Response)
 ```
 Patch PATCHes a resource
 
 #### func (*Client) Post
 
 ```go
-func (c *Client) Post(title, endpoint, body string) map[string]interface{}
+func (c *Client) Post(title, endpoint, body string) (map[string]interface{}, *http.Response)
 ```
 Post POSTs a body
 

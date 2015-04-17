@@ -76,7 +76,7 @@ func help(cmd *cobra.Command, _ []string) {
 }
 
 func getHVs(c *cli.Client) []cli.JMap {
-	ret := c.GetMany("hypervisors", "hypervisors")
+	ret, _ := c.GetMany("hypervisors", "hypervisors")
 	// wasteful you say?
 	hvs := make([]cli.JMap, len(ret))
 	for i := range ret {
@@ -86,35 +86,43 @@ func getHVs(c *cli.Client) []cli.JMap {
 }
 
 func getGuests(c *cli.Client, id string) []string {
-	return c.GetList("guests", "hypervisors/"+id+"/guests")
+	hvs, _ := c.GetList("guests", "hypervisors/"+id+"/guests")
+	return hvs
 }
 
 func getHV(c *cli.Client, id string) cli.JMap {
-	return c.Get("hypervisor", "hypervisors/"+id)
+	hv, _ := c.Get("hypervisor", "hypervisors/"+id)
+	return hv
 }
 
 func createHV(c *cli.Client, spec string) cli.JMap {
-	return c.Post("hypervisor", "hypervisors", spec)
+	hv, _ := c.Post("hypervisor", "hypervisors", spec)
+	return hv
 }
 
 func modifyHV(c *cli.Client, id string, spec string) cli.JMap {
-	return c.Patch("hypervisor", "hypervisors/"+id, spec)
+	hv, _ := c.Patch("hypervisor", "hypervisors/"+id, spec)
+	return hv
 }
 
 func modifyConfig(c *cli.Client, id string, spec string) cli.JMap {
-	return c.Patch("config", "hypervisors/"+id+"/config", spec)
+	conf, _ := c.Patch("config", "hypervisors/"+id+"/config", spec)
+	return conf
 }
 
 func modifySubnets(c *cli.Client, id string, spec string) cli.JMap {
-	return c.Patch("subnets", "hypervisors/"+id+"/subnets", spec)
+	subnets, _ := c.Patch("subnets", "hypervisors/"+id+"/subnets", spec)
+	return subnets
 }
 
 func deleteHV(c *cli.Client, id string) cli.JMap {
-	return c.Delete("hypervisor", "hypervisors/"+id)
+	hv, _ := c.Delete("hypervisor", "hypervisors/"+id)
+	return hv
 }
 
 func deleteSubnet(c *cli.Client, hv, subnet string) cli.JMap {
-	return c.Delete("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
+	sub, _ := c.Delete("subnet", "hypervisors/"+hv+"/subnets/"+subnet)
+	return sub
 }
 
 func list(cmd *cobra.Command, args []string) {
@@ -227,7 +235,7 @@ func config(cmd *cobra.Command, ids []string) {
 	}
 
 	for _, id := range ids {
-		config := c.Get("config", "hypervisors/"+id+"/config")
+		config, _ := c.Get("config", "hypervisors/"+id+"/config")
 		printTreeMap(id, "config", config)
 	}
 }
@@ -270,7 +278,7 @@ func subnets(cmd *cobra.Command, ids []string) {
 	}
 
 	for _, id := range ids {
-		subnet := c.Get("subnet", "hypervisors/"+id+"/subnets")
+		subnet, _ := c.Get("subnet", "hypervisors/"+id+"/subnets")
 		printTreeMap(id, "subnet", subnet)
 	}
 }
