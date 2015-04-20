@@ -31,40 +31,40 @@ func (c *Client) URLString(endpoint string) string {
 }
 
 // GetMany GETs a set of resources
-func (c *Client) GetMany(title, endpoint string) []map[string]interface{} {
+func (c *Client) GetMany(title, endpoint string) ([]map[string]interface{}, *http.Response) {
 	resp, err := c.c.Get(c.URLString(endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := []map[string]interface{}{}
-	processResponse(resp, title, "get", http.StatusOK, &ret)
-	return ret
+	processResponse(resp, title, "get", []int{http.StatusOK}, &ret)
+	return ret, resp
 }
 
 // GetList GETs an array of string (e.g. IDs)
-func (c *Client) GetList(title, endpoint string) []string {
+func (c *Client) GetList(title, endpoint string) ([]string, *http.Response) {
 	resp, err := c.c.Get(c.URLString(endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := []string{}
-	processResponse(resp, title, "get", http.StatusOK, &ret)
-	return ret
+	processResponse(resp, title, "get", []int{http.StatusOK}, &ret)
+	return ret, resp
 }
 
 // Get GETs a single resource
-func (c *Client) Get(title, endpoint string) map[string]interface{} {
+func (c *Client) Get(title, endpoint string) (map[string]interface{}, *http.Response) {
 	resp, err := c.c.Get(c.URLString(endpoint))
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "get", http.StatusOK, &ret)
-	return ret
+	processResponse(resp, title, "get", []int{http.StatusOK}, &ret)
+	return ret, resp
 }
 
 // Post POSTs a body
-func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
+func (c *Client) Post(title, endpoint, body string) (map[string]interface{}, *http.Response) {
 	resp, err := c.c.Post(c.URLString(endpoint), c.t, strings.NewReader(body))
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -73,12 +73,12 @@ func (c *Client) Post(title, endpoint, body string) map[string]interface{} {
 		}).Fatal("unable to create new " + title)
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "create", http.StatusCreated, &ret)
-	return ret
+	processResponse(resp, title, "create", []int{http.StatusAccepted, http.StatusCreated}, &ret)
+	return ret, resp
 }
 
 // Delete DELETEs a resource
-func (c *Client) Delete(title, endpoint string) map[string]interface{} {
+func (c *Client) Delete(title, endpoint string) (map[string]interface{}, *http.Response) {
 	addr := c.URLString(endpoint)
 	req, err := http.NewRequest("DELETE", addr, nil)
 	if err != nil {
@@ -97,12 +97,12 @@ func (c *Client) Delete(title, endpoint string) map[string]interface{} {
 	}
 
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "delete", http.StatusOK, &ret)
-	return ret
+	processResponse(resp, title, "delete", []int{http.StatusAccepted, http.StatusOK}, &ret)
+	return ret, resp
 }
 
 // Patch PATCHes a resource
-func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
+func (c *Client) Patch(title, endpoint, body string) (map[string]interface{}, *http.Response) {
 	addr := c.URLString(endpoint)
 	req, err := http.NewRequest("PATCH", addr, strings.NewReader(body))
 	if err != nil {
@@ -122,8 +122,8 @@ func (c *Client) Patch(title, endpoint, body string) map[string]interface{} {
 		}).Fatal("unable to complete request")
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "update", http.StatusOK, &ret)
-	return ret
+	processResponse(resp, title, "update", []int{http.StatusOK}, &ret)
+	return ret, resp
 }
 
 func parseError(dec *json.Decoder) (string, []interface{}) {
@@ -155,11 +155,11 @@ func parseError(dec *json.Decoder) (string, []interface{}) {
 	return msg, stack
 }
 
-func processResponse(response *http.Response, title, action string, status int, dest interface{}) {
+func processResponse(response *http.Response, title, action string, expectedStatuses []int, dest interface{}) {
 	defer response.Body.Close()
 
 	dec := json.NewDecoder(response.Body)
-	if response.StatusCode == status {
+	if okRespStatus(response.StatusCode, expectedStatuses) {
 		if err := dec.Decode(dest); err != nil {
 			log.WithField("error", err).Fatal("failed to parse json")
 		}
@@ -182,4 +182,13 @@ func processResponse(response *http.Response, title, action string, status int, 
 	}
 
 	log.WithFields(fields).Fatal("failed to " + action + " " + title)
+}
+
+func okRespStatus(status int, expectedStatuses []int) bool {
+	for _, expectedStatus := range expectedStatuses {
+		if status == expectedStatus {
+			return true
+		}
+	}
+	return false
 }
