@@ -30,7 +30,7 @@ type (
 
 const eaddress = "http://127.0.0.1:4001"
 
-var ansibleDir = "/root/lochness-ansible"
+var ansibleDir = "/var/lib/ansible"
 
 // loadConfig reads the config file and unmarshals it into a map containing
 // prefixs to watch and ansible tags to run. An empty tag array means a full
