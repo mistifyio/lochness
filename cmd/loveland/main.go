@@ -305,7 +305,7 @@ func selectHypervisor(t *Task) (bool, error) {
 }
 
 func changeJobAction(t *Task) (bool, error) {
-	t.Job.Action = "hypervisor-create"
+	t.Job.Action = "fetch"
 	if err := t.Job.Save(24 * time.Hour); err != nil {
 		return true, fmt.Errorf("unable to change job action - %s", err)
 	}

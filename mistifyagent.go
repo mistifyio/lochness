@@ -12,6 +12,7 @@ import (
 
 	magent "github.com/mistifyio/mistify-agent"
 	"github.com/mistifyio/mistify-agent/client"
+	"github.com/mistifyio/mistify-agent/rpc"
 )
 
 type (
@@ -67,7 +68,8 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	}
 
 	disk := client.Disk{
-		Size: flavor.Disk,
+		Size:   flavor.Disk,
+		Source: flavor.Image,
 	}
 
 	return &client.Guest{
@@ -254,5 +256,42 @@ func (agent *MistifyAgent) DeleteGuest(guestID string) (string, error) {
 // Actions: "shutdown", "reboot", "restart", "poweroff", "start", "suspend"
 func (agent *MistifyAgent) GuestAction(guestID, actionName string) (string, error) {
 	jobID, err := agent.requestGuestAction(guestID, actionName)
+	return jobID, err
+}
+
+// FetchImage fetches a disk image that can be used for guest creation
+func (agent *MistifyAgent) FetchImage(guestID string) (string, error) {
+	guest, err := agent.context.Guest(guestID)
+	if err != nil {
+		return "", err
+	}
+
+	flavor, err := agent.context.Flavor(guest.FlavorID)
+	if err != nil {
+		return "", err
+	}
+
+	hypervisor, err := agent.context.Hypervisor(guest.HypervisorID)
+	if err != nil {
+		return "", err
+	}
+
+	var url string
+	var req interface{}
+	host := hypervisor.IP.String()
+	if guest.Type == "container" {
+		req = &rpc.ContainerImageRequest{
+			Name: flavor.Image,
+		}
+		url = fmt.Sprintf("http://%s:8080/container_images", host) // TODO: Get port from somewhere. Config?
+	} else {
+		req = &rpc.ImageRequest{
+			// TODO: Revisit this so sources can be custom and still work with
+			// image fetching and libvirt
+			Source: fmt.Sprintf("http://builds.mistify.io/guest-images/%s.gz", flavor.Image),
+		}
+		url = fmt.Sprintf("http://%s:8080/images", host) // TODO: Get port from somewhere. Config?
+	}
+	_, jobID, err := agent.request(url, "POST", http.StatusAccepted, req)
 	return jobID, err
 }
