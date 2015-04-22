@@ -272,24 +272,31 @@ func startJob(task *Task) error {
 
 func checkWorkingJob(task *Task) (bool, error) {
 	agent := task.ctx.NewMistifyAgent()
-	done, err := agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
+	var done bool
+	var err error
+	if task.Job.Action == "fetch" {
+		done, err = agent.CheckFetchJobStatus(task.Guest.ID)
 
-	// "fetch" is special in that it preceeds a "create" action
-	if err == nil && done && task.Job.Action == "fetch" {
-		task.Job.Action = "create"
-		task.Job.RemoteID = ""
+		if err == nil && done {
+			task.Job.Action = "create"
+			task.Job.RemoteID = ""
+			task.Job.Status = lochness.JobStatusNew
 
-		done = false
-		// Save Job Status
-		if err := task.Job.Save(24 * time.Hour); err != nil {
-			log.WithFields(log.Fields{
-				"task":  task.ID,
-				"job":   task.Job.ID,
-				"error": err,
-			}).Error("unable to save")
-			return done, err
+			done = false
+			// Save Job Status
+			if err := task.Job.Save(24 * time.Hour); err != nil {
+				log.WithFields(log.Fields{
+					"task":  task.ID,
+					"job":   task.Job.ID,
+					"error": err,
+				}).Error("unable to save")
+				return done, err
+			}
 		}
+	} else {
+		done, err = agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
 	}
+
 	return done, err
 }
 
