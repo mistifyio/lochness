@@ -225,10 +225,10 @@ func memory() (uint64, error) {
 	return uint64(mem) * 80 / 100 / 1024, scanner.Err()
 }
 
-// TODO: figure out real zfs disk size
+// TODO: parameterize this
 func disk() (uint64, error) {
 	stat := &syscall.Statfs_t{}
-	err := syscall.Statfs("/", stat)
+	err := syscall.Statfs("/mistify/guests", stat)
 	return uint64(stat.Bsize) * stat.Bavail * 80 / 100 / 1024 / 1024, err
 }
 
