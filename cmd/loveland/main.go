@@ -137,10 +137,6 @@ func main() {
 			function: checkGuestStatus,
 		},
 		TaskFunc{
-			name:     "change job status",
-			function: changeJobStatus,
-		},
-		TaskFunc{
 			name:     "select hypervisor candidate",
 			function: selectHypervisor,
 		},
@@ -267,15 +263,6 @@ func checkJobStatus(t *Task) (bool, error) {
 	}
 	if t.Job.Action != "select-hypervisor" {
 		return true, fmt.Errorf("bad action: %s", t.Job.Action)
-	}
-	return false, nil
-}
-
-func changeJobStatus(t *Task) (bool, error) {
-	t.Job.Status = lochness.JobStatusWorking
-
-	if err := t.Job.Save(24 * time.Hour); err != nil {
-		return true, fmt.Errorf("job save failed: %s", err)
 	}
 	return false, nil
 }
