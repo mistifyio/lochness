@@ -84,7 +84,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 
 // guestActionURL crafts the guest action url
 func (agent *MistifyAgent) guestActionURL(host, guestID, action string) string {
-	port := 1337 // TODO: Get port from somewhere. Config?
+	port := 8080 // TODO: Get port from somewhere. Config?
 
 	// Create and Get don't have the action name in the URL, so blank it out
 	// Create doesn't specify a guest id in the URL
@@ -102,7 +102,7 @@ func (agent *MistifyAgent) guestActionURL(host, guestID, action string) string {
 
 // guestJobURL crafts the job status url
 func (agent *MistifyAgent) guestJobURL(host, guestID, jobID string) string {
-	port := 1337 // TODO: Get port from somewhere
+	port := 8080 // TODO: Get port from somewhere
 	return fmt.Sprintf("http://%s:%d/guests/%s/jobs/%s", host, port, guestID, jobID)
 }
 
