@@ -230,7 +230,7 @@ func main() {
 						}).Error("unable to save")
 					}
 				}
-				break
+				rm = true
 			}
 
 			if rm {
