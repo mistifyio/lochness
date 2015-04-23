@@ -56,10 +56,10 @@ group hypervisors {
     }
 {{range $h := .Hypervisors}}
     host {{$h.ID}} {
-        hardware ethernet "{{$h.MAC}}";
-        fixed-address "{{$h.IP}}";
-        option routers "{{$h.Gateway}}";
-        option subnet-mask "{{$h.Netmask}}";
+        hardware ethernet  {{$h.MAC}};
+        fixed-address      {{$h.IP}};
+        option routers     {{$h.Gateway}};
+        option subnet-mask {{$h.Netmask}};
     }
 {{end}}
 }
@@ -72,10 +72,10 @@ group guests {
     option domain-name "guests.{{.Domain}}";
 {{range $g := .Guests}}
     host {{$g.ID}} {
-        hardware ethernet "{{$g.MAC}}";
-        fixed-address "{{$g.IP}}";
-        option routers "{{$g.Gateway}}";
-        option subnet-mask "{{$g.CIDR}}";
+        hardware ethernet  {{$g.MAC}};
+        fixed-address      {{$g.IP}};
+        option routers     {{$g.Gateway}};
+        option subnet-mask {{$g.CIDR}};
     }
 {{end}}
 }
