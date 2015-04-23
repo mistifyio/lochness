@@ -62,6 +62,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	nic := client.Nic{
 		Network: g.Bridge,
 		Model:   "virtio", // TODO: Check whether this is alwalys the case
+		Mac:     g.MAC.String(),
 		Address: g.IP.String(),
 		Netmask: subnet.CIDR.Mask.String(),
 		Gateway: subnet.Gateway.String(),
