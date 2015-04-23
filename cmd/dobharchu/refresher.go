@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -158,12 +159,13 @@ func (r *Refresher) WriteGuestsConfigFile(w io.Writer, guests map[string]*lochne
 		if !ok {
 			continue
 		}
+		mask := s.CIDR.Mask
 		vals.Guests = append(vals.Guests, guestHelper{
 			ID:      g.ID,
 			MAC:     strings.ToUpper(g.MAC.String()),
 			IP:      g.IP.String(),
 			Gateway: s.Gateway.String(),
-			CIDR:    s.CIDR.IP.String(),
+			CIDR:    fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3]),
 		})
 	}
 
