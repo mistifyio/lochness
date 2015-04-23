@@ -12,6 +12,7 @@ import (
 
 	magent "github.com/mistifyio/mistify-agent"
 	"github.com/mistifyio/mistify-agent/client"
+	"github.com/mistifyio/mistify-agent/rpc"
 )
 
 type (
@@ -67,7 +68,8 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	}
 
 	disk := client.Disk{
-		Size: flavor.Disk,
+		Size:   flavor.Disk,
+		Source: flavor.Image,
 	}
 
 	return &client.Guest{
@@ -84,7 +86,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 
 // guestActionURL crafts the guest action url
 func (agent *MistifyAgent) guestActionURL(host, guestID, action string) string {
-	port := 1337 // TODO: Get port from somewhere. Config?
+	port := 8080 // TODO: Get port from somewhere. Config?
 
 	// Create and Get don't have the action name in the URL, so blank it out
 	// Create doesn't specify a guest id in the URL
@@ -102,7 +104,7 @@ func (agent *MistifyAgent) guestActionURL(host, guestID, action string) string {
 
 // guestJobURL crafts the job status url
 func (agent *MistifyAgent) guestJobURL(host, guestID, jobID string) string {
-	port := 1337 // TODO: Get port from somewhere
+	port := 8080 // TODO: Get port from somewhere
 	return fmt.Sprintf("http://%s:%d/guests/%s/jobs/%s", host, port, guestID, jobID)
 }
 
@@ -202,6 +204,45 @@ func (agent *MistifyAgent) CheckJobStatus(action, guestID, jobID string) (bool, 
 	}
 }
 
+// CheckFetchJobStatus checks the status of an image fetch
+// TODO: Fix the mistify-agent joblog so that it's not guest-centric
+// and can be used for things like fetch. This is a horrible hack to
+// get the job status without a job log for fetches
+func (agent *MistifyAgent) CheckFetchJobStatus(guestID string) (bool, error) {
+	guest, err := agent.context.Guest(guestID)
+	if err != nil {
+		return false, err
+	}
+
+	flavor, err := agent.context.Flavor(guest.FlavorID)
+	if err != nil {
+		return false, err
+	}
+
+	hypervisor, err := agent.context.Hypervisor(guest.HypervisorID)
+	if err != nil {
+		return false, err
+	}
+
+	host := hypervisor.IP.String()
+	url := fmt.Sprintf("http://%s:8080/images/%s", host, flavor.Image) // TODO: Get port from somewhere. Config?
+
+	body, _, err := agent.request(url, "GET", http.StatusOK, nil)
+	if err != nil {
+		return false, err
+	}
+
+	var image rpc.Image
+	if err := json.Unmarshal(body, &image); err != nil {
+		return false, err
+	}
+
+	if image.Status == "complete" {
+		return true, nil
+	}
+	return false, nil
+}
+
 // GetGuest retrieves information on a guest from an agent
 func (agent *MistifyAgent) GetGuest(guestID string) (*client.Guest, error) {
 	hypervisor, err := agent.getHypervisor(guestID)
@@ -254,5 +295,33 @@ func (agent *MistifyAgent) DeleteGuest(guestID string) (string, error) {
 // Actions: "shutdown", "reboot", "restart", "poweroff", "start", "suspend"
 func (agent *MistifyAgent) GuestAction(guestID, actionName string) (string, error) {
 	jobID, err := agent.requestGuestAction(guestID, actionName)
+	return jobID, err
+}
+
+// FetchImage fetches a disk image that can be used for guest creation
+func (agent *MistifyAgent) FetchImage(guestID string) (string, error) {
+	guest, err := agent.context.Guest(guestID)
+	if err != nil {
+		return "", err
+	}
+
+	flavor, err := agent.context.Flavor(guest.FlavorID)
+	if err != nil {
+		return "", err
+	}
+
+	hypervisor, err := agent.context.Hypervisor(guest.HypervisorID)
+	if err != nil {
+		return "", err
+	}
+
+	host := hypervisor.IP.String()
+	req := &rpc.ImageRequest{
+		// TODO: Revisit this so sources can be custom and still work with
+		// image fetching and libvirt
+		Source: fmt.Sprintf("http://builds.mistify.io/guest-images/%s.gz", flavor.Image),
+	}
+	url := fmt.Sprintf("http://%s:8080/images", host) // TODO: Get port from somewhere. Config?
+	_, jobID, err := agent.request(url, "POST", http.StatusAccepted, req)
 	return jobID, err
 }

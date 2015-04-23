@@ -249,8 +249,8 @@ func startJob(task *Task) error {
 	var err error
 	var jobID string
 	switch job.Action {
-	case "hypervisor-create":
-		jobID, err = agent.CreateGuest(task.Guest.ID)
+	case "fetch":
+		jobID, err = agent.FetchImage(task.Guest.ID)
 	case "create":
 		jobID, err = agent.CreateGuest(task.Guest.ID)
 	case "delete":
@@ -272,7 +272,31 @@ func startJob(task *Task) error {
 
 func checkWorkingJob(task *Task) (bool, error) {
 	agent := task.ctx.NewMistifyAgent()
-	done, err := agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
+	var done bool
+	var err error
+	if task.Job.Action == "fetch" {
+		done, err = agent.CheckFetchJobStatus(task.Guest.ID)
+
+		if err == nil && done {
+			task.Job.Action = "create"
+			task.Job.RemoteID = ""
+			task.Job.Status = lochness.JobStatusNew
+
+			done = false
+			// Save Job Status
+			if err := task.Job.Save(24 * time.Hour); err != nil {
+				log.WithFields(log.Fields{
+					"task":  task.ID,
+					"job":   task.Job.ID,
+					"error": err,
+				}).Error("unable to save")
+				return done, err
+			}
+		}
+	} else {
+		done, err = agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
+	}
+
 	return done, err
 }
 

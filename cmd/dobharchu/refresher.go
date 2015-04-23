@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -56,10 +57,10 @@ group hypervisors {
     }
 {{range $h := .Hypervisors}}
     host {{$h.ID}} {
-        hardware ethernet "{{$h.MAC}}";
-        fixed-address "{{$h.IP}}";
-        option routers "{{$h.Gateway}}";
-        option subnet-mask "{{$h.Netmask}}";
+        hardware ethernet  {{$h.MAC}};
+        fixed-address      {{$h.IP}};
+        option routers     {{$h.Gateway}};
+        option subnet-mask {{$h.Netmask}};
     }
 {{end}}
 }
@@ -72,10 +73,10 @@ group guests {
     option domain-name "guests.{{.Domain}}";
 {{range $g := .Guests}}
     host {{$g.ID}} {
-        hardware ethernet "{{$g.MAC}}";
-        fixed-address "{{$g.IP}}";
-        option routers "{{$g.Gateway}}";
-        option subnet-mask "{{$g.CIDR}}";
+        hardware ethernet  {{$g.MAC}};
+        fixed-address      {{$g.IP}};
+        option routers     {{$g.Gateway}};
+        option subnet-mask {{$g.CIDR}};
     }
 {{end}}
 }
@@ -158,12 +159,13 @@ func (r *Refresher) WriteGuestsConfigFile(w io.Writer, guests map[string]*lochne
 		if !ok {
 			continue
 		}
+		mask := s.CIDR.Mask
 		vals.Guests = append(vals.Guests, guestHelper{
 			ID:      g.ID,
 			MAC:     strings.ToUpper(g.MAC.String()),
 			IP:      g.IP.String(),
 			Gateway: s.Gateway.String(),
-			CIDR:    s.CIDR.IP.String(),
+			CIDR:    fmt.Sprintf("%d.%d.%d.%d", mask[0], mask[1], mask[2], mask[3]),
 		})
 	}
 
