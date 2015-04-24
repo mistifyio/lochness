@@ -4,6 +4,7 @@ SBIN_DIR=$(PREFIX)/sbin
 all: \
 	cmd/cherufe/cherufe \
 	cmd/enfield/enfield \
+	cmd/dobharchu/dobharchu \
 	cmd/dover/dover \
 	cmd/heartbeat/heartbeat \
 	cmd/kappa/kappa \
@@ -17,6 +18,15 @@ cmd/cherufe/cherufe: cmd/cherufe/cherufe.go \
 	go build -v
 
 $(SBIN_DIR)/cherufe: cmd/cherufe/cherufe
+	install -D $< $(DESTDIR)$@
+
+
+cmd/dobharchu/dobharchu: cmd/dobharchu/main.go
+	cd $(dir $<) && \
+	go get && \
+	go build -v
+
+$(SBIN_DIR)/dobharchu: cmd/dobharchu/dobharchu
 	install -D $< $(DESTDIR)$@
 
 
@@ -93,6 +103,9 @@ clean:
 	cd cmd/cherufe && \
 	go clean -x
 
+	cd cmd/dobharchu && \
+	go clean
+
 	cd cmd/dover && \
 	go clean
 
@@ -117,6 +130,7 @@ clean:
 
 install: \
   $(SBIN_DIR)/cherufe \
+  $(SBIN_DIR)/dobharchu \
   $(SBIN_DIR)/dover \
   $(SBIN_DIR)/enfield \
   $(SBIN_DIR)/grootslang \

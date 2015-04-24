@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -12,7 +13,9 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error {
+func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool, error) {
+
+	restart := false
 
 	// Hypervisors
 	hypervisors, err := f.Hypervisors()
@@ -21,7 +24,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 			"error": err,
 			"func":  "fetcher.Hypervisors",
 		}).Error("Could not fetch hypervisors")
-		return err
+		return restart, err
 	}
 	f1, err := os.Create(hconfPath)
 	if err != nil {
@@ -30,7 +33,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 			"func":  "os.Create",
 			"path":  hconfPath,
 		}).Error("Could not open hypervisors conf file")
-		return err
+		return restart, err
 	}
 	w1 := bufio.NewWriter(f1)
 	if err = r.WriteHypervisorsConfigFile(w1, hypervisors); err != nil {
@@ -38,21 +41,23 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 			"error": err,
 			"func":  "Refresher.WriteHypervisorsConfigFile",
 		}).Error("Could not refresh hypervisors conf file")
-		return err
+		return restart, err
 	}
 	if err = w1.Flush(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "bufio.Writer.Flush",
 		}).Error("Could not flush buffer for hypervisors conf file")
-		return err
+		return restart, err
 	}
+
+	restart = true
 	if err = f1.Close(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.File.Close",
 		}).Error("Could not close hypervisors conf file")
-		return err
+		return restart, err
 	}
 	log.WithFields(log.Fields{
 		"path": hconfPath,
@@ -65,7 +70,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 			"error": err,
 			"func":  "fetcher.Guests",
 		}).Error("Could not fetch guests")
-		return err
+		return restart, err
 	}
 	subnets, err := f.Subnets()
 	if err != nil {
@@ -73,7 +78,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 			"error": err,
 			"func":  "fetcher.Subnets",
 		}).Error("Could not fetch subnets")
-		return err
+		return restart, err
 	}
 	f2, err := os.Create(gconfPath)
 	if err != nil {
@@ -82,7 +87,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 			"func":  "os.Create",
 			"path":  gconfPath,
 		}).Error("Could not open guests conf file")
-		return err
+		return restart, err
 	}
 	w2 := bufio.NewWriter(f2)
 	if err = r.WriteGuestsConfigFile(w2, guests, subnets); err != nil {
@@ -90,27 +95,39 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) error 
 			"error": err,
 			"func":  "Refresher.WriteGuestsConfigFile",
 		}).Error("Could not refresh guests conf file")
-		return err
+		return restart, err
 	}
 	if err = w2.Flush(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "bufio.Writer.Flush",
 		}).Error("Could not flush buffer for guests conf file")
-		return err
+		return restart, err
 	}
 	if err = f2.Close(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.File.Close",
 		}).Error("Could not close guests conf file")
-		return err
+		return restart, err
 	}
 	log.WithFields(log.Fields{
 		"path": gconfPath,
 	}).Info("Refreshed guests conf file")
 
-	return nil
+	return restart, nil
+}
+
+func restart_dhcpd() {
+	cmd := exec.Command("systemctl", "restart", "dhcpd.service")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "cmd.Run",
+		}).Error("failed to restart dhcpd service")
+	}
 }
 
 func main() {
@@ -147,7 +164,10 @@ func main() {
 	}
 
 	// Update at the start of each run
-	err = updateConfigs(f, r, hconfPath, gconfPath)
+	restart, err := updateConfigs(f, r, hconfPath, gconfPath)
+	if restart {
+		restart_dhcpd()
+	}
 	if err != nil {
 		os.Exit(1)
 	}
@@ -193,7 +213,16 @@ func main() {
 			refresh = true
 		}
 		if refresh {
-			_ = updateConfigs(f, r, hconfPath, gconfPath)
+			restart, err := updateConfigs(f, r, hconfPath, gconfPath)
+			if restart {
+				restart_dhcpd()
+			}
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+					"func":  "updateConfigs",
+				}).Warn("Could not create watcher")
+			}
 		}
 
 		// Return item to indicate processing has completed
