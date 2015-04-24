@@ -122,8 +122,7 @@ func restart_dhcpd() {
 	cmd := exec.Command("systemctl", "restart", "dhcpd.service")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "cmd.Run",
@@ -165,8 +164,7 @@ func main() {
 	}
 
 	// Update at the start of each run
-	restart := false
-	restart, err = updateConfigs(f, r, hconfPath, gconfPath)
+	restart, err := updateConfigs(f, r, hconfPath, gconfPath)
 	if restart {
 		restart_dhcpd()
 	}
