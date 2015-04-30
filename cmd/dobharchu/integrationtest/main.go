@@ -187,7 +187,7 @@ func reportHasHosts(r *bytes.Buffer, testdsc string, hs map[string]*lochness.Hyp
 		macExp := make(map[string]bool, expCount)
 		for id, h := range hs {
 			hostExp["host "+id+" {"] = false
-			macExp["hardware ethernet \""+strings.ToUpper(h.MAC.String())+"\";"] = false
+			macExp["hardware ethernet "+strings.ToUpper(h.MAC.String())+";"] = false
 		}
 		hostCount := countLines(hostExp, hlines)
 		hostStatus = fmt.Sprintf("%d/%d", hostCount, expCount)
@@ -223,7 +223,7 @@ func reportHasHosts(r *bytes.Buffer, testdsc string, hs map[string]*lochness.Hyp
 		macExp := make(map[string]bool, expCount)
 		for id, g := range gs {
 			hostExp["host "+id+" {"] = false
-			macExp["hardware ethernet \""+strings.ToUpper(g.MAC.String())+"\";"] = false
+			macExp["hardware ethernet "+strings.ToUpper(g.MAC.String())+";"] = false
 		}
 		hostCount := countLines(hostExp, glines)
 		hostStatus = fmt.Sprintf("%d/%d", hostCount, expCount)
