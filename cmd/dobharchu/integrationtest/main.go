@@ -436,7 +436,7 @@ func main() {
 		"--hypervisors-path="+hconfPath,
 		"--guests-path="+gconfPath,
 	))
-	if err := dp.captureOutput(false); err != nil {
+	if err := dp.captureOutput(true); err != nil {
 		if err := ep.finish(); err != nil {
 			log.Error("Could not close out etcd")
 		}
@@ -485,9 +485,13 @@ func main() {
 		testOk = false
 	}
 
-	// Add subnet
-	log.Debug("Creating a new subnet")
-	s, err := testhelper.NewSubnet(c, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	// Add subnets
+	log.Debug("Creating new subnets")
+	s1, err := testhelper.NewSubnet(c, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	if err != nil {
+		cleanupAfterError(err, "testhelper.NewSubnet", r, e, ep, dp)
+	}
+	s2, err := testhelper.NewSubnet(c, "10.10.12.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 12, 10), net.IPv4(10, 10, 12, 250), n)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewSubnet", r, e, ep, dp)
 	}
@@ -501,12 +505,12 @@ func main() {
 	hs := make(map[string]*lochness.Hypervisor)
 	gs := make(map[string]*lochness.Guest)
 	log.Debug("Creating two new hypervisors")
-	h1, err := testhelper.NewHypervisor(c, "fe:dc:ba:98:76:54", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h1, err := testhelper.NewHypervisor(c, "fe:dc:ba:98:76:54", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s1)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewHypervisor", r, e, ep, dp)
 	}
 	hs[h1.ID] = h1
-	h2, err := testhelper.NewHypervisor(c, "dc:ba:98:76:54:32", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	h2, err := testhelper.NewHypervisor(c, "dc:ba:98:76:54:32", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s2)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewHypervisor", r, e, ep, dp)
 	}
@@ -523,22 +527,22 @@ func main() {
 
 	// Add guests
 	log.Debug("Creating four new guests")
-	g1, err := testhelper.NewGuest(c, "ba:98:76:54:32:10", n, s, f1, fw, h1)
+	g1, err := testhelper.NewGuest(c, "ba:98:76:54:32:10", n, s1, f1, fw, h1)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
 	gs[g1.ID] = g1
-	g2, err := testhelper.NewGuest(c, "98:76:54:32:10:fe", n, s, f2, fw, h1)
+	g2, err := testhelper.NewGuest(c, "98:76:54:32:10:fe", n, s1, f2, fw, h1)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
 	gs[g2.ID] = g2
-	g3, err := testhelper.NewGuest(c, "76:54:32:10:fe:dc", n, s, f1, fw, h2)
+	g3, err := testhelper.NewGuest(c, "76:54:32:10:fe:dc", n, s1, f1, fw, h2)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
 	gs[g3.ID] = g3
-	g4, err := testhelper.NewGuest(c, "54:32:10:fe:dc:ba", n, s, f2, fw, h2)
+	g4, err := testhelper.NewGuest(c, "54:32:10:fe:dc:ba", n, s1, f2, fw, h2)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
@@ -550,6 +554,30 @@ func main() {
 	}
 	if ok := reportHasHosts(r, "after group creation", hs, gs); !ok {
 		log.Warning("Failure testing for hosts in confs after group creation")
+		testOk = false
+	}
+
+	// Add guests to hypervisors
+	log.Debug("Adding guests to hypervisors")
+	if err := h1.AddGuest(g1); err != nil {
+		cleanupAfterError(err, "hypervisor.AddGuest", r, e, ep, dp)
+	}
+	if err := h1.AddGuest(g2); err != nil {
+		cleanupAfterError(err, "hypervisor.AddGuest", r, e, ep, dp)
+	}
+	if err := h2.AddGuest(g3); err != nil {
+		cleanupAfterError(err, "hypervisor.AddGuest", r, e, ep, dp)
+	}
+	if err := h2.AddGuest(g4); err != nil {
+		cleanupAfterError(err, "hypervisor.AddGuest", r, e, ep, dp)
+	}
+	time.Sleep(time.Second)
+	if ok := reportConfStatus(r, "after adding guests to hypervisors", "touched", "changed"); !ok {
+		log.Warning("Failure testing conf status after adding guests")
+		testOk = false
+	}
+	if ok := reportHasHosts(r, "after adding guests to hypervisors", hs, gs); !ok {
+		log.Warning("Failure testing for hosts in confs after adding guests")
 		testOk = false
 	}
 
