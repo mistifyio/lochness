@@ -56,14 +56,14 @@ func main() {
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "hv.UpdateResources",
-			}).Error("failed to update hypervisor resources")
+			}).Fatal("failed to update hypervisor resources")
 		}
 		if err = hv.Heartbeat(time.Duration(*ttl)); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "hv.Heartbeat",
 				"ttl":   *ttl,
-			}).Error("failed to beat heart")
+			}).Fatal("failed to beat heart")
 		}
 		time.Sleep(time.Duration(*interval) * time.Second)
 	}
