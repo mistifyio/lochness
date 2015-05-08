@@ -229,13 +229,13 @@ func TestHypervisorsConf(t *testing.T) {
 			if hostmatch == nil {
 				continue
 			}
-			if line == "hardware ethernet \""+hostmatch.mac+"\";" {
+			if line == "hardware ethernet "+hostmatch.mac+";" {
 				found[hostprefix+" hypervisor mac"] = true
-			} else if line == "fixed-address \""+hostmatch.ip+"\";" {
+			} else if line == "fixed-address "+hostmatch.ip+";" {
 				found[hostprefix+" hypervisor ip"] = true
-			} else if line == "option routers \""+hostmatch.gateway+"\";" {
+			} else if line == "option routers "+hostmatch.gateway+";" {
 				found[hostprefix+" hypervisor gateway"] = true
-			} else if line == "option subnet-mask \""+hostmatch.netmask+"\";" {
+			} else if line == "option subnet-mask "+hostmatch.netmask+";" {
 				found[hostprefix+" hypervisor netmask"] = true
 			}
 			continue
@@ -271,7 +271,6 @@ func TestHypervisorsConf(t *testing.T) {
 	for _, err := range errors {
 		t.Error(err)
 	}
-
 }
 
 func TestGuestsConf(t *testing.T) {
@@ -422,13 +421,13 @@ func TestGuestsConf(t *testing.T) {
 			if hostmatch == nil {
 				continue
 			}
-			if line == "hardware ethernet \""+hostmatch.mac+"\";" {
+			if line == "hardware ethernet "+hostmatch.mac+";" {
 				found[hostprefix+" guest mac"] = true
-			} else if line == "fixed-address \""+hostmatch.ip+"\";" {
+			} else if line == "fixed-address "+hostmatch.ip+";" {
 				found[hostprefix+" guest ip"] = true
-			} else if line == "option routers \""+hostmatch.gateway+"\";" {
+			} else if line == "option routers "+hostmatch.gateway+";" {
 				found[hostprefix+" guest gateway"] = true
-			} else if line == "option subnet-mask \""+hostmatch.cidr+"\";" {
+			} else if line == "option subnet-mask "+hostmatch.cidr+";" {
 				found[hostprefix+" guest cidr"] = true
 			}
 			continue
@@ -452,5 +451,4 @@ func TestGuestsConf(t *testing.T) {
 	for _, err := range errors {
 		t.Error(err)
 	}
-
 }
