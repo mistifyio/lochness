@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -127,6 +128,55 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 	}).Info("Refreshed conf file")
 
 	return restart, nil
+}
+
+func writeConfig(confType, path string, generator func(io.Writer) error) error {
+	file, err := os.Create(path)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.Create",
+			"path":  path,
+			"type":  confType,
+		}).Error("Could not create conf file")
+		return err
+	}
+
+	buff := bufio.NewWriter(file)
+	if err = generator(buff); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"path":  path,
+			"type":  confType,
+		}).Error("Could not generate configuration")
+		return err
+	}
+
+	if err = buff.Flush(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "buff.Flush",
+			"path":  path,
+			"type":  confType,
+		}).Error("Could not flush buffer to conf file")
+		return err
+	}
+
+	if err = file.Close(); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.File.Close",
+			"path":  path,
+			"type":  confType,
+		}).Error("Could not close conf file")
+		return err
+	}
+
+	log.WithFields(log.Fields{
+		"path": path,
+		"type": confType,
+	}).Info("Refreshed conf file")
+	return nil
 }
 
 func restart_dhcpd() {
