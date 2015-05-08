@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/md5"
 	"io"
 	"os"
 	"os/exec"
@@ -14,6 +16,9 @@ import (
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/spf13/pflag"
 )
+
+var hypervisorsHash []byte
+var guestsHash []byte
 
 func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool, error) {
 	restart := false
@@ -28,7 +33,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		return restart, err
 	}
 
-	err = writeConfig("hypervisors", hconfPath, func(w io.Writer) error {
+	checksum, err := writeConfig("hypervisors", hconfPath, hypervisorsHash, func(w io.Writer) error {
 		err := r.genHypervisorsConf(w, hypervisors)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -39,7 +44,8 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		}
 		return err
 	})
-	if err == nil {
+	if err == nil && checksum != nil {
+		hypervisorsHash = checksum
 		restart = true
 	}
 
@@ -61,7 +67,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		return restart, err
 	}
 
-	err = writeConfig("guests", gconfPath, func(w io.Writer) error {
+	checksum, err = writeConfig("guests", gconfPath, guestsHash, func(w io.Writer) error {
 		err := r.genGuestsConf(w, guests, subnets)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -72,14 +78,15 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		}
 		return err
 	})
-	if err == nil {
+	if err == nil && checksum != nil {
+		guestsHash = checksum
 		restart = true
 	}
 
 	return restart, nil
 }
 
-func writeConfig(confType, path string, generator func(io.Writer) error) error {
+func writeConfig(confType, path string, checksum []byte, generator func(io.Writer) error) ([]byte, error) {
 	tmp := path + ".tmp"
 	file, err := os.Create(tmp)
 	if err != nil {
@@ -89,17 +96,18 @@ func writeConfig(confType, path string, generator func(io.Writer) error) error {
 			"path":  tmp,
 			"type":  confType,
 		}).Error("Could not create temporary conf file")
-		return err
+		return nil, err
 	}
 
-	buff := bufio.NewWriter(file)
+	hash := md5.New()
+	buff := bufio.NewWriter(io.MultiWriter(file, hash))
 	if err = generator(buff); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"path":  tmp,
 			"type":  confType,
 		}).Error("Could not generate temporary configuration")
-		return err
+		return nil, err
 	}
 
 	if err = buff.Flush(); err != nil {
@@ -109,7 +117,7 @@ func writeConfig(confType, path string, generator func(io.Writer) error) error {
 			"path":  tmp,
 			"type":  confType,
 		}).Error("Could not flush buffer to temporary conf file")
-		return err
+		return nil, err
 	}
 
 	if err = file.Close(); err != nil {
@@ -119,7 +127,13 @@ func writeConfig(confType, path string, generator func(io.Writer) error) error {
 			"path":  tmp,
 			"type":  confType,
 		}).Error("Could not close temporary conf file")
-		return err
+		return nil, err
+	}
+
+	if bytes.Equal(checksum, hash.Sum(nil)) {
+		log.Debug("no change to conf file")
+		os.Remove(tmp)
+		return nil, nil
 	}
 
 	if err = os.Rename(tmp, path); err != nil {
@@ -130,14 +144,15 @@ func writeConfig(confType, path string, generator func(io.Writer) error) error {
 			"to":    path,
 			"type":  confType,
 		}).Error("Could not rename temporary conf file")
-		return err
+		return nil, err
 	}
 
 	log.WithFields(log.Fields{
 		"path": path,
 		"type": confType,
 	}).Info("Replaced conf file")
-	return nil
+
+	return hash.Sum(nil), nil
 }
 
 func restart_dhcpd() {
