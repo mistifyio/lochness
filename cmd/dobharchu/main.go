@@ -16,7 +16,6 @@ import (
 )
 
 func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool, error) {
-
 	restart := false
 
 	// Hypervisors
@@ -28,47 +27,21 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		}).Error("Could not fetch hypervisors")
 		return restart, err
 	}
-	f1, err := os.Create(hconfPath)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "os.Create",
-			"path":  hconfPath,
-			"type":  "hypervisors",
-		}).Error("Could not create conf file")
-		return restart, err
-	}
-	w1 := bufio.NewWriter(f1)
-	if err = r.genHypervisorsConf(w1, hypervisors); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "Refresher.genHypervisorsConf",
-			"type":  "hypervisors",
-		}).Error("Could not generate configuration")
-		return restart, err
-	}
-	if err = w1.Flush(); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "bufio.Writer.Flush",
-			"type":  "hypervisors",
-		}).Error("Could not flush buffer for conf file")
-		return restart, err
-	}
 
-	restart = true
-	if err = f1.Close(); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "os.File.Close",
-			"type":  "hypervisors",
-		}).Error("Could not close conf file")
-		return restart, err
+	err = writeConfig("hypervisors", hconfPath, func(w io.Writer) error {
+		err := r.genHypervisorsConf(w, hypervisors)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "Refresher.genHypervisorsConf",
+				"type":  "hypervisors",
+			}).Error("Could not generate configuration")
+		}
+		return err
+	})
+	if err == nil {
+		restart = true
 	}
-	log.WithFields(log.Fields{
-		"path": hconfPath,
-		"type": "hypervisors",
-	}).Info("Refreshed conf file")
 
 	// Guests
 	guests, err := f.Guests()
@@ -87,45 +60,21 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		}).Error("Could not fetch subnets")
 		return restart, err
 	}
-	f2, err := os.Create(gconfPath)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "os.Create",
-			"path":  gconfPath,
-			"type":  "guests",
-		}).Error("Could not create conf file")
-		return restart, err
+
+	err = writeConfig("guests", gconfPath, func(w io.Writer) error {
+		err := r.genGuestsConf(w, guests, subnets)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "Refresher.genGuestsConf",
+				"type":  "guests",
+			}).Error("Could not generate configuration")
+		}
+		return err
+	})
+	if err == nil {
+		restart = true
 	}
-	w2 := bufio.NewWriter(f2)
-	if err = r.genGuestsConf(w2, guests, subnets); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "Refresher.genGuestsConf",
-			"type":  "guests",
-		}).Error("Could not generate configuration")
-		return restart, err
-	}
-	if err = w2.Flush(); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "bufio.Writer.Flush",
-			"type":  "guests",
-		}).Error("Could not flush buffer for conf file")
-		return restart, err
-	}
-	if err = f2.Close(); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "os.File.Close",
-			"type":  "guests",
-		}).Error("Could not close conf file")
-		return restart, err
-	}
-	log.WithFields(log.Fields{
-		"path": gconfPath,
-		"type": "guests",
-	}).Info("Refreshed conf file")
 
 	return restart, nil
 }
