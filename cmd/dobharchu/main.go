@@ -136,7 +136,7 @@ func main() {
 	var etcdAddress, domain, confPath, logLevel string
 	flag.StringVarP(&domain, "domain", "d", "", "domain for lochness; required")
 	flag.StringVarP(&etcdAddress, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	flag.StringVarP(&confPath, "conf-dir", "c", "/etc/dhcpd/", "dhcpd configuration directory")
+	flag.StringVarP(&confPath, "conf-dir", "c", "/etc/dhcp/", "dhcpd configuration directory")
 	flag.StringVarP(&logLevel, "log-level", "l", "warning", "log level: debug/info/warning/error/critical/fatal")
 	flag.Parse()
 
