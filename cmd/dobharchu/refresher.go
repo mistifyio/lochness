@@ -89,8 +89,8 @@ func NewRefresher(domain string) *Refresher {
 	}
 }
 
-// WriteHypervisorsConfigFile writes out the hypervisors config file using the given writer
-func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer, hypervisors map[string]*lochness.Hypervisor) error {
+// genHypervisorsConf writes the hypervisors config
+func (r *Refresher) genHypervisorsConf(w io.Writer, hypervisors map[string]*lochness.Hypervisor) error {
 	vals := new(templateHelper)
 	vals.Domain = r.Domain
 
@@ -116,8 +116,7 @@ func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer, hypervisors map[stri
 	}
 
 	// Execute template
-	t := template.New("hypervisors.conf")
-	t, err := t.Parse(hypervisorsTemplate)
+	t, err := template.New("hypervisors.conf").Parse(hypervisorsTemplate)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -135,8 +134,8 @@ func (r *Refresher) WriteHypervisorsConfigFile(w io.Writer, hypervisors map[stri
 	return nil
 }
 
-// WriteGuestsConfigFile writes out the guests config file using the given writer
-func (r *Refresher) WriteGuestsConfigFile(w io.Writer, guests map[string]*lochness.Guest, subnets map[string]*lochness.Subnet) error {
+// genGuestsConf writes the guests config
+func (r *Refresher) genGuestsConf(w io.Writer, guests map[string]*lochness.Guest, subnets map[string]*lochness.Subnet) error {
 	vals := new(templateHelper)
 	vals.Domain = r.Domain
 
@@ -170,8 +169,7 @@ func (r *Refresher) WriteGuestsConfigFile(w io.Writer, guests map[string]*lochne
 	}
 
 	// Execute template
-	t := template.New("guests.conf")
-	t, err := t.Parse(guestsTemplate)
+	t, err := template.New("guests.conf").Parse(guestsTemplate)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,

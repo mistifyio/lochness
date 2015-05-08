@@ -118,7 +118,7 @@ func TestHypervisorsConf(t *testing.T) {
 	hvs, err := f.Hypervisors()
 	h.Ok(t, err)
 	b := new(bytes.Buffer)
-	err = r.WriteHypervisorsConfigFile(b, hvs)
+	err = r.genHypervisorsConf(b, hvs)
 	h.Ok(t, err)
 
 	// Define tests and regexes
@@ -291,7 +291,7 @@ func TestGuestsConf(t *testing.T) {
 	ss, err := f.Subnets()
 	h.Ok(t, err)
 	b := new(bytes.Buffer)
-	err = r.WriteGuestsConfigFile(b, gs, ss)
+	err = r.genGuestsConf(b, gs, ss)
 	h.Ok(t, err)
 
 	// Define tests and regexes

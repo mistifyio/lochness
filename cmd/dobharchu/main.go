@@ -37,10 +37,10 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		return restart, err
 	}
 	w1 := bufio.NewWriter(f1)
-	if err = r.WriteHypervisorsConfigFile(w1, hypervisors); err != nil {
+	if err = r.genHypervisorsConf(w1, hypervisors); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "Refresher.WriteHypervisorsConfigFile",
+			"func":  "Refresher.genHypervisorsConf",
 		}).Error("Could not refresh hypervisors conf file")
 		return restart, err
 	}
@@ -91,10 +91,10 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		return restart, err
 	}
 	w2 := bufio.NewWriter(f2)
-	if err = r.WriteGuestsConfigFile(w2, guests, subnets); err != nil {
+	if err = r.genGuestsConf(w2, guests, subnets); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "Refresher.WriteGuestsConfigFile",
+			"func":  "Refresher.genGuestsConf",
 		}).Error("Could not refresh guests conf file")
 		return restart, err
 	}
