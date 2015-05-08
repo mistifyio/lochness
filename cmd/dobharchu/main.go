@@ -80,14 +80,15 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 }
 
 func writeConfig(confType, path string, generator func(io.Writer) error) error {
-	file, err := os.Create(path)
+	tmp := path + ".tmp"
+	file, err := os.Create(tmp)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.Create",
-			"path":  path,
+			"path":  tmp,
 			"type":  confType,
-		}).Error("Could not create conf file")
+		}).Error("Could not create temporary conf file")
 		return err
 	}
 
@@ -95,9 +96,9 @@ func writeConfig(confType, path string, generator func(io.Writer) error) error {
 	if err = generator(buff); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"path":  path,
+			"path":  tmp,
 			"type":  confType,
-		}).Error("Could not generate configuration")
+		}).Error("Could not generate temporary configuration")
 		return err
 	}
 
@@ -105,9 +106,9 @@ func writeConfig(confType, path string, generator func(io.Writer) error) error {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "buff.Flush",
-			"path":  path,
+			"path":  tmp,
 			"type":  confType,
-		}).Error("Could not flush buffer to conf file")
+		}).Error("Could not flush buffer to temporary conf file")
 		return err
 	}
 
@@ -115,16 +116,27 @@ func writeConfig(confType, path string, generator func(io.Writer) error) error {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.File.Close",
-			"path":  path,
+			"path":  tmp,
 			"type":  confType,
-		}).Error("Could not close conf file")
+		}).Error("Could not close temporary conf file")
+		return err
+	}
+
+	if err = os.Rename(tmp, path); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.Rename",
+			"from":  tmp,
+			"to":    path,
+			"type":  confType,
+		}).Error("Could not rename temporary conf file")
 		return err
 	}
 
 	log.WithFields(log.Fields{
 		"path": path,
 		"type": confType,
-	}).Info("Refreshed conf file")
+	}).Info("Replaced conf file")
 	return nil
 }
 
