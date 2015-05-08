@@ -74,8 +74,10 @@ func NewHypervisor(context *lochness.Context, mac string, ip, gateway, netmask n
 	if err = h.Save(); err != nil {
 		return nil, errors.New("Could not save hypervisor: " + err.Error())
 	}
-	if err := h.AddSubnet(s, ifname); err != nil {
-		return nil, errors.New("Could not add subnet to hypervisor: " + err.Error())
+	if s != nil {
+		if err := h.AddSubnet(s, ifname); err != nil {
+			return nil, errors.New("Could not add subnet to hypervisor: " + err.Error())
+		}
 	}
 	return h, nil
 }
@@ -84,31 +86,47 @@ func NewHypervisor(context *lochness.Context, mac string, ip, gateway, netmask n
 func NewGuest(context *lochness.Context, mac string, n *lochness.Network, s *lochness.Subnet, f *lochness.Flavor, fw *lochness.FWGroup, h *lochness.Hypervisor) (*lochness.Guest, error) {
 	var err error
 	g := context.NewGuest()
+
 	g.MAC, err = net.ParseMAC(mac)
 	if err != nil {
 		return nil, errors.New("Could not parse guest MAC '" + mac + "': " + err.Error())
 	}
-	g.NetworkID = n.ID
-	g.SubnetID = s.ID
-	g.FlavorID = f.ID
-	g.FWGroupID = fw.ID
+	if n != nil {
+		g.NetworkID = n.ID
+	}
+	if s != nil {
+		g.SubnetID = s.ID
+	}
+	if f != nil {
+		g.FlavorID = f.ID
+	}
+	if fw != nil {
+		g.FWGroupID = fw.ID
+	}
 	if err := g.Save(); err != nil {
 		return nil, errors.New("Could not save guest: " + err.Error())
 	}
 
-	if err := h.AddGuest(g); err != nil {
-		return nil, errors.New("Could not add guest to hypervisor: " + err.Error())
+	save2 := false
+	if h != nil {
+		if err := h.AddGuest(g); err != nil {
+			return nil, errors.New("Could not add guest to hypervisor: " + err.Error())
+		}
+		save2 = true
+	}
+	if s != nil {
+		g.IP, err = s.ReserveAddress(g.ID)
+		if err != nil {
+			return nil, errors.New("Could not reserve guest address in subnet: " + err.Error())
+		}
+		save2 = true
 	}
 
-	g.IP, err = s.ReserveAddress(g.ID)
-	if err != nil {
-		return nil, errors.New("Could not reserve guest address in subnet: " + err.Error())
+	if save2 {
+		if err := g.Save(); err != nil {
+			return nil, errors.New("Could not resave guest: " + err.Error())
+		}
 	}
-
-	if err := g.Save(); err != nil {
-		return nil, errors.New("Could not resave guest: " + err.Error())
-	}
-
 	return g, nil
 }
 

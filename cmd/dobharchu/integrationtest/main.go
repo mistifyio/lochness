@@ -526,7 +526,7 @@ func main() {
 	}
 
 	// Add guests
-	log.Debug("Creating four new guests")
+	log.Debug("Creating four new guests, two of them without a subnet attached")
 	g1, err := testhelper.NewGuest(c, "ba:98:76:54:32:10", n, s1, f1, fw, h1)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
@@ -537,16 +537,14 @@ func main() {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
 	gs[g2.ID] = g2
-	g3, err := testhelper.NewGuest(c, "76:54:32:10:fe:dc", n, s1, f1, fw, h2)
+	g3, err := testhelper.NewGuest(c, "76:54:32:10:fe:dc", n, nil, f1, fw, h2)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
-	gs[g3.ID] = g3
-	g4, err := testhelper.NewGuest(c, "54:32:10:fe:dc:ba", n, s1, f2, fw, h2)
+	g4, err := testhelper.NewGuest(c, "54:32:10:fe:dc:ba", n, nil, f2, fw, h2)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
-	gs[g4.ID] = g4
 	time.Sleep(time.Second)
 	if ok := reportConfStatus(r, "after group creation", "touched", "changed"); !ok {
 		log.Warning("Failure testing conf status after group creation")
@@ -554,6 +552,28 @@ func main() {
 	}
 	if ok := reportHasHosts(r, "after group creation", hs, gs); !ok {
 		log.Warning("Failure testing for hosts in confs after group creation")
+		testOk = false
+	}
+
+	// Add subnets to the guests missing them
+	log.Debug("Adding subnets to the guests missing them")
+	g3.SubnetID = s2.ID
+	if err := g3.Save(); err != nil {
+		cleanupAfterError(err, "guest.Save", r, e, ep, dp)
+	}
+	gs[g3.ID] = g3
+	g4.SubnetID = s2.ID
+	if err := g4.Save(); err != nil {
+		cleanupAfterError(err, "guest.Save", r, e, ep, dp)
+	}
+	gs[g4.ID] = g4
+	time.Sleep(time.Second)
+	if ok := reportConfStatus(r, "after adding subnets to groups", "touched", "changed"); !ok {
+		log.Warning("Failure testing conf status after adding subnets to groups")
+		testOk = false
+	}
+	if ok := reportHasHosts(r, "after adding subnets to groups", hs, gs); !ok {
+		log.Warning("Failure testing for hosts in confs after adding subnets to groups")
 		testOk = false
 	}
 
