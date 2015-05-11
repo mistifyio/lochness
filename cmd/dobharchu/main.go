@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
@@ -133,11 +134,10 @@ func restart_dhcpd() {
 func main() {
 
 	// Command line options
-	var etcdAddress, domain, hconfPath, gconfPath, logLevel string
+	var etcdAddress, domain, confPath, logLevel string
 	flag.StringVarP(&domain, "domain", "d", "", "domain for lochness; required")
 	flag.StringVarP(&etcdAddress, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	flag.StringVarP(&hconfPath, "hypervisors-path", "", "/etc/dhcpd/hypervisors.conf", "alternative path to hypervisors.conf")
-	flag.StringVarP(&gconfPath, "guests-path", "", "/etc/dhcpd/guests.conf", "alternative path to guests.conf")
+	flag.StringVarP(&confPath, "conf-dir", "c", "/etc/dhcp/", "dhcpd configuration directory")
 	flag.StringVarP(&logLevel, "log-level", "l", "warning", "log level: debug/info/warning/error/critical/fatal")
 	flag.Parse()
 
@@ -154,6 +154,9 @@ func main() {
 			"func":  "logx.DefaultSetup",
 		}).Fatal("Could not set up logrus")
 	}
+
+	hconfPath := path.Join(confPath, "hypervisors.conf")
+	gconfPath := path.Join(confPath, "guests.conf")
 
 	// Set up fetcher and refresher
 	f := NewFetcher(etcdAddress)
