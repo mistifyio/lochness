@@ -103,10 +103,10 @@ func (agent *MistifyAgent) guestActionURL(host, guestID, action string) string {
 	return fmt.Sprintf("http://%s:%d/%s", host, port, urlPath)
 }
 
-// guestJobURL crafts the job status url
-func (agent *MistifyAgent) guestJobURL(host, guestID, jobID string) string {
+// jobURL crafts the job status url
+func (agent *MistifyAgent) jobURL(host, jobID string) string {
 	port := 8080 // TODO: Get port from somewhere
-	return fmt.Sprintf("http://%s:%d/guests/%s/jobs/%s", host, port, guestID, jobID)
+	return fmt.Sprintf("http://%s:%d/jobs/%s", host, port, jobID)
 }
 
 // request is the generic way to hit an agent endpoint with minimal response
@@ -179,18 +179,13 @@ func (agent *MistifyAgent) CheckJobStatus(action, guestID, jobID string) (bool, 
 		return false, err
 	}
 
-	url := agent.guestJobURL(hypervisor.IP.String(), guestID, jobID)
+	url := agent.jobURL(hypervisor.IP.String(), jobID)
 	body, _, err := agent.request(url, "GET", http.StatusOK, nil)
 	if err != nil {
-		// Always expect http.StatusOK except when a delete was successful,
-		// then an http.StatusNotFound is ok
-		if e, ok := err.(ErrorHTTPCode); ok && e.Code == http.StatusNotFound && action == "delete" {
-			return true, nil
-		}
 		return false, err
 	}
 
-	var job magent.GuestJob
+	var job magent.Job
 	if err := json.Unmarshal(body, &job); err != nil {
 		return false, err
 	}
@@ -203,45 +198,6 @@ func (agent *MistifyAgent) CheckJobStatus(action, guestID, jobID string) (bool, 
 	default:
 		return false, nil
 	}
-}
-
-// CheckFetchJobStatus checks the status of an image fetch
-// TODO: Fix the mistify-agent joblog so that it's not guest-centric
-// and can be used for things like fetch. This is a horrible hack to
-// get the job status without a job log for fetches
-func (agent *MistifyAgent) CheckFetchJobStatus(guestID string) (bool, error) {
-	guest, err := agent.context.Guest(guestID)
-	if err != nil {
-		return false, err
-	}
-
-	flavor, err := agent.context.Flavor(guest.FlavorID)
-	if err != nil {
-		return false, err
-	}
-
-	hypervisor, err := agent.context.Hypervisor(guest.HypervisorID)
-	if err != nil {
-		return false, err
-	}
-
-	host := hypervisor.IP.String()
-	url := fmt.Sprintf("http://%s:8080/images/%s", host, flavor.Image) // TODO: Get port from somewhere. Config?
-
-	body, _, err := agent.request(url, "GET", http.StatusOK, nil)
-	if err != nil {
-		return false, err
-	}
-
-	var image rpc.Image
-	if err := json.Unmarshal(body, &image); err != nil {
-		return false, err
-	}
-
-	if image.Status == "complete" {
-		return true, nil
-	}
-	return false, nil
 }
 
 // GetGuest retrieves information on a guest from an agent

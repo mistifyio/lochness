@@ -833,6 +833,13 @@ func (agent *MistifyAgent) DeleteGuest(guestID string) (string, error)
 ```
 DeleteGuest deletes a guest from a hypervisor
 
+#### func (*MistifyAgent) FetchImage
+
+```go
+func (agent *MistifyAgent) FetchImage(guestID string) (string, error)
+```
+FetchImage fetches a disk image that can be used for guest creation
+
 #### func (*MistifyAgent) GetGuest
 
 ```go

@@ -2,9 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/md5"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,8 +17,10 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool, error) {
+var hypervisorsHash []byte
+var guestsHash []byte
 
+func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool, error) {
 	restart := false
 
 	// Hypervisors
@@ -26,42 +32,22 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		}).Error("Could not fetch hypervisors")
 		return restart, err
 	}
-	f1, err := os.Create(hconfPath)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "os.Create",
-			"path":  hconfPath,
-		}).Error("Could not open hypervisors conf file")
-		return restart, err
-	}
-	w1 := bufio.NewWriter(f1)
-	if err = r.WriteHypervisorsConfigFile(w1, hypervisors); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "Refresher.WriteHypervisorsConfigFile",
-		}).Error("Could not refresh hypervisors conf file")
-		return restart, err
-	}
-	if err = w1.Flush(); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "bufio.Writer.Flush",
-		}).Error("Could not flush buffer for hypervisors conf file")
-		return restart, err
-	}
 
-	restart = true
-	if err = f1.Close(); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"func":  "os.File.Close",
-		}).Error("Could not close hypervisors conf file")
-		return restart, err
+	checksum, err := writeConfig("hypervisors", hconfPath, hypervisorsHash, func(w io.Writer) error {
+		err := r.genHypervisorsConf(w, hypervisors)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "Refresher.genHypervisorsConf",
+				"type":  "hypervisors",
+			}).Error("Could not generate configuration")
+		}
+		return err
+	})
+	if err == nil && checksum != nil {
+		hypervisorsHash = checksum
+		restart = true
 	}
-	log.WithFields(log.Fields{
-		"path": hconfPath,
-	}).Info("Refreshed hypervisors conf file")
 
 	// Guests
 	guests, err := f.Guests()
@@ -80,42 +66,93 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		}).Error("Could not fetch subnets")
 		return restart, err
 	}
-	f2, err := os.Create(gconfPath)
+
+	checksum, err = writeConfig("guests", gconfPath, guestsHash, func(w io.Writer) error {
+		err := r.genGuestsConf(w, guests, subnets)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"func":  "Refresher.genGuestsConf",
+				"type":  "guests",
+			}).Error("Could not generate configuration")
+		}
+		return err
+	})
+	if err == nil && checksum != nil {
+		guestsHash = checksum
+		restart = true
+	}
+
+	return restart, nil
+}
+
+func writeConfig(confType, path string, checksum []byte, generator func(io.Writer) error) ([]byte, error) {
+	tmp := path + ".tmp"
+	file, err := os.Create(tmp)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.Create",
-			"path":  gconfPath,
-		}).Error("Could not open guests conf file")
-		return restart, err
+			"path":  tmp,
+			"type":  confType,
+		}).Error("Could not create temporary conf file")
+		return nil, err
 	}
-	w2 := bufio.NewWriter(f2)
-	if err = r.WriteGuestsConfigFile(w2, guests, subnets); err != nil {
+
+	hash := md5.New()
+	buff := bufio.NewWriter(io.MultiWriter(file, hash))
+	if err = generator(buff); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "Refresher.WriteGuestsConfigFile",
-		}).Error("Could not refresh guests conf file")
-		return restart, err
+			"path":  tmp,
+			"type":  confType,
+		}).Error("Could not generate temporary configuration")
+		return nil, err
 	}
-	if err = w2.Flush(); err != nil {
+
+	if err = buff.Flush(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "bufio.Writer.Flush",
-		}).Error("Could not flush buffer for guests conf file")
-		return restart, err
+			"func":  "buff.Flush",
+			"path":  tmp,
+			"type":  confType,
+		}).Error("Could not flush buffer to temporary conf file")
+		return nil, err
 	}
-	if err = f2.Close(); err != nil {
+
+	if err = file.Close(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "os.File.Close",
-		}).Error("Could not close guests conf file")
-		return restart, err
+			"path":  tmp,
+			"type":  confType,
+		}).Error("Could not close temporary conf file")
+		return nil, err
 	}
-	log.WithFields(log.Fields{
-		"path": gconfPath,
-	}).Info("Refreshed guests conf file")
 
-	return restart, nil
+	if bytes.Equal(checksum, hash.Sum(nil)) {
+		log.Debug("no change to conf file")
+		os.Remove(tmp)
+		return nil, nil
+	}
+
+	if err = os.Rename(tmp, path); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "os.Rename",
+			"from":  tmp,
+			"to":    path,
+			"type":  confType,
+		}).Error("Could not rename temporary conf file")
+		return nil, err
+	}
+
+	log.WithFields(log.Fields{
+		"path": path,
+		"type": confType,
+	}).Info("Replaced conf file")
+
+	return hash.Sum(nil), nil
 }
 
 func restart_dhcpd() {
@@ -133,11 +170,10 @@ func restart_dhcpd() {
 func main() {
 
 	// Command line options
-	var etcdAddress, domain, hconfPath, gconfPath, logLevel string
+	var etcdAddress, domain, confPath, logLevel string
 	flag.StringVarP(&domain, "domain", "d", "", "domain for lochness; required")
 	flag.StringVarP(&etcdAddress, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	flag.StringVarP(&hconfPath, "hypervisors-path", "", "/etc/dhcpd/hypervisors.conf", "alternative path to hypervisors.conf")
-	flag.StringVarP(&gconfPath, "guests-path", "", "/etc/dhcpd/guests.conf", "alternative path to guests.conf")
+	flag.StringVarP(&confPath, "conf-dir", "c", "/etc/dhcp/", "dhcpd configuration directory")
 	flag.StringVarP(&logLevel, "log-level", "l", "warning", "log level: debug/info/warning/error/critical/fatal")
 	flag.Parse()
 
@@ -154,6 +190,9 @@ func main() {
 			"func":  "logx.DefaultSetup",
 		}).Fatal("Could not set up logrus")
 	}
+
+	hconfPath := path.Join(confPath, "hypervisors.conf")
+	gconfPath := path.Join(confPath, "guests.conf")
 
 	// Set up fetcher and refresher
 	f := NewFetcher(etcdAddress)
