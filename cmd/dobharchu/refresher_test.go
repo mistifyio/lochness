@@ -19,12 +19,14 @@ type (
 		hypervisors map[string]*TestingHypervisorData
 		guests      map[string]*TestingGuestData
 	}
+
 	TestingHypervisorData struct {
 		mac     string
 		ip      string
 		gateway string
 		netmask string
 	}
+
 	TestingGuestData struct {
 		mac     string
 		ip      string
@@ -80,22 +82,22 @@ func doTestSetup(context *lochness.Context, etcdClient *etcd.Client) (*TestingDa
 	if err != nil {
 		return nil, err
 	}
-	data.guests[g1.ID] = &TestingGuestData{"01:23:45:67:89:AB", g1.IP.String(), "10.10.10.1", "10.10.10.0"}
+	data.guests[g1.ID] = &TestingGuestData{"01:23:45:67:89:AB", g1.IP.String(), "10.10.10.1", "255.255.255.0"}
 	g2, err := testhelper.NewGuest(context, "23:45:67:89:ab:cd", n, s, f2, fw, h1)
 	if err != nil {
 		return nil, err
 	}
-	data.guests[g2.ID] = &TestingGuestData{"23:45:67:89:AB:CD", g2.IP.String(), "10.10.10.1", "10.10.10.0"}
+	data.guests[g2.ID] = &TestingGuestData{"23:45:67:89:AB:CD", g2.IP.String(), "10.10.10.1", "255.255.255.0"}
 	g3, err := testhelper.NewGuest(context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
 	if err != nil {
 		return nil, err
 	}
-	data.guests[g3.ID] = &TestingGuestData{"45:67:89:AB:CD:EF", g3.IP.String(), "10.10.10.1", "10.10.10.0"}
+	data.guests[g3.ID] = &TestingGuestData{"45:67:89:AB:CD:EF", g3.IP.String(), "10.10.10.1", "255.255.255.0"}
 	g4, err := testhelper.NewGuest(context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
 	if err != nil {
 		return nil, err
 	}
-	data.guests[g4.ID] = &TestingGuestData{"67:89:AB:CD:EF:01", g4.IP.String(), "10.10.10.1", "10.10.10.0"}
+	data.guests[g4.ID] = &TestingGuestData{"67:89:AB:CD:EF:01", g4.IP.String(), "10.10.10.1", "255.255.255.0"}
 
 	return data, nil
 }
@@ -116,7 +118,7 @@ func TestHypervisorsConf(t *testing.T) {
 	hvs, err := f.Hypervisors()
 	h.Ok(t, err)
 	b := new(bytes.Buffer)
-	err = r.WriteHypervisorsConfigFile(b, hvs)
+	err = r.genHypervisorsConf(b, hvs)
 	h.Ok(t, err)
 
 	// Define tests and regexes
@@ -227,13 +229,13 @@ func TestHypervisorsConf(t *testing.T) {
 			if hostmatch == nil {
 				continue
 			}
-			if line == "hardware ethernet \""+hostmatch.mac+"\";" {
+			if line == "hardware ethernet "+hostmatch.mac+";" {
 				found[hostprefix+" hypervisor mac"] = true
-			} else if line == "fixed-address \""+hostmatch.ip+"\";" {
+			} else if line == "fixed-address "+hostmatch.ip+";" {
 				found[hostprefix+" hypervisor ip"] = true
-			} else if line == "option routers \""+hostmatch.gateway+"\";" {
+			} else if line == "option routers "+hostmatch.gateway+";" {
 				found[hostprefix+" hypervisor gateway"] = true
-			} else if line == "option subnet-mask \""+hostmatch.netmask+"\";" {
+			} else if line == "option subnet-mask "+hostmatch.netmask+";" {
 				found[hostprefix+" hypervisor netmask"] = true
 			}
 			continue
@@ -269,7 +271,6 @@ func TestHypervisorsConf(t *testing.T) {
 	for _, err := range errors {
 		t.Error(err)
 	}
-
 }
 
 func TestGuestsConf(t *testing.T) {
@@ -290,7 +291,7 @@ func TestGuestsConf(t *testing.T) {
 	ss, err := f.Subnets()
 	h.Ok(t, err)
 	b := new(bytes.Buffer)
-	err = r.WriteGuestsConfigFile(b, gs, ss)
+	err = r.genGuestsConf(b, gs, ss)
 	h.Ok(t, err)
 
 	// Define tests and regexes
@@ -420,13 +421,13 @@ func TestGuestsConf(t *testing.T) {
 			if hostmatch == nil {
 				continue
 			}
-			if line == "hardware ethernet \""+hostmatch.mac+"\";" {
+			if line == "hardware ethernet "+hostmatch.mac+";" {
 				found[hostprefix+" guest mac"] = true
-			} else if line == "fixed-address \""+hostmatch.ip+"\";" {
+			} else if line == "fixed-address "+hostmatch.ip+";" {
 				found[hostprefix+" guest ip"] = true
-			} else if line == "option routers \""+hostmatch.gateway+"\";" {
+			} else if line == "option routers "+hostmatch.gateway+";" {
 				found[hostprefix+" guest gateway"] = true
-			} else if line == "option subnet-mask \""+hostmatch.cidr+"\";" {
+			} else if line == "option subnet-mask "+hostmatch.cidr+";" {
 				found[hostprefix+" guest cidr"] = true
 			}
 			continue
@@ -450,5 +451,4 @@ func TestGuestsConf(t *testing.T) {
 	for _, err := range errors {
 		t.Error(err)
 	}
-
 }
