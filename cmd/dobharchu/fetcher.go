@@ -215,6 +215,11 @@ func (f *Fetcher) IntegrateResponse(r *etcd.Response) (bool, error) {
 			f.logIntegrationMessage("debug", "Edit on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
 			return false, nil
 		}
+	case r.Action == "set":
+		if vtype != "metadata" {
+			f.logIntegrationMessage("debug", "Set on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
+			return false, nil
+		}
 	case r.Action == "delete":
 		if vtype != "metadata" && vtype != "" {
 			f.logIntegrationMessage("debug", "Delete on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
