@@ -433,10 +433,9 @@ func main() {
 	dp := newTestProcess("dobharchu", exec.Command("dobharchu", "-e", etcdClientAddress,
 		"-d", "example.com",
 		"-l", logLevel,
-		"--hypervisors-path="+hconfPath,
-		"--guests-path="+gconfPath,
+		"-c", testDir,
 	))
-	if err := dp.captureOutput(false); err != nil {
+	if err := dp.captureOutput(true); err != nil {
 		if err := ep.finish(); err != nil {
 			log.Error("Could not close out etcd")
 		}
@@ -452,7 +451,7 @@ func main() {
 	// Begin test
 	log.Info("Running test")
 	time.Sleep(time.Second)
-	if ok := reportConfStatus(r, "on start", "created", "created"); !ok {
+	if ok := reportConfStatus(r, "on start", "not present", "not present"); !ok {
 		log.Warning("Failure testing conf status on start")
 		testOk = false
 	}
@@ -461,13 +460,12 @@ func main() {
 	e := etcd.NewClient([]string{etcdClientAddress})
 	c := lochness.NewContext(e)
 
-	// Add flavors, network, and firewall group
-	log.Debug("Creating two flavors, a network, and a firewall group for building the other objects")
-	f1, err := testhelper.NewFlavor(c, 4, 4096, 8192)
-	if err != nil {
-		cleanupAfterError(err, "testhelper.NewFlavor", r, e, ep, dp)
-	}
-	f2, err := testhelper.NewFlavor(c, 6, 8192, 1024)
+	// Roughly follow the steps of the demo's guest-setup.sh
+	hs := make(map[string]*lochness.Hypervisor)
+	gs := make(map[string]*lochness.Guest)
+
+	// Basic setup
+	f, err := testhelper.NewFlavor(c, 1, 512, 1024)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewFlavor", r, e, ep, dp)
 	}
@@ -480,39 +478,30 @@ func main() {
 		cleanupAfterError(err, "testhelper.NewFirewallGroup", r, e, ep, dp)
 	}
 	time.Sleep(time.Second)
-	if ok := reportConfStatus(r, "after setup", "not touched", "not touched"); !ok {
+	if ok := reportConfStatus(r, "after setup", "created", "created"); !ok {
 		log.Warning("Failure testing conf status after setup")
 		testOk = false
 	}
 
-	// Add subnet
-	log.Debug("Creating a new subnet")
-	s, err := testhelper.NewSubnet(c, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
+	// Add a subnet
+	s, err := testhelper.NewSubnet(c, "192.168.100.0/24", net.IPv4(192, 168, 100, 1), net.IPv4(192, 168, 100, 10), net.IPv4(192, 168, 100, 200), n)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewSubnet", r, e, ep, dp)
 	}
 	time.Sleep(time.Second)
-	if ok := reportConfStatus(r, "after subnet creation", "touched", "touched"); !ok {
+	if ok := reportConfStatus(r, "after subnet creation", "not touched", "not touched"); !ok {
 		log.Warning("Failure testing conf status after subnet creation")
 		testOk = false
 	}
 
-	// Add hypervisors
-	hs := make(map[string]*lochness.Hypervisor)
-	gs := make(map[string]*lochness.Guest)
-	log.Debug("Creating two new hypervisors")
-	h1, err := testhelper.NewHypervisor(c, "fe:dc:ba:98:76:54", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
+	// Add a hypervisor
+	h, err := testhelper.NewHypervisor(c, "fe:dc:ba:98:76:54", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewHypervisor", r, e, ep, dp)
 	}
-	hs[h1.ID] = h1
-	h2, err := testhelper.NewHypervisor(c, "dc:ba:98:76:54:32", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
-	if err != nil {
-		cleanupAfterError(err, "testhelper.NewHypervisor", r, e, ep, dp)
-	}
-	hs[h2.ID] = h2
+	hs[h.ID] = h
 	time.Sleep(time.Second)
-	if ok := reportConfStatus(r, "after hypervisor creation", "changed", "touched"); !ok {
+	if ok := reportConfStatus(r, "after hypervisor creation", "changed", "not touched"); !ok {
 		log.Warning("Failure testing conf status after hypervisor creation")
 		testOk = false
 	}
@@ -521,35 +510,33 @@ func main() {
 		testOk = false
 	}
 
-	// Add guests
-	log.Debug("Creating four new guests")
-	g1, err := testhelper.NewGuest(c, "ba:98:76:54:32:10", n, s, f1, fw, h1)
+	// Create a guest, without setting the subnet or hypervisor (will NOT appear in the conf)
+	g, err := testhelper.NewGuest(c, "A4:75:C1:6B:E3:49", n, nil, f, fw, nil)
 	if err != nil {
 		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
 	}
-	gs[g1.ID] = g1
-	g2, err := testhelper.NewGuest(c, "98:76:54:32:10:fe", n, s, f2, fw, h1)
-	if err != nil {
-		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
-	}
-	gs[g2.ID] = g2
-	g3, err := testhelper.NewGuest(c, "76:54:32:10:fe:dc", n, s, f1, fw, h2)
-	if err != nil {
-		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
-	}
-	gs[g3.ID] = g3
-	g4, err := testhelper.NewGuest(c, "54:32:10:fe:dc:ba", n, s, f2, fw, h2)
-	if err != nil {
-		cleanupAfterError(err, "testhelper.NewGuest", r, e, ep, dp)
-	}
-	gs[g4.ID] = g4
 	time.Sleep(time.Second)
-	if ok := reportConfStatus(r, "after group creation", "touched", "changed"); !ok {
-		log.Warning("Failure testing conf status after group creation")
+	if ok := reportConfStatus(r, "after guest creation", "not touched", "not touched"); !ok {
+		log.Warning("Failure testing conf status after guest creation")
 		testOk = false
 	}
-	if ok := reportHasHosts(r, "after group creation", hs, gs); !ok {
-		log.Warning("Failure testing for hosts in confs after group creation")
+	if ok := reportHasHosts(r, "after guest creation", hs, gs); !ok {
+		log.Warning("Failure testing for hosts in confs after guest creation")
+		testOk = false
+	}
+
+	// Add the guest to the hypervisor (would normally be performed by loveland, having pulled it from the queue)
+	if err := h.AddGuest(g); err != nil {
+		cleanupAfterError(err, "hypervisor.AddGuest", r, e, ep, dp)
+	}
+	gs[g.ID] = g
+	time.Sleep(time.Second)
+	if ok := reportConfStatus(r, "after adding guest to hypervisor", "not touched", "changed"); !ok {
+		log.Warning("Failure testing conf status after adding guest to hypervisor")
+		testOk = false
+	}
+	if ok := reportHasHosts(r, "after adding guest to hypervisor", hs, gs); !ok {
+		log.Warning("Failure testing for hosts in confs after adding guest to hypervisor")
 		testOk = false
 	}
 

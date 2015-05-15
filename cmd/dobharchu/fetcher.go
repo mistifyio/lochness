@@ -204,20 +204,10 @@ func (f *Fetcher) IntegrateResponse(r *etcd.Response) (bool, error) {
 	}
 
 	// Filter out actions we don't care about
-	switch {
-	case r.Action == "create":
+	switch r.Action {
+	case "create", "compareAndSwap", "set", "delete":
 		if vtype != "metadata" {
-			f.logIntegrationMessage("debug", "Create on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
-			return false, nil
-		}
-	case r.Action == "compareAndSwap":
-		if vtype != "metadata" {
-			f.logIntegrationMessage("debug", "Edit on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
-			return false, nil
-		}
-	case r.Action == "delete":
-		if vtype != "metadata" && vtype != "" {
-			f.logIntegrationMessage("debug", "Delete on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
+			f.logIntegrationMessage("debug", "Action on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
 			return false, nil
 		}
 	default:
@@ -227,12 +217,12 @@ func (f *Fetcher) IntegrateResponse(r *etcd.Response) (bool, error) {
 
 	// Process each element
 	var err error
-	switch {
-	case element == "hypervisors":
+	switch element {
+	case "hypervisors":
 		err = f.integrateHypervisorChange(r, element, id, vtype)
-	case element == "guests":
+	case "guests":
 		err = f.integrateGuestChange(r, element, id, vtype)
-	case element == "subnets":
+	case "subnets":
 		err = f.integrateSubnetChange(r, element, id, vtype)
 	default:
 		f.logIntegrationMessage("debug", "Unknown element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
