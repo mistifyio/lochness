@@ -274,9 +274,8 @@ func (agent *MistifyAgent) FetchImage(guestID string) (string, error) {
 
 	host := hypervisor.IP.String()
 	req := &rpc.ImageRequest{
-		// TODO: Revisit this so sources can be custom and still work with
-		// image fetching and libvirt
-		Source: fmt.Sprintf("http://builds.mistify.io/guest-images/%s.gz", flavor.Image),
+		Id:   flavor.Image,
+		Type: guest.Type,
 	}
 	url := fmt.Sprintf("http://%s:8080/images", host) // TODO: Get port from somewhere. Config?
 	_, jobID, err := agent.request(url, "POST", http.StatusAccepted, req)
