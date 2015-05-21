@@ -151,7 +151,7 @@ func setupMetrics(port uint) *metrics.Metrics {
 	// Unless told not to, expose metrics via http
 	if port != 0 {
 		http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(ms)
 		}))
