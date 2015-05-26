@@ -95,7 +95,7 @@ func main() {
 	if *port != 0 {
 
 		http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(ms); err != nil {
 				log.WithField("error", err).Error(err)
