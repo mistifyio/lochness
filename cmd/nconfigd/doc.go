@@ -1,13 +1,13 @@
 /*
-kappa is a service to monitor etcd and run ansible on change. The prefixes to
+nconfigd is a service to monitor etcd and run ansible on change. The prefixes to
 watch and which ansible role(s) to run for each are specified in a config file.
 
 Usage
 
 The following arguments are understood:
 
-	$ kappa -h
-	Usage of kappa:
+	$ nconfigd -h
+	Usage of nconfigd:
 	-a, --ansible="/root/lochness-ansible": directory containing the ansible run command
 	-c, --config="": path to config file with prefixs
 	-e, --etcd="http://127.0.0.1:4001": address of etcd server

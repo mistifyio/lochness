@@ -7,7 +7,7 @@ all: \
 	cmd/dobharchu/dobharchu \
 	cmd/cworkerd/cworkerd \
 	cmd/heartbeat/heartbeat \
-	cmd/kappa/kappa \
+	cmd/nconfigd/nconfigd \
 	cmd/loveland/loveland \
 	cmd/waheela/waheela
 
@@ -69,12 +69,12 @@ $(SBIN_DIR)/heartbeat: cmd/heartbeat/heartbeat
 	install -D $< $(DESTDIR)$@
 
 
-cmd/kappa/kappa: cmd/kappa/main.go
+cmd/nconfigd/nconfigd: cmd/nconfigd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/kappa: cmd/kappa/kappa
+$(SBIN_DIR)/nconfigd: cmd/nconfigd/nconfigd
 	install -D $< $(DESTDIR)$@
 
 
@@ -118,7 +118,7 @@ clean:
 	cd cmd/heartbeat && \
 	go clean
 
-	cd cmd/kappa && \
+	cd cmd/nconfigd && \
 	go clean
 
 	cd cmd/loveland && \
@@ -135,7 +135,7 @@ install: \
   $(SBIN_DIR)/enfield \
   $(SBIN_DIR)/chypervisord \
   $(SBIN_DIR)/heartbeat \
-  $(SBIN_DIR)/kappa \
+  $(SBIN_DIR)/nconfigd \
   $(SBIN_DIR)/loveland \
   $(SBIN_DIR)/waheela \
 
