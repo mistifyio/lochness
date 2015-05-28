@@ -6,7 +6,7 @@ all: \
 	cmd/enfield/enfield \
 	cmd/dobharchu/dobharchu \
 	cmd/cworkerd/cworkerd \
-	cmd/heartbeat/heartbeat \
+	cmd/nheartbeatd/nheartbeatd \
 	cmd/nconfigd/nconfigd \
 	cmd/loveland/loveland \
 	cmd/waheela/waheela
@@ -60,12 +60,12 @@ $(SBIN_DIR)/chypervisord: cmd/chypervisord/chypervisord
 	install -D $< $(DESTDIR)$@
 
 
-cmd/heartbeat/heartbeat: cmd/heartbeat/main.go
+cmd/nheartbeatd/nheartbeatd: cmd/nheartbeatd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/heartbeat: cmd/heartbeat/heartbeat
+$(SBIN_DIR)/nheartbeatd: cmd/nheartbeatd/nheartbeatd
 	install -D $< $(DESTDIR)$@
 
 
@@ -115,7 +115,7 @@ clean:
 	cd cmd/chypervisord && \
 	go clean
 
-	cd cmd/heartbeat && \
+	cd cmd/nheartbeatd && \
 	go clean
 
 	cd cmd/nconfigd && \
@@ -134,7 +134,7 @@ install: \
   $(SBIN_DIR)/cworkerd \
   $(SBIN_DIR)/enfield \
   $(SBIN_DIR)/chypervisord \
-  $(SBIN_DIR)/heartbeat \
+  $(SBIN_DIR)/nheartbeatd \
   $(SBIN_DIR)/nconfigd \
   $(SBIN_DIR)/loveland \
   $(SBIN_DIR)/waheela \

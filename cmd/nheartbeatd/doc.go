@@ -1,13 +1,13 @@
 /*
-heartbeat periodically confirms that the hypervisor node is alive and updates
+nheartbeatd periodically confirms that the hypervisor node is alive and updates
 the resource usage in etcd.
 
 Usage
 
 The following arguments are understood:
 
-	$ heartbeat -h
-	Usage of heartbeat:
+	$ nheartbeatd -h
+	Usage of nheartbeatd:
 	-e, --etcd="http://localhost:4001": address of etcd machine
 	-d, --id="": hypervisor id
 	-i, --interval=60: update interval in seconds

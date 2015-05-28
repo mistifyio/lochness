@@ -1,8 +1,8 @@
-# heartbeat
+# nheartbeatd
 
-[![heartbeat](https://godoc.org/github.com/mistifyio/lochness/cmd/heartbeat?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/heartbeat)
+[![nheartbeatd](https://godoc.org/github.com/mistifyio/lochness/cmd/nheartbeatd?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/nheartbeatd)
 
-heartbeat periodically confirms that the hypervisor node is alive and updates
+nheartbeatd periodically confirms that the hypervisor node is alive and updates
 the resource usage in etcd.
 
 
@@ -10,8 +10,8 @@ the resource usage in etcd.
 
 The following arguments are understood:
 
-    $ heartbeat -h
-    Usage of heartbeat:
+    $ nheartbeatd -h
+    Usage of nheartbeatd:
     -e, --etcd="http://localhost:4001": address of etcd machine
     -d, --id="": hypervisor id
     -i, --interval=60: update interval in seconds
