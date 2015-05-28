@@ -2,7 +2,7 @@
 
 [![guest](https://godoc.org/github.com/mistifyio/lochness/cmd/guest?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/guest)
 
-guest is the command line interface to waheela, the guest management service.
+guest is the command line interface to cguestd, the guest management service.
 guest can list/create/modify/delete guests.
 
 

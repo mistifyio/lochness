@@ -177,7 +177,7 @@ func job(cmd *cobra.Command, ids []string) {
 func main() {
 	root := &cobra.Command{
 		Use:  "guest",
-		Long: "guest is the cli interface to waheela. All commands support arguments via command line or stdin.",
+		Long: "guest is the cli interface to cguestd. All commands support arguments via command line or stdin.",
 		Run:  help,
 	}
 	root.PersistentFlags().BoolVarP(&jsonout, "json", "j", jsonout, "output in json")

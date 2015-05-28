@@ -44,7 +44,7 @@ func Run(port uint, ctx *lochness.Context, jobQueue *jobqueue.Client, m *metrics
 
 	// Common middleware applied to every request
 	logrusMiddleware := logrusmiddleware.Middleware{
-		Name: "waheela",
+		Name: "cguestd",
 	}
 	commonMiddleware := alice.New(
 		func(h http.Handler) http.Handler {

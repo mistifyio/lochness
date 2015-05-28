@@ -1,11 +1,11 @@
 /*
-waheela is the guest management service. It exposes functionality over an HTTP
+cguestd is the guest management service. It exposes functionality over an HTTP
 API with JSON formatting.
 
 Usage
 
-	$ waheela -h
-	Usage of waheela:
+	$ cguestd -h
+	Usage of cguestd:
 	-e, --etcd="http://localhost:4001": address of etcd machine
 	-l, --log-level="warn": log level
 	-p, --port=18000: listen port

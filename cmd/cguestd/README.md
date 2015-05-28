@@ -1,14 +1,14 @@
-# waheela
+# cguestd
 
-[![waheela](https://godoc.org/github.com/mistifyio/lochness/cmd/waheela?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/waheela)
+[![cguestd](https://godoc.org/github.com/mistifyio/lochness/cmd/cguestd?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/cguestd)
 
-waheela is the guest management service. It exposes functionality over an HTTP
+cguestd is the guest management service. It exposes functionality over an HTTP
 API with JSON formatting.
 
 ### Usage
 
-    $ waheela -h
-    Usage of waheela:
+    $ cguestd -h
+    Usage of cguestd:
     -e, --etcd="http://localhost:4001": address of etcd machine
     -l, --log-level="warn": log level
     -p, --port=18000: listen port

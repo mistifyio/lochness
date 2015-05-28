@@ -9,7 +9,7 @@ all: \
 	cmd/nheartbeatd/nheartbeatd \
 	cmd/nconfigd/nconfigd \
 	cmd/loveland/loveland \
-	cmd/waheela/waheela
+	cmd/cguestd/cguestd
 
 cmd/cfirewalld/cfirewalld: cmd/cfirewalld/cfirewalld.go \
 		cmd/cfirewalld/nftables.go
@@ -87,15 +87,15 @@ $(SBIN_DIR)/loveland: cmd/loveland/loveland
 	install -D $< $(DESTDIR)$@
 
 
-cmd/waheela/waheela: cmd/waheela/main.go \
-		cmd/waheela/guest.go \
-		cmd/waheela/helpers.go \
-		cmd/waheela/http.go
+cmd/cguestd/cguestd: cmd/cguestd/main.go \
+		cmd/cguestd/guest.go \
+		cmd/cguestd/helpers.go \
+		cmd/cguestd/http.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/waheela: cmd/waheela/waheela
+$(SBIN_DIR)/cguestd: cmd/cguestd/cguestd
 	install -D $< $(DESTDIR)$@
 
 
@@ -124,7 +124,7 @@ clean:
 	cd cmd/loveland && \
 	go clean -x
 
-	cd cmd/waheela && \
+	cd cmd/cguestd && \
 	go clean -x
 
 
@@ -137,5 +137,5 @@ install: \
   $(SBIN_DIR)/nheartbeatd \
   $(SBIN_DIR)/nconfigd \
   $(SBIN_DIR)/loveland \
-  $(SBIN_DIR)/waheela \
+  $(SBIN_DIR)/cguestd \
 

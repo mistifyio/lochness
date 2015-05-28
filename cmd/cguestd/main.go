@@ -68,7 +68,7 @@ func main() {
 		ss, _ := metrics.NewStatsdSink(statsd)
 		fanout = append(fanout, ss)
 	}
-	conf := metrics.DefaultConfig("waheela")
+	conf := metrics.DefaultConfig("cguestd")
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, fanout)
 
