@@ -1,13 +1,13 @@
 /*
-enfield is a simple web service to enable boot and pre-init configuration of
+cbootstrapd is a simple web service to enable boot and pre-init configuration of
 LochNess nodes.
 
 Usage
 
 The following arguments are understood:
 
-    $ enfield -h
-    Usage of enfield:
+    $ cbootstrapd -h
+    Usage of cbootstrapd:
     -b, --base="http://ipxe.mistify.local:8888": base address of bits request
     -e, --etcd="http://127.0.0.1:4001": address of etcd machine
     -i, --images="/var/lib/images": directory containing the images

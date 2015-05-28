@@ -92,7 +92,7 @@ func main() {
 		fanout = append(fanout, ss)
 	}
 
-	conf := metrics.DefaultConfig("enfield")
+	conf := metrics.DefaultConfig("cbootstrapd")
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, fanout)
 	mw := mmw.New(m)

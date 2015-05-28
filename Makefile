@@ -3,7 +3,7 @@ SBIN_DIR=$(PREFIX)/sbin
 
 all: \
 	cmd/cfirewalld/cfirewalld \
-	cmd/enfield/enfield \
+	cmd/cbootstrapd/cbootstrapd \
 	cmd/cdhcpd/cdhcpd \
 	cmd/cworkerd/cworkerd \
 	cmd/nheartbeatd/nheartbeatd \
@@ -39,12 +39,12 @@ $(SBIN_DIR)/cworkerd: cmd/cworkerd/cworkerd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/enfield/enfield: cmd/enfield/main.go
+cmd/cbootstrapd/cbootstrapd: cmd/cbootstrapd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/enfield: cmd/enfield/enfield
+$(SBIN_DIR)/cbootstrapd: cmd/cbootstrapd/cbootstrapd
 	install -D $< $(DESTDIR)$@
 
 
@@ -109,7 +109,7 @@ clean:
 	cd cmd/cworkerd && \
 	go clean
 
-	cd cmd/enfield && \
+	cd cmd/cbootstrapd && \
 	go clean
 
 	cd cmd/chypervisord && \
@@ -132,7 +132,7 @@ install: \
   $(SBIN_DIR)/cfirewalld \
   $(SBIN_DIR)/cdhcpd \
   $(SBIN_DIR)/cworkerd \
-  $(SBIN_DIR)/enfield \
+  $(SBIN_DIR)/cbootstrapd \
   $(SBIN_DIR)/chypervisord \
   $(SBIN_DIR)/nheartbeatd \
   $(SBIN_DIR)/nconfigd \
