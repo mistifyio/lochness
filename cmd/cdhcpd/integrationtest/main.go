@@ -377,7 +377,7 @@ func main() {
 	}
 
 	// Write logs to this directory
-	testDir = "dobharchu-integration-test-" + uuid.New()
+	testDir = "cdhcpd-integration-test-" + uuid.New()
 	if err := os.Mkdir(testDir, 0755); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -429,8 +429,8 @@ func main() {
 	if err := ep.start(); err != nil {
 		cleanupAfterError(err, "testProcess.start", r, nil, ep, nil)
 	}
-	log.Info("Starting dobharchu")
-	dp := newTestProcess("dobharchu", exec.Command("dobharchu", "-e", etcdClientAddress,
+	log.Info("Starting cdhcpd")
+	dp := newTestProcess("cdhcpd", exec.Command("cdhcpd", "-e", etcdClientAddress,
 		"-d", "example.com",
 		"-l", logLevel,
 		"-c", testDir,

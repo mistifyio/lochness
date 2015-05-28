@@ -4,7 +4,7 @@ SBIN_DIR=$(PREFIX)/sbin
 all: \
 	cmd/cfirewalld/cfirewalld \
 	cmd/enfield/enfield \
-	cmd/dobharchu/dobharchu \
+	cmd/cdhcpd/cdhcpd \
 	cmd/cworkerd/cworkerd \
 	cmd/nheartbeatd/nheartbeatd \
 	cmd/nconfigd/nconfigd \
@@ -21,12 +21,12 @@ $(SBIN_DIR)/cfirewalld: cmd/cfirewalld/cfirewalld
 	install -D $< $(DESTDIR)$@
 
 
-cmd/dobharchu/dobharchu: cmd/dobharchu/main.go
+cmd/cdhcpd/cdhcpd: cmd/cdhcpd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/dobharchu: cmd/dobharchu/dobharchu
+$(SBIN_DIR)/cdhcpd: cmd/cdhcpd/cdhcpd
 	install -D $< $(DESTDIR)$@
 
 
@@ -103,7 +103,7 @@ clean:
 	cd cmd/cfirewalld && \
 	go clean -x
 
-	cd cmd/dobharchu && \
+	cd cmd/cdhcpd && \
 	go clean
 
 	cd cmd/cworkerd && \
@@ -130,7 +130,7 @@ clean:
 
 install: \
   $(SBIN_DIR)/cfirewalld \
-  $(SBIN_DIR)/dobharchu \
+  $(SBIN_DIR)/cdhcpd \
   $(SBIN_DIR)/cworkerd \
   $(SBIN_DIR)/enfield \
   $(SBIN_DIR)/chypervisord \
