@@ -144,7 +144,7 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 // setupMetrics creates the metric sink and starts an optional http server
 func setupMetrics(port uint) *metrics.Metrics {
 	ms := mapsink.New()
-	conf := metrics.DefaultConfig("dover")
+	conf := metrics.DefaultConfig("cworkerd")
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, ms)
 

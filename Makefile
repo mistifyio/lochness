@@ -5,7 +5,7 @@ all: \
 	cmd/cfirewalld/cfirewalld \
 	cmd/enfield/enfield \
 	cmd/dobharchu/dobharchu \
-	cmd/dover/dover \
+	cmd/cworkerd/cworkerd \
 	cmd/heartbeat/heartbeat \
 	cmd/kappa/kappa \
 	cmd/loveland/loveland \
@@ -30,12 +30,12 @@ $(SBIN_DIR)/dobharchu: cmd/dobharchu/dobharchu
 	install -D $< $(DESTDIR)$@
 
 
-cmd/dover/dover: cmd/dover/main.go
+cmd/cworkerd/cworkerd: cmd/cworkerd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/dover: cmd/dover/dover
+$(SBIN_DIR)/cworkerd: cmd/cworkerd/cworkerd
 	install -D $< $(DESTDIR)$@
 
 
@@ -106,7 +106,7 @@ clean:
 	cd cmd/dobharchu && \
 	go clean
 
-	cd cmd/dover && \
+	cd cmd/cworkerd && \
 	go clean
 
 	cd cmd/enfield && \
@@ -131,7 +131,7 @@ clean:
 install: \
   $(SBIN_DIR)/cfirewalld \
   $(SBIN_DIR)/dobharchu \
-  $(SBIN_DIR)/dover \
+  $(SBIN_DIR)/cworkerd \
   $(SBIN_DIR)/enfield \
   $(SBIN_DIR)/grootslang \
   $(SBIN_DIR)/heartbeat \

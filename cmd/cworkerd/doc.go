@@ -1,5 +1,5 @@
 /*
-dover is the worker daemon for guest actions. It takes tasks out of a beanstalk
+cworkerd is the worker daemon for guest actions. It takes tasks out of a beanstalk
 queue, communicates with agents to perform the work, and updates guest
 metadata.
 
@@ -7,8 +7,8 @@ Command Usage
 
 The following arguments are understood:
 
-	$ dover -h
-	Usage of dover:
+	$ cworkerd -h
+	Usage of cworkerd:
 	-b, --beanstalk="127.0.0.1:11300": address of beanstalkd server
 	-e, --etcd="http://127.0.0.1:4001": address of etcd server
 	-p, --http=7544: http port to publish metrics. set to 0 to disable
