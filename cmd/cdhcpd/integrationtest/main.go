@@ -525,7 +525,7 @@ func main() {
 		testOk = false
 	}
 
-	// Add the guest to the hypervisor (would normally be performed by loveland, having pulled it from the queue)
+	// Add the guest to the hypervisor (would normally be performed by cplacerd, having pulled it from the queue)
 	if err := h.AddGuest(g); err != nil {
 		cleanupAfterError(err, "hypervisor.AddGuest", r, e, ep, dp)
 	}

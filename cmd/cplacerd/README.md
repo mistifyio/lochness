@@ -1,8 +1,8 @@
-# loveland
+# cplacerd
 
-[![loveland](https://godoc.org/github.com/mistifyio/lochness/cmd/loveland?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/loveland)
+[![cplacerd](https://godoc.org/github.com/mistifyio/lochness/cmd/cplacerd?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/cplacerd)
 
-loveland is the guest placement daemon. It monitors a beanstalk queue for
+cplacerd is the guest placement daemon. It monitors a beanstalk queue for
 requests to create new guests. It then decides which hypervisor a new guest
 should be created under based on a variety of criteria. It does not actually
 communicate with the hypervisor, but creates the job for `cworkerd` to process.
@@ -12,8 +12,8 @@ communicate with the hypervisor, but creates the job for `cworkerd` to process.
 
 The following arguments are understood:
 
-    $ loveland -h
-    Usage of loveland:
+    $ cplacerd -h
+    Usage of cplacerd:
     -b, --beanstalk="127.0.0.1:11300": address of beanstalkd server
     -e, --etcd="http://127.0.0.1:4001": address of etcd server
     -p, --http=7543: address for http interface. set to 0 to disable

@@ -8,7 +8,7 @@ all: \
 	cmd/cworkerd/cworkerd \
 	cmd/nheartbeatd/nheartbeatd \
 	cmd/nconfigd/nconfigd \
-	cmd/loveland/loveland \
+	cmd/cplacerd/cplacerd \
 	cmd/cguestd/cguestd
 
 cmd/cfirewalld/cfirewalld: cmd/cfirewalld/cfirewalld.go \
@@ -78,12 +78,12 @@ $(SBIN_DIR)/nconfigd: cmd/nconfigd/nconfigd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/loveland/loveland: cmd/loveland/main.go
+cmd/cplacerd/cplacerd: cmd/cplacerd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/loveland: cmd/loveland/loveland
+$(SBIN_DIR)/cplacerd: cmd/cplacerd/cplacerd
 	install -D $< $(DESTDIR)$@
 
 
@@ -121,7 +121,7 @@ clean:
 	cd cmd/nconfigd && \
 	go clean
 
-	cd cmd/loveland && \
+	cd cmd/cplacerd && \
 	go clean -x
 
 	cd cmd/cguestd && \
@@ -136,6 +136,6 @@ install: \
   $(SBIN_DIR)/chypervisord \
   $(SBIN_DIR)/nheartbeatd \
   $(SBIN_DIR)/nconfigd \
-  $(SBIN_DIR)/loveland \
+  $(SBIN_DIR)/cplacerd \
   $(SBIN_DIR)/cguestd \
 

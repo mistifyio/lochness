@@ -88,7 +88,7 @@ func main() {
 
 	//inm := metrics.NewInmemSink(10*time.Second, 5*time.Minute)
 	ms := mapsink.New()
-	conf := metrics.DefaultConfig("loveland")
+	conf := metrics.DefaultConfig("cplacerd")
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, ms)
 
