@@ -2,7 +2,7 @@ PREFIX := /usr
 SBIN_DIR=$(PREFIX)/sbin
 
 all: \
-	cmd/cherufe/cherufe \
+	cmd/cfirewalld/cfirewalld \
 	cmd/enfield/enfield \
 	cmd/dobharchu/dobharchu \
 	cmd/dover/dover \
@@ -11,13 +11,13 @@ all: \
 	cmd/loveland/loveland \
 	cmd/waheela/waheela
 
-cmd/cherufe/cherufe: cmd/cherufe/cherufe.go \
-		cmd/cherufe/nftables.go
+cmd/cfirewalld/cfirewalld: cmd/cfirewalld/cfirewalld.go \
+		cmd/cfirewalld/nftables.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/cherufe: cmd/cherufe/cherufe
+$(SBIN_DIR)/cfirewalld: cmd/cfirewalld/cfirewalld
 	install -D $< $(DESTDIR)$@
 
 
@@ -100,7 +100,7 @@ $(SBIN_DIR)/waheela: cmd/waheela/waheela
 
 
 clean:
-	cd cmd/cherufe && \
+	cd cmd/cfirewalld && \
 	go clean -x
 
 	cd cmd/dobharchu && \
@@ -129,7 +129,7 @@ clean:
 
 
 install: \
-  $(SBIN_DIR)/cherufe \
+  $(SBIN_DIR)/cfirewalld \
   $(SBIN_DIR)/dobharchu \
   $(SBIN_DIR)/dover \
   $(SBIN_DIR)/enfield \
