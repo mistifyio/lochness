@@ -1,8 +1,8 @@
-# grootslang
+# chypervisord
 
-[![grootslang](https://godoc.org/github.com/mistifyio/lochness/cmd/grootslang?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/grootslang)
+[![chypervisord](https://godoc.org/github.com/mistifyio/lochness/cmd/chypervisord?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/chypervisord)
 
-grootslang is the hypervisor management service. It exposes functionality over
+chypervisord is the hypervisor management service. It exposes functionality over
 an HTTP API with JSON formatting.
 
 
@@ -10,8 +10,8 @@ an HTTP API with JSON formatting.
 
 The following arguments are understood:
 
-    $ grootslang -h
-    Usage of grootslang:
+    $ chypervisord -h
+    Usage of chypervisord:
     -e, --etcd="http://localhost:4001": address of etcd machine
     -l, --log-level="warn": log level
     -p, --port=17000: listen port

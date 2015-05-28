@@ -48,15 +48,15 @@ $(SBIN_DIR)/enfield: cmd/enfield/enfield
 	install -D $< $(DESTDIR)$@
 
 
-cmd/grootslang/grootslang: cmd/grootslang/main.go \
-		cmd/grootslang/helpers.go \
-		cmd/grootslang/http.go \
-		cmd/grootslang/hypervisor.go
+cmd/chypervisord/chypervisord: cmd/chypervisord/main.go \
+		cmd/chypervisord/helpers.go \
+		cmd/chypervisord/http.go \
+		cmd/chypervisord/hypervisor.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/grootslang: cmd/grootslang/grootslang
+$(SBIN_DIR)/chypervisord: cmd/chypervisord/chypervisord
 	install -D $< $(DESTDIR)$@
 
 
@@ -112,7 +112,7 @@ clean:
 	cd cmd/enfield && \
 	go clean
 
-	cd cmd/grootslang && \
+	cd cmd/chypervisord && \
 	go clean
 
 	cd cmd/heartbeat && \
@@ -133,7 +133,7 @@ install: \
   $(SBIN_DIR)/dobharchu \
   $(SBIN_DIR)/cworkerd \
   $(SBIN_DIR)/enfield \
-  $(SBIN_DIR)/grootslang \
+  $(SBIN_DIR)/chypervisord \
   $(SBIN_DIR)/heartbeat \
   $(SBIN_DIR)/kappa \
   $(SBIN_DIR)/loveland \

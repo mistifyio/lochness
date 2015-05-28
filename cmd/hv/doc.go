@@ -1,5 +1,5 @@
 /*
-hv is the command line interface to grootslang, the hypervisor management
+hv is the command line interface to chypervisord, the hypervisor management
 service. hv can list/modify/delete hypervisors, hypervisor guests, hypervisors
 subnets, and hypervisor configs.
 
@@ -13,7 +13,7 @@ Usage
 The following arguments are understood:
 
 	$ hv -h
-	hv is the cli interface to grootslang. All commands support arguments via command line or stdin
+	hv is the cli interface to chypervisord. All commands support arguments via command line or stdin
 
 	Usage:
 	hv [flags]

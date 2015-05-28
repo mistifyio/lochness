@@ -40,7 +40,7 @@ func Run(port uint, ctx *lochness.Context) error {
 
 	// Common middleware applied to every request
 	logrusMiddleware := logrusmiddleware.Middleware{
-		Name: "grootslang",
+		Name: "chypervisord",
 	}
 	commonMiddleware := alice.New(
 		func(h http.Handler) http.Handler {
