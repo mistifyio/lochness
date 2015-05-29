@@ -23,8 +23,8 @@ Example config
 		"/lochness/config": [],
 		"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/cbootstrapd": ["cbootstrapd"],
 		"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/dhcpd": ["dhcpd","dhcrelay"],
-		"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/dns": ["dns","dhcpd"],
 		"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/dhcrelay": ["dhcrelay"],
+		"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/dns": ["dns","dhcpd"],
 		"/lochness/hypervisors/abcd1234-abcd-1234-abcd-1234abcd1234/config/tftpd": ["tftpd"]
 	}
 */
