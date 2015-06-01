@@ -3,7 +3,7 @@
 [![hostport](https://godoc.org/github.com/mistifyio/lochness/pkg/hostport?status.png)](https://godoc.org/github.com/mistifyio/lochness/pkg/hostport)
 
 Package hostport provides more sane and expected behavior for splitting a
-networks address into host and port parts than net.SplitHostPort
+network address into host and port parts
 
 ## Usage
 
@@ -13,7 +13,7 @@ networks address into host and port parts than net.SplitHostPort
 func Split(hostport string) (host string, port string, err error)
 ```
 Split splits a network address of the form "host", "host:port", "[host]",
-"[host]:port", ""[ipv6-host%zone]", or "[ipv6-host%zone]:port" into host or
+"[host]:port", "[ipv6-host%zone]", or "[ipv6-host%zone]:port" into host or
 ipv6-host%zone and port. Port will be an empty string if not supplied.
 
 --

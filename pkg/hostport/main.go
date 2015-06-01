@@ -1,5 +1,5 @@
 // Package hostport provides more sane and expected behavior for splitting a
-// networks address into host and port parts than net.SplitHostPort
+// network address into host and port parts
 package hostport
 
 import (
@@ -11,7 +11,7 @@ import (
 const missingPortMsg = "missing port in address"
 
 // Split splits a network address of the form "host", "host:port", "[host]",
-// "[host]:port", ""[ipv6-host%zone]", or "[ipv6-host%zone]:port" into host or
+// "[host]:port", "[ipv6-host%zone]", or "[ipv6-host%zone]:port" into host or
 // ipv6-host%zone and port. Port will be an empty string if not supplied.
 func Split(hostport string) (host string, port string, err error) {
 	var rawport string
