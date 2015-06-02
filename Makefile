@@ -2,140 +2,140 @@ PREFIX := /usr
 SBIN_DIR=$(PREFIX)/sbin
 
 all: \
-	cmd/cherufe/cherufe \
-	cmd/enfield/enfield \
-	cmd/dobharchu/dobharchu \
-	cmd/dover/dover \
-	cmd/heartbeat/heartbeat \
-	cmd/kappa/kappa \
-	cmd/loveland/loveland \
-	cmd/waheela/waheela
+	cmd/cfirewalld/cfirewalld \
+	cmd/cbootstrapd/cbootstrapd \
+	cmd/cdhcpd/cdhcpd \
+	cmd/cworkerd/cworkerd \
+	cmd/nheartbeatd/nheartbeatd \
+	cmd/nconfigd/nconfigd \
+	cmd/cplacerd/cplacerd \
+	cmd/cguestd/cguestd
 
-cmd/cherufe/cherufe: cmd/cherufe/cherufe.go \
-		cmd/cherufe/nftables.go
+cmd/cfirewalld/cfirewalld: cmd/cfirewalld/cfirewalld.go \
+		cmd/cfirewalld/nftables.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/cherufe: cmd/cherufe/cherufe
+$(SBIN_DIR)/cfirewalld: cmd/cfirewalld/cfirewalld
 	install -D $< $(DESTDIR)$@
 
 
-cmd/dobharchu/dobharchu: cmd/dobharchu/main.go
+cmd/cdhcpd/cdhcpd: cmd/cdhcpd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/dobharchu: cmd/dobharchu/dobharchu
+$(SBIN_DIR)/cdhcpd: cmd/cdhcpd/cdhcpd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/dover/dover: cmd/dover/main.go
+cmd/cworkerd/cworkerd: cmd/cworkerd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/dover: cmd/dover/dover
+$(SBIN_DIR)/cworkerd: cmd/cworkerd/cworkerd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/enfield/enfield: cmd/enfield/main.go
+cmd/cbootstrapd/cbootstrapd: cmd/cbootstrapd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/enfield: cmd/enfield/enfield
+$(SBIN_DIR)/cbootstrapd: cmd/cbootstrapd/cbootstrapd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/grootslang/grootslang: cmd/grootslang/main.go \
-		cmd/grootslang/helpers.go \
-		cmd/grootslang/http.go \
-		cmd/grootslang/hypervisor.go
+cmd/chypervisord/chypervisord: cmd/chypervisord/main.go \
+		cmd/chypervisord/helpers.go \
+		cmd/chypervisord/http.go \
+		cmd/chypervisord/hypervisor.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/grootslang: cmd/grootslang/grootslang
+$(SBIN_DIR)/chypervisord: cmd/chypervisord/chypervisord
 	install -D $< $(DESTDIR)$@
 
 
-cmd/heartbeat/heartbeat: cmd/heartbeat/main.go
+cmd/nheartbeatd/nheartbeatd: cmd/nheartbeatd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/heartbeat: cmd/heartbeat/heartbeat
+$(SBIN_DIR)/nheartbeatd: cmd/nheartbeatd/nheartbeatd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/kappa/kappa: cmd/kappa/main.go
+cmd/nconfigd/nconfigd: cmd/nconfigd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/kappa: cmd/kappa/kappa
+$(SBIN_DIR)/nconfigd: cmd/nconfigd/nconfigd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/loveland/loveland: cmd/loveland/main.go
+cmd/cplacerd/cplacerd: cmd/cplacerd/main.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/loveland: cmd/loveland/loveland
+$(SBIN_DIR)/cplacerd: cmd/cplacerd/cplacerd
 	install -D $< $(DESTDIR)$@
 
 
-cmd/waheela/waheela: cmd/waheela/main.go \
-		cmd/waheela/guest.go \
-		cmd/waheela/helpers.go \
-		cmd/waheela/http.go
+cmd/cguestd/cguestd: cmd/cguestd/main.go \
+		cmd/cguestd/guest.go \
+		cmd/cguestd/helpers.go \
+		cmd/cguestd/http.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/waheela: cmd/waheela/waheela
+$(SBIN_DIR)/cguestd: cmd/cguestd/cguestd
 	install -D $< $(DESTDIR)$@
 
 
 clean:
-	cd cmd/cherufe && \
+	cd cmd/cfirewalld && \
 	go clean -x
 
-	cd cmd/dobharchu && \
+	cd cmd/cdhcpd && \
 	go clean
 
-	cd cmd/dover && \
+	cd cmd/cworkerd && \
 	go clean
 
-	cd cmd/enfield && \
+	cd cmd/cbootstrapd && \
 	go clean
 
-	cd cmd/grootslang && \
+	cd cmd/chypervisord && \
 	go clean
 
-	cd cmd/heartbeat && \
+	cd cmd/nheartbeatd && \
 	go clean
 
-	cd cmd/kappa && \
+	cd cmd/nconfigd && \
 	go clean
 
-	cd cmd/loveland && \
+	cd cmd/cplacerd && \
 	go clean -x
 
-	cd cmd/waheela && \
+	cd cmd/cguestd && \
 	go clean -x
 
 
 install: \
-  $(SBIN_DIR)/cherufe \
-  $(SBIN_DIR)/dobharchu \
-  $(SBIN_DIR)/dover \
-  $(SBIN_DIR)/enfield \
-  $(SBIN_DIR)/grootslang \
-  $(SBIN_DIR)/heartbeat \
-  $(SBIN_DIR)/kappa \
-  $(SBIN_DIR)/loveland \
-  $(SBIN_DIR)/waheela \
+  $(SBIN_DIR)/cfirewalld \
+  $(SBIN_DIR)/cdhcpd \
+  $(SBIN_DIR)/cworkerd \
+  $(SBIN_DIR)/cbootstrapd \
+  $(SBIN_DIR)/chypervisord \
+  $(SBIN_DIR)/nheartbeatd \
+  $(SBIN_DIR)/nconfigd \
+  $(SBIN_DIR)/cplacerd \
+  $(SBIN_DIR)/cguestd \
 
