@@ -21,6 +21,12 @@ func AssertSpec(spec string)
 ```
 AssertSpec checks whether a json string parses as expected
 
+#### func  ProcessResponse
+
+```go
+func ProcessResponse(response *http.Response, title, action string, expectedStatuses []int, dest interface{})
+```
+
 #### func  Read
 
 ```go
