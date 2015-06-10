@@ -27,8 +27,7 @@ The following arguments are understood
 
 	Use "img help [command]" for more information about a command.
 
-Input is supported via command line or stdin. Async actions queue a job, which
-can be checked on with the job command.
+Input is supported via command line or stdin.
 
 Output
 
@@ -73,7 +72,7 @@ Download image
 
 Delete image
 
-	$ img -s :20000 delete 95f012e0-56a5-47e0-96df-38b806feda63
+	$ img delete 95f012e0-56a5-47e0-96df-38b806feda63
 	95f012e0-56a5-47e0-96df-38b806feda63
 */
 package main
