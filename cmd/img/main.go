@@ -84,6 +84,7 @@ func upload(cmd *cobra.Command, specs []string) {
 		specs = cli.Read(os.Stdin)
 	}
 
+	uploadURL := getServerURL() + "/images"
 	for _, spec := range specs {
 		uploadImage := &metadata.Image{}
 		if err := json.Unmarshal([]byte(spec), uploadImage); err != nil {
@@ -110,6 +111,7 @@ func upload(cmd *cobra.Command, specs []string) {
 				"func":  "os.Open",
 			}).Fatal("failed to open file")
 		}
+		// File remains open until function exit
 		defer file.Close()
 
 		info, err := file.Stat()
@@ -121,7 +123,6 @@ func upload(cmd *cobra.Command, specs []string) {
 			}).Fatal("failed to stat file")
 		}
 
-		uploadURL := getServerURL() + "/images"
 		req, err := http.NewRequest("PUT", uploadURL, file)
 		if err != nil {
 			log.WithFields(log.Fields{
