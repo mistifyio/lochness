@@ -37,7 +37,7 @@ func (c *Client) GetMany(title, endpoint string) ([]map[string]interface{}, *htt
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := []map[string]interface{}{}
-	processResponse(resp, title, "get", []int{http.StatusOK}, &ret)
+	ProcessResponse(resp, title, "get", []int{http.StatusOK}, &ret)
 	return ret, resp
 }
 
@@ -48,7 +48,7 @@ func (c *Client) GetList(title, endpoint string) ([]string, *http.Response) {
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := []string{}
-	processResponse(resp, title, "get", []int{http.StatusOK}, &ret)
+	ProcessResponse(resp, title, "get", []int{http.StatusOK}, &ret)
 	return ret, resp
 }
 
@@ -59,7 +59,7 @@ func (c *Client) Get(title, endpoint string) (map[string]interface{}, *http.Resp
 		log.WithField("error", err).Fatal("failed to get " + title)
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "get", []int{http.StatusOK}, &ret)
+	ProcessResponse(resp, title, "get", []int{http.StatusOK}, &ret)
 	return ret, resp
 }
 
@@ -73,7 +73,7 @@ func (c *Client) Post(title, endpoint, body string) (map[string]interface{}, *ht
 		}).Fatal("unable to create new " + title)
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "create", []int{http.StatusAccepted, http.StatusCreated}, &ret)
+	ProcessResponse(resp, title, "create", []int{http.StatusAccepted, http.StatusCreated}, &ret)
 	return ret, resp
 }
 
@@ -97,7 +97,7 @@ func (c *Client) Delete(title, endpoint string) (map[string]interface{}, *http.R
 	}
 
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "delete", []int{http.StatusAccepted, http.StatusOK}, &ret)
+	ProcessResponse(resp, title, "delete", []int{http.StatusAccepted, http.StatusOK}, &ret)
 	return ret, resp
 }
 
@@ -122,7 +122,7 @@ func (c *Client) Patch(title, endpoint, body string) (map[string]interface{}, *h
 		}).Fatal("unable to complete request")
 	}
 	ret := map[string]interface{}{}
-	processResponse(resp, title, "update", []int{http.StatusOK}, &ret)
+	ProcessResponse(resp, title, "update", []int{http.StatusOK}, &ret)
 	return ret, resp
 }
 
@@ -133,7 +133,7 @@ func parseError(dec *json.Decoder) (string, []interface{}) {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "parseError",
-		}).Error("failed to parse json")
+		}).Warn("failed to parse error json")
 		return "", []interface{}{}
 	}
 
@@ -155,7 +155,7 @@ func parseError(dec *json.Decoder) (string, []interface{}) {
 	return msg, stack
 }
 
-func processResponse(response *http.Response, title, action string, expectedStatuses []int, dest interface{}) {
+func ProcessResponse(response *http.Response, title, action string, expectedStatuses []int, dest interface{}) {
 	defer response.Body.Close()
 
 	dec := json.NewDecoder(response.Body)
