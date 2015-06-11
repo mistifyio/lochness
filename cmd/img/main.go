@@ -158,10 +158,11 @@ func download(cmd *cobra.Command, ids []string) {
 
 	for _, id := range ids {
 		success := false
-		tempDest, err := ioutil.TempFile("", "incompleteImage-")
+		tempDest, err := ioutil.TempFile(downloadDir, "incompleteImage-")
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
+				"dir":   downloadDir,
 				"func":  "ioutil.TempFile",
 			}).Fatal("could not create temporary file")
 		}
