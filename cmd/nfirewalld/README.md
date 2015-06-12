@@ -1,8 +1,8 @@
-# cfirewalld
+# nfirewalld
 
-[![cfirewalld](https://godoc.org/github.com/mistifyio/lochness/cmd/cfirewalld?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/cfirewalld)
+[![nfirewalld](https://godoc.org/github.com/mistifyio/lochness/cmd/nfirewalld?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/nfirewalld)
 
-cfirewalld is a simple firewall daemon that monitors etcd for firewall
+nfirewalld is a simple firewall daemon that monitors etcd for firewall
 configuration. The firewall is implemented using nftables. When guests or
 firewall groups are added, modified, or removed, a new firewall configuration is
 generated and nftables is reloaded.
@@ -12,8 +12,8 @@ generated and nftables is reloaded.
 
 The following arguments are understood:
 
-    $ cfirewalld -h
-    Usage of cfirewalld:
+    $ nfirewalld -h
+    Usage of nfirewalld:
     -e, --etcd="http://localhost:4001": etcd cluster address
     -f, --file="/etc/nftables.conf": nft configuration file
     -i, --id="": hypervisor id
