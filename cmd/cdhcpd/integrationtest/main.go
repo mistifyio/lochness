@@ -313,7 +313,7 @@ func cleanup(r *bytes.Buffer, e *etcd.Client, ep *testProcess, dp *testProcess) 
 		}
 	}
 	if dp != nil {
-		log.Debug("Exiting Dobharchu")
+		log.Debug("Exiting cdhcpd")
 		_ = dp.finish()
 		time.Sleep(time.Second)
 	}
@@ -410,7 +410,7 @@ func main() {
 
 	// Set up report and global ok
 	r := &bytes.Buffer{}
-	_, _ = r.WriteString("Dobharchu Integration Test Results\n")
+	_, _ = r.WriteString("cdhcpd Integration Test Results\n")
 	_, _ = r.WriteString("==================================\n")
 	testOk = true
 

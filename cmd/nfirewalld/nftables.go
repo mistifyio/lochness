@@ -88,6 +88,6 @@ func nftWrite(w io.Writer, ip string, groups groupMap, guests guestMap) error {
 //line nftables.ego:52
 	}
 //line nftables.ego:53
-	_, _ = fmt.Fprintf(w, "\n\n# everything else\nadd rule filter input reject with icmp type port-unreachable\n")
+	_, _ = fmt.Fprintf(w, "\n\n# reject everything else\nadd rule filter input reject with icmp type port-unreachable\n")
 	return nil
 }

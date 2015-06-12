@@ -2,7 +2,7 @@ PREFIX := /usr
 SBIN_DIR=$(PREFIX)/sbin
 
 all: \
-	cmd/cfirewalld/cfirewalld \
+	cmd/nfirewalld/nfirewalld \
 	cmd/cbootstrapd/cbootstrapd \
 	cmd/cdhcpd/cdhcpd \
 	cmd/cworkerd/cworkerd \
@@ -11,13 +11,13 @@ all: \
 	cmd/cplacerd/cplacerd \
 	cmd/cguestd/cguestd
 
-cmd/cfirewalld/cfirewalld: cmd/cfirewalld/cfirewalld.go \
-		cmd/cfirewalld/nftables.go
+cmd/nfirewalld/nfirewalld: cmd/nfirewalld/nfirewalld.go \
+		cmd/nfirewalld/nftables.go
 	cd $(dir $<) && \
 	go get && \
 	go build -v
 
-$(SBIN_DIR)/cfirewalld: cmd/cfirewalld/cfirewalld
+$(SBIN_DIR)/nfirewalld: cmd/nfirewalld/nfirewalld
 	install -D $< $(DESTDIR)$@
 
 
@@ -100,7 +100,7 @@ $(SBIN_DIR)/cguestd: cmd/cguestd/cguestd
 
 
 clean:
-	cd cmd/cfirewalld && \
+	cd cmd/nfirewalld && \
 	go clean -x
 
 	cd cmd/cdhcpd && \
@@ -129,7 +129,7 @@ clean:
 
 
 install: \
-  $(SBIN_DIR)/cfirewalld \
+  $(SBIN_DIR)/nfirewalld \
   $(SBIN_DIR)/cdhcpd \
   $(SBIN_DIR)/cworkerd \
   $(SBIN_DIR)/cbootstrapd \

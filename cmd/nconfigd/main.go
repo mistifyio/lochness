@@ -192,7 +192,7 @@ func watchKeys(config Config, etcdClient *etcd.Client) *watcher.Watcher {
 
 func main() {
 	// environment can only override default address
-	eaddr := os.Getenv("KAPPA_ETCD_ADDRESS")
+	eaddr := os.Getenv("NCONFIGD_ETCD_ADDRESS")
 	if eaddr == "" {
 		eaddr = eaddress
 	}
