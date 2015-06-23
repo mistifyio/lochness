@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	server      = "images.service.lochness.local"
+	server      = "image.services.lochness.local"
 	jsonout     = false
 	downloadDir = os.TempDir()
 )

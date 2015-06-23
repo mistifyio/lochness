@@ -28,7 +28,7 @@ The following arguments are understood
     Flags:
     -h, --help=false: help for img
     -j, --json=false: output in json
-    -s, --server="images.service.lochness.local": server address to connect to
+    -s, --server="image.services.lochness.local": server address to connect to
 
     Use "img help [command]" for more information about a command.
 
