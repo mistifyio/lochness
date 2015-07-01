@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,10 +14,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/andrew-d/go-termutil"
-	"github.com/mistifyio/lochness/pkg/hostport"
 	"github.com/mistifyio/lochness/pkg/internal/cli"
 	"github.com/mistifyio/mistify-image-service/metadata"
 	logx "github.com/mistifyio/mistify-logrus-ext"
+	netutil "github.com/mistifyio/util/net"
 	"github.com/spf13/cobra"
 )
 
@@ -260,33 +259,14 @@ func del(cmd *cobra.Command, ids []string) {
 }
 
 func getServerURL() string {
-	// Parse image service and do any necessary lookups
-	host, port, err := hostport.Split(server)
+	hostport, err := netutil.HostWithPort(server)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error":  err,
-			"server": server,
-			"func":   "hostport.Split",
-		}).Fatal("host port split failed")
+		os.Exit(1)
 	}
 
-	// Try to lookup port if only host/service is provided
-	if port == "" {
-		_, addrs, err := net.LookupSRV("", "", host)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"func":  "net.LookupSRV",
-			}).Fatal("srv lookup failed")
-		}
-		if len(addrs) == 0 {
-			log.WithField("server", host).Fatal("invalid host value")
-		}
-		port = fmt.Sprintf("%d", addrs[0].Port)
-	}
 	serverURL := &url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort(host, port),
+		Host:   hostport,
 	}
 	return serverURL.String()
 }
