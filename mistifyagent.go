@@ -70,6 +70,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 
 	disk := client.Disk{
 		Size:   flavor.Disk,
+		Image:  flavor.Image,
 		Source: flavor.Image,
 	}
 
