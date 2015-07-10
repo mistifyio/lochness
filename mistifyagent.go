@@ -59,14 +59,16 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 		return nil, err
 	}
 
-	nic := client.Nic{
-		Network: g.Bridge,
-		Model:   "virtio", // TODO: Check whether this is alwalys the case
-		Mac:     g.MAC.String(),
-		Address: g.IP.String(),
-		Netmask: subnet.CIDR.Mask.String(),
-		Gateway: subnet.Gateway.String(),
-	}
+	/*
+		nic := client.Nic{
+			Network: g.Bridge,
+			Model:   "virtio", // TODO: Check whether this is alwalys the case
+			Mac:     g.MAC.String(),
+			Address: g.IP.String(),
+			Netmask: subnet.CIDR.Mask.String(),
+			Gateway: subnet.Gateway.String(),
+		}
+	*/
 
 	disk := client.Disk{
 		Size:   flavor.Disk,
@@ -75,10 +77,10 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	}
 
 	return &client.Guest{
-		Id:       g.ID,
-		Type:     g.Type,
-		Image:    flavor.Image,
-		Nics:     []client.Nic{nic},
+		Id:    g.ID,
+		Type:  g.Type,
+		Image: flavor.Image,
+		//		Nics:     []client.Nic{nic},
 		Disks:    []client.Disk{disk},
 		Memory:   uint(flavor.Memory),
 		Cpu:      uint(flavor.CPU),
