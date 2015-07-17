@@ -1,8 +1,10 @@
 package lochness
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"net"
 	"path/filepath"
@@ -133,6 +135,17 @@ func (c *Context) NewGuest() *Guest {
 		ID:       uuid.New(),
 		Metadata: make(map[string]string),
 	}
+
+	// Generate a MAC based on the ID. May be overwritten later.
+	md5ID := md5.Sum([]byte(g.ID))
+	mac := fmt.Sprintf("02:%x:%x:%x:%x:%x",
+		string(md5ID[0:1]),
+		md5ID[1:2],
+		md5ID[2:3],
+		md5ID[3:4],
+		md5ID[4:5],
+	)
+	g.MAC, _ = net.ParseMAC(mac)
 
 	return g
 }
