@@ -138,12 +138,12 @@ func (c *Context) NewGuest() *Guest {
 
 	// Generate a MAC based on the ID. May be overwritten later.
 	md5ID := md5.Sum([]byte(g.ID))
-	mac := fmt.Sprintf("02:%x:%x:%x:%x:%x",
-		md5ID[0:1],
-		md5ID[1:2],
-		md5ID[2:3],
-		md5ID[3:4],
-		md5ID[4:5],
+	mac := fmt.Sprintf("02:%02x:%02x:%02x:%02x:%02x",
+		md5ID[0],
+		md5ID[1],
+		md5ID[2],
+		md5ID[3],
+		md5ID[4],
 	)
 	g.MAC, _ = net.ParseMAC(mac)
 
