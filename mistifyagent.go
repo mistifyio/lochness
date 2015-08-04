@@ -60,7 +60,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	}
 
 	nic := client.Nic{
-		Name:    "mist1",
+		Name:    "eth0",
 		Network: g.Bridge,
 		Model:   "virtio", // TODO: Check whether this is alwalys the case
 		Mac:     g.MAC.String(),
