@@ -19,80 +19,66 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/jobqueue"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
 // XXX: allow different tube names?
-const (
-	CreateTube = "create"
-	WorkTube   = "work"
-)
-
 // TaskFunc is a convenience wrapper for function calls on tasks
 type TaskFunc struct {
 	name     string
-	function func(*Task) (bool, error)
+	function func(*jobqueue.Client, *jobqueue.Task) (bool, error)
 	label    string // label for metrics
-}
-
-// Task is a "helper" struct to pull together information from
-// beanstalk and etcd
-type Task struct {
-	ID    uint64 //id from beanstalkd
-	Body  []byte // body from beanstalkd
-	Job   *lochness.Job
-	Guest *lochness.Guest
-	conn  *beanstalk.Conn
-	ctx   *lochness.Context
 }
 
 // TODO: restructure this as all the deletes for tube stuff is clunky.
 // as we almost always delete the tube id, wrap in function and delete it?
 
 func main() {
-	bstalk := flag.StringP("beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
-	logLevel := flag.StringP("log-level", "l", "warn", "log level")
-	addr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	port := flag.UintP("http", "p", 7543, "address for http interface. set to 0 to disable")
+	var port uint
+	var etcdAddr, bstalk, logLevel string
+
+	flag.StringVarP(&bstalk, "beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
+	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
+	flag.StringVarP(&etcdAddr, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	flag.UintVarP(&port, "http", "p", 7543, "address for http interface. set to 0 to disable")
 	flag.Parse()
 
-	// set with flag?
-	if err := logx.DefaultSetup(*logLevel); err != nil {
+	// Set up logger
+	if err := logx.DefaultSetup(logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "logx.DefaultSetup",
-			"level": *logLevel,
+			"level": logLevel,
 		}).Fatal("failed to set up logging")
 	}
 
-	log.WithField("address", *bstalk).Info("connection to beanstalk")
-	conn, err := beanstalk.Dial("tcp", *bstalk)
+	etcdClient := etcd.NewClient([]string{etcdAddr})
+
+	if !etcdClient.SyncCluster() {
+		log.WithFields(log.Fields{
+			"addr": etcdAddr,
+		}).Fatal("unable to sync etcd cluster")
+	}
+
+	ctx := lochness.NewContext(etcdClient)
+
+	log.WithField("address", bstalk).Info("connection to beanstalk")
+	jobQueue, err := jobqueue.NewClient(bstalk, ctx)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
-			"address": *bstalk,
-		}).Fatal("failed to connect to beanstalk server")
+			"address": bstalk,
+		}).Fatal("failed to create jobQueue client")
 	}
 
-	log.WithField("address", *addr).Info("connection to etcd")
-	etcdClient := etcd.NewClient([]string{*addr})
-
-	// make sure we can actually talk to etcd
-	if !etcdClient.SyncCluster() {
-		log.WithFields(log.Fields{
-			"error":   err,
-			"address": *addr,
-		}).Fatal("failed to connect to etcd cluster")
-	}
-
-	//inm := metrics.NewInmemSink(10*time.Second, 5*time.Minute)
+	// setup metrics
 	ms := mapsink.New()
 	conf := metrics.DefaultConfig("cplacerd")
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, ms)
 
-	if *port != 0 {
+	if port != 0 {
 
 		http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -103,34 +89,21 @@ func main() {
 		}))
 
 		go func() {
-			if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
+			if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 				log.WithFields(log.Fields{
 					"error": err,
-					"func":  "http.ListenAndServe",
 				}).Fatal("error serving")
 			}
 		}()
 
 	}
 
-	c := lochness.NewContext(etcdClient)
-
-	ts := beanstalk.NewTubeSet(conn, CreateTube)
-
 	// XXX: we want to try to keep track of where a job is
 	// in this pipeline? would have to persist in the job
 	funcs := []TaskFunc{
 		TaskFunc{
-			name:     "get a job",
-			function: getJob,
-		},
-		TaskFunc{
 			name:     "check job status",
 			function: checkJobStatus,
-		},
-		TaskFunc{
-			name:     "get guest",
-			function: getGuest,
 		},
 		TaskFunc{
 			name:     "check guest status",
@@ -159,49 +132,49 @@ func main() {
 	}
 
 	for {
-		id, body, err := ts.Reserve(10 * time.Hour)
+		task, err := jobQueue.NextCreateTask()
 		if err != nil {
-			switch err.(beanstalk.ConnError) {
-			case beanstalk.ErrTimeout:
-				// Empty queue, continue waiting
-				continue
-			case beanstalk.ErrDeadline:
-				// See docs on beanstalkd deadline
-				// We're just going to sleep to let the deadline'd job expire
-				// and try to get another job
-				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
-				log.Debug(beanstalk.ErrDeadline)
-				time.Sleep(5 * time.Second)
-				continue
-			default:
-				// You have failed me for the last time
-				log.WithField("error", err).Fatal(err)
+			if bCE, ok := err.(beanstalk.ConnError); ok {
+				switch bCE {
+				case beanstalk.ErrTimeout:
+					// Empty queue, continue waiting
+					continue
+				case beanstalk.ErrDeadline:
+					// See docs on beanstalkd deadline
+					// We're just going to sleep to let the deadline'd job expire
+					// and try to get another job
+					m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
+					log.Debug(beanstalk.ErrDeadline)
+					time.Sleep(5 * time.Second)
+					continue
+				default:
+					// You have failed me for the last time
+					log.WithField("error", err).Fatal(err)
+				}
 			}
-		}
+			log.WithFields(log.Fields{
+				"task":  task,
+				"error": err,
+			}).Error("invalid task")
 
-		task := &Task{
-			ID:   id,
-			Body: body,
-			conn: conn,
-			ctx:  c,
+			if err := task.Delete(); err != nil {
+				log.WithFields(log.Fields{
+					"task":  task.ID,
+					"error": err,
+				}).Error("unable to delete")
+			}
 		}
 
 		for _, f := range funcs {
 
 			fields := log.Fields{
-				"task": task.ID,
-				"body": string(task.Body),
-				"func": f.name,
-			}
-
-			if task.Job != nil {
-				fields["job"] = task.Job.ID
+				"task": task,
 			}
 
 			log.WithFields(fields).Debug("running")
 
 			start := time.Now()
-			rm, err := f.function(task)
+			rm, err := f.function(jobQueue, task)
 
 			m.MeasureSince([]string{f.label, "time"}, start)
 			m.IncrCounter([]string{f.label, "count"}, 1)
@@ -215,22 +188,18 @@ func main() {
 
 				log.WithFields(fields).WithField("error", err).Error("task error")
 
-				if task.Job != nil {
-					task.Job.Status = lochness.JobStatusError
-					task.Job.Error = err.Error()
-					if err := task.Job.Save(24 * time.Hour); err != nil {
-						log.WithFields(log.Fields{
-							"job":   task.Job.ID,
-							"task":  task.ID,
-							"error": err,
-						}).Error("unable to save")
-					}
+				task.Job.Status = lochness.JobStatusError
+				task.Job.Error = err.Error()
+				if err := task.Job.Save(24 * time.Hour); err != nil {
+					log.WithFields(log.Fields{
+						"task":  task,
+						"error": err,
+					}).Error("unable to save")
 				}
-				rm = true
 			}
 
 			if rm {
-				if err := conn.Delete(id); err != nil {
+				if err := task.Delete(); err != nil {
 					log.WithFields(log.Fields{
 						"task":  task.ID,
 						"error": err,
@@ -244,20 +213,7 @@ func main() {
 
 // these funcs return bool if task in beanstalk should be deleted (and loop stopped). loop also stops on error
 
-func getJob(t *Task) (bool, error) {
-	id := string(t.Body)
-	j, err := t.ctx.Job(id)
-
-	if err != nil {
-		return true, err
-	}
-
-	t.Job = j
-	return false, nil
-
-}
-
-func checkJobStatus(t *Task) (bool, error) {
+func checkJobStatus(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
 	if t.Job.Status != lochness.JobStatusNew {
 		return true, fmt.Errorf("bad job status: %s", t.Job.Status)
 	}
@@ -267,16 +223,7 @@ func checkJobStatus(t *Task) (bool, error) {
 	return false, nil
 }
 
-func getGuest(t *Task) (bool, error) {
-	g, err := t.ctx.Guest(t.Job.Guest)
-	if err != nil {
-		return true, fmt.Errorf("unable to get guest %s - %s", t.Job.Guest, err)
-	}
-	t.Guest = g
-	return false, nil
-}
-
-func checkGuestStatus(t *Task) (bool, error) {
+func checkGuestStatus(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
 
 	if t.Guest.HypervisorID != "" {
 		return true, fmt.Errorf("guest already has a hypervisor %s - %s", t.Guest.ID, t.Guest.HypervisorID)
@@ -284,7 +231,7 @@ func checkGuestStatus(t *Task) (bool, error) {
 	return false, nil
 }
 
-func selectHypervisor(t *Task) (bool, error) {
+func selectHypervisor(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
 	candidates, err := t.Guest.Candidates(lochness.DefaultCandidateFunctions...)
 	if err != nil {
 		return true, fmt.Errorf("unable to select candidate %s - %s", t.Guest.ID, err)
@@ -304,7 +251,7 @@ func selectHypervisor(t *Task) (bool, error) {
 	return false, nil
 }
 
-func changeJobAction(t *Task) (bool, error) {
+func changeJobAction(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
 	t.Job.Action = "fetch"
 	if err := t.Job.Save(24 * time.Hour); err != nil {
 		return true, fmt.Errorf("unable to change job action - %s", err)
@@ -312,27 +259,21 @@ func changeJobAction(t *Task) (bool, error) {
 	return false, nil
 }
 
-func addJobToWorker(t *Task) (bool, error) {
-	tube := beanstalk.Tube{
-		Conn: t.conn,
-		Name: WorkTube,
-	}
-
-	// TODO: should ttr be configurable?
-	id, err := tube.Put([]byte(t.Job.ID), 0, 5*time.Second, 5*time.Minute)
+func addJobToWorker(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
+	id, err := jobQueue.AddTask(t.Job)
 	if err != nil {
 		return true, fmt.Errorf("unable to put to work queue %s", err)
 	}
 
 	log.WithFields(log.Fields{
-		"id":  id,
-		"job": t.Job.ID,
-	}).Debug("ading job to work queue")
+		"task": id,
+		"job":  t.Job.ID,
+	}).Debug("added job to work queue")
 
 	return false, nil
 }
 
 // HACK: returning true trigegrs a task deletion in main
-func deleteTask(t *Task) (bool, error) {
+func deleteTask(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
 	return true, nil
 }
