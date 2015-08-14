@@ -49,7 +49,7 @@ func main() {
 	ctx := lochness.NewContext(etcdClient)
 
 	log.WithField("address", bstalk).Info("connection to beanstalk")
-	jobQueue, err := jobqueue.NewClient(bstalk, ctx)
+	jobQueue, err := jobqueue.NewClient(bstalk, etcdClient)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
@@ -116,10 +116,10 @@ func consume(jobQueue *jobqueue.Client, agent *lochness.MistifyAgent, m *metrics
 			if err != nil {
 				log.WithFields(logFields).WithField("error", err).Error(err)
 				if task.Job != nil {
-					_ = updateJobStatus(task, lochness.JobStatusError, err)
+					_ = updateJobStatus(task, jobqueue.JobStatusError, err)
 				}
 			} else {
-				_ = updateJobStatus(task, lochness.JobStatusDone, nil)
+				_ = updateJobStatus(task, jobqueue.JobStatusDone, nil)
 			}
 			if task.Job != nil {
 				log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
@@ -173,19 +173,19 @@ func processTask(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, error
 	log.WithFields(logFields).Info("reserved task")
 
 	switch task.Job.Status {
-	case lochness.JobStatusDone:
+	case jobqueue.JobStatusDone:
 		var err error
 		if task.Job.Action == "delete" {
 			err = postDelete(task)
 		}
 		return true, err
-	case lochness.JobStatusError:
+	case jobqueue.JobStatusError:
 		return true, nil
-	case lochness.JobStatusNew:
+	case jobqueue.JobStatusNew:
 		if err := startJob(task, agent); err != nil {
 			return true, err
 		}
-	case lochness.JobStatusWorking:
+	case jobqueue.JobStatusWorking:
 		if done, err := checkWorkingJob(task, agent); done || err != nil {
 			log.WithFields(log.Fields{
 				"task": task.ID,
@@ -224,7 +224,7 @@ func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 		return err
 	}
 	task.Job.RemoteID = jobID
-	_ = updateJobStatus(task, lochness.JobStatusWorking, nil)
+	_ = updateJobStatus(task, jobqueue.JobStatusWorking, nil)
 	return nil
 }
 
@@ -233,7 +233,7 @@ func checkWorkingJob(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, e
 	if err == nil && done && task.Job.Action == "fetch" {
 		task.Job.Action = "create"
 		task.Job.RemoteID = ""
-		task.Job.Status = lochness.JobStatusNew
+		task.Job.Status = jobqueue.JobStatusNew
 
 		done = false
 		// Save Job Status
@@ -257,7 +257,7 @@ func updateJobStatus(task *jobqueue.Task, status string, e error) error {
 	if task.Job.StartedAt.Equal(time.Time{}) {
 		task.Job.StartedAt = time.Now()
 	}
-	if status == lochness.JobStatusError || status == lochness.JobStatusDone {
+	if status == jobqueue.JobStatusError || status == jobqueue.JobStatusDone {
 		task.Job.FinishedAt = time.Now()
 	}
 

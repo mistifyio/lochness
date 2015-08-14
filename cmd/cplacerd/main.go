@@ -61,10 +61,8 @@ func main() {
 		}).Fatal("unable to sync etcd cluster")
 	}
 
-	ctx := lochness.NewContext(etcdClient)
-
 	log.WithField("address", bstalk).Info("connection to beanstalk")
-	jobQueue, err := jobqueue.NewClient(bstalk, ctx)
+	jobQueue, err := jobqueue.NewClient(bstalk, etcdClient)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
@@ -188,7 +186,7 @@ func main() {
 
 				log.WithFields(fields).WithField("error", err).Error("task error")
 
-				task.Job.Status = lochness.JobStatusError
+				task.Job.Status = jobqueue.JobStatusError
 				task.Job.Error = err.Error()
 				if err := task.Job.Save(24 * time.Hour); err != nil {
 					log.WithFields(log.Fields{
@@ -214,7 +212,7 @@ func main() {
 // these funcs return bool if task in beanstalk should be deleted (and loop stopped). loop also stops on error
 
 func checkJobStatus(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
-	if t.Job.Status != lochness.JobStatusNew {
+	if t.Job.Status != jobqueue.JobStatusNew {
 		return true, fmt.Errorf("bad job status: %s", t.Job.Status)
 	}
 	if t.Job.Action != "select-hypervisor" {

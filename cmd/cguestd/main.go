@@ -52,7 +52,7 @@ func main() {
 	ctx := lochness.NewContext(etcdClient)
 
 	log.WithField("address", bstalk).Info("connection to beanstalk")
-	jobQueue, err := jobqueue.NewClient(bstalk, ctx)
+	jobQueue, err := jobqueue.NewClient(bstalk, etcdClient)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,

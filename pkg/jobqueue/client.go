@@ -3,8 +3,8 @@ package jobqueue
 import (
 	"time"
 
+	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
-	"github.com/mistifyio/lochness"
 )
 
 // Default parameters
@@ -19,28 +19,28 @@ const (
 
 // Client is for interacting with the job queue
 type Client struct {
-	conn  *beanstalk.Conn
-	ctx   *lochness.Context
-	tubes *tubes
+	beanConn *beanstalk.Conn
+	etcd     *etcd.Client
+	tubes    *tubes
 }
 
 // NewClient creates a new Client and initializes the beanstalk connection + tubes
-func NewClient(bstalk string, ctx *lochness.Context) (*Client, error) {
+func NewClient(bstalk string, e *etcd.Client) (*Client, error) {
 	conn, err := beanstalk.Dial("tcp", bstalk)
 	if err != nil {
 		return nil, err
 	}
 
 	client := &Client{
-		conn:  conn,
-		ctx:   ctx,
-		tubes: newTubes(conn),
+		beanConn: conn,
+		etcd:     e,
+		tubes:    newTubes(conn),
 	}
 	return client, nil
 }
 
 // AddTask creates a new task in the appropriate beanstalk queue
-func (c *Client) AddTask(j *lochness.Job) (uint64, error) {
+func (c *Client) AddTask(j *Job) (uint64, error) {
 	ts := c.tubes.work
 	if j.Action == "select-hypervisor" {
 		ts = c.tubes.create
@@ -51,7 +51,7 @@ func (c *Client) AddTask(j *lochness.Job) (uint64, error) {
 
 // DeleteTask removes a task from beanstalk by id
 func (c *Client) DeleteTask(id uint64) error {
-	return c.conn.Delete(id)
+	return c.beanConn.Delete(id)
 }
 
 // NextCreateTask returns the next task from the create tube
@@ -75,10 +75,9 @@ func (c *Client) nextTask(ts *tubeSet) (*Task, error) {
 
 	// Build the Task object
 	task := &Task{
-		ID:    id,
-		JobID: body,
-		conn:  c.conn,
-		ctx:   c.ctx,
+		ID:     id,
+		JobID:  body,
+		client: c,
 	}
 
 	// Load the Job and Guest
@@ -93,8 +92,8 @@ func (c *Client) nextTask(ts *tubeSet) (*Task, error) {
 }
 
 // AddJob creates a new job for a guest and adds a task for it
-func (c *Client) AddJob(guestID, action string) (*lochness.Job, error) {
-	job := c.ctx.NewJob()
+func (c *Client) AddJob(guestID, action string) (*Job, error) {
+	job := c.NewJob()
 	job.Guest = guestID
 	job.Action = action
 	if err := job.Save(jobTTL); err != nil {

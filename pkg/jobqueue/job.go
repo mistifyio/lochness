@@ -1,4 +1,4 @@
-package lochness
+package jobqueue
 
 import (
 	"encoding/json"
@@ -23,8 +23,6 @@ const (
 	JobStatusError   = "error"
 )
 
-// TODO: we need a ttl?
-
 type (
 	// Job is a single job for a guest such as create, delete, etc.
 	Job struct {
@@ -37,16 +35,16 @@ type (
 		StartedAt     time.Time `json:"started_at,omitempty"`
 		FinishedAt    time.Time `json:"finished_at,omitempty"`
 		modifiedIndex uint64
-		context       *Context
+		client        *Client
 	}
 )
 
 // NewJob creates a new job.
-func (c *Context) NewJob() *Job {
+func (c *Client) NewJob() *Job {
 	return &Job{
-		ID:      uuid.New(),
-		context: c,
-		Status:  "new",
+		ID:     uuid.New(),
+		client: c,
+		Status: "new",
 	}
 }
 
@@ -95,9 +93,9 @@ func (j *Job) Save(ttl time.Duration) error {
 	// if we changed something, don't clobber
 	var resp *etcd.Response
 	if j.modifiedIndex != 0 {
-		resp, err = j.context.etcd.CompareAndSwap(j.key(), string(v), uint64(ttl.Seconds()), "", j.modifiedIndex)
+		resp, err = j.client.etcd.CompareAndSwap(j.key(), string(v), uint64(ttl.Seconds()), "", j.modifiedIndex)
 	} else {
-		resp, err = j.context.etcd.Create(j.key(), string(v), uint64(ttl.Seconds()))
+		resp, err = j.client.etcd.Create(j.key(), string(v), uint64(ttl.Seconds()))
 	}
 	if err != nil {
 		return err
@@ -110,7 +108,7 @@ func (j *Job) Save(ttl time.Duration) error {
 
 // Refresh reloads a Job from the data store.
 func (j *Job) Refresh() error {
-	resp, err := j.context.etcd.Get(j.key(), false, false)
+	resp, err := j.client.etcd.Get(j.key(), false, false)
 
 	if err != nil {
 		return err
@@ -125,10 +123,10 @@ func (j *Job) Refresh() error {
 }
 
 // Job retrieves a single job from the data store.
-func (c *Context) Job(id string) (*Job, error) {
+func (c *Client) Job(id string) (*Job, error) {
 	j := &Job{
-		ID:      id,
-		context: c,
+		ID:     id,
+		client: c,
 	}
 
 	if err := j.Refresh(); err != nil {
