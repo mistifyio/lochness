@@ -13,110 +13,104 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/mistifyio/mistify-agent/config"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
-const (
-	// WorkTube is the name of the beanstalk tube for work tasks
-	WorkTube = "work"
-)
-
-// Task is a "helper" struct to pull together information from
-// beanstalk and etcd
-type Task struct {
-	ID      uint64 //id from beanstalkd
-	Body    []byte // body from beanstalkd
-	Job     *lochness.Job
-	Guest   *lochness.Guest
-	metrics *metrics.Metrics
-	conn    *beanstalk.Conn
-	ctx     *lochness.Context
-}
-
 func main() {
+	var port uint
+	var etcdAddr, bstalk, logLevel string
+
 	// Command line flags
-	bstalk := flag.StringP("beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
-	logLevel := flag.StringP("log-level", "l", "warn", "log level")
-	addr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	port := flag.UintP("http", "p", 7544, "http port to publish metrics. set to 0 to disable")
+	flag.StringVarP(&bstalk, "beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
+	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
+	flag.StringVarP(&etcdAddr, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	flag.UintVarP(&port, "http", "p", 7544, "http port to publish metrics. set to 0 to disable")
 	flag.Parse()
 
 	// Set up logger
-	if err := logx.DefaultSetup(*logLevel); err != nil {
+	if err := logx.DefaultSetup(logLevel); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "logx.DefaultSetup",
-			"level": *logLevel,
+			"level": logLevel,
 		}).Fatal("unable to to set up logrus")
 	}
 
-	// Set up beanstalk
-	log.WithField("bstalk", *bstalk).Info("connecting to beanstalk")
-	conn, err := beanstalk.Dial("tcp", *bstalk)
-	if err != nil {
-		log.Fatal(err)
-	}
-	ts := beanstalk.NewTubeSet(conn, WorkTube)
+	etcdClient := etcd.NewClient([]string{etcdAddr})
 
-	// Set up etcd
-	log.WithField("cluster", *addr).Info("connecting to etcd")
-	etcdClient := etcd.NewClient([]string{*addr})
-	// make sure we can talk to etcd
 	if !etcdClient.SyncCluster() {
-		log.WithField("cluster", *addr).Fatal("unable to sync etcd")
+		log.WithFields(log.Fields{
+			"addr": etcdAddr,
+		}).Fatal("unable to sync etcd cluster")
 	}
 
-	c := lochness.NewContext(etcdClient)
+	ctx := lochness.NewContext(etcdClient)
+
+	log.WithField("address", bstalk).Info("connection to beanstalk")
+	jobQueue, err := jobqueue.NewClient(bstalk, ctx)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"address": bstalk,
+		}).Fatal("failed to create jobQueue client")
+	}
 
 	// Set up metrics
-	m := setupMetrics(*port)
+	m := setupMetrics(port)
 	if m != nil {
 	}
 
+	agent := ctx.NewMistifyAgent()
+
 	// Start consuming
-	consume(c, ts, m)
+	consume(jobQueue, agent, m)
 }
 
-func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
+func consume(jobQueue *jobqueue.Client, agent *lochness.MistifyAgent, m *metrics.Metrics) {
 	for {
 		// Wait for and reserve a job
-		id, body, err := ts.Reserve(10 * time.Hour)
+		task, err := jobQueue.NextWorkTask()
 		if err != nil {
-			switch err.(beanstalk.ConnError) {
-			case beanstalk.ErrTimeout:
-				// Empty queue, continue waiting
-				continue
-			case beanstalk.ErrDeadline:
-				// See docs on beanstalkd deadline
-				// We're just going to sleep to let the deadline'd job expire
-				// and try to get another job
-				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
-				log.Debug(beanstalk.ErrDeadline)
-				time.Sleep(5 * time.Second)
-				continue
-			default:
-				// You have failed me for the last time
-				log.WithField("error", err).Fatal(err)
+			if bCE, ok := err.(beanstalk.ConnError); ok {
+				switch bCE {
+				case beanstalk.ErrTimeout:
+					// Empty queue, continue waiting
+					continue
+				case beanstalk.ErrDeadline:
+					// See docs on beanstalkd deadline
+					// We're just going to sleep to let the deadline'd job expire
+					// and try to get another job
+					m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
+					log.Debug(beanstalk.ErrDeadline)
+					time.Sleep(5 * time.Second)
+					continue
+				default:
+					// You have failed me for the last time
+					log.WithField("error", err).Fatal(err)
+				}
+			}
+
+			log.WithFields(log.Fields{
+				"task":  task,
+				"error": err,
+			}).Error("invalid task")
+
+			if err := task.Delete(); err != nil {
+				log.WithFields(log.Fields{
+					"task":  task.ID,
+					"error": err,
+				}).Error("unable to delete")
 			}
 		}
 
-		task := &Task{
-			ID:      id,
-			Body:    body,
-			metrics: m,
-			conn:    ts.Conn,
-			ctx:     c,
-		}
-
 		logFields := log.Fields{
-			"task": task.ID,
-			"body": string(task.Body),
+			"task": task,
 		}
 
 		// Handle the task in its current state. Remove task when appropriate.
-		removeTask, err := processTask(task)
+		removeTask, err := processTask(task, agent)
 
 		if removeTask {
 			if err != nil {
@@ -130,11 +124,19 @@ func consume(c *lochness.Context, ts *beanstalk.TubeSet, m *metrics.Metrics) {
 			if task.Job != nil {
 				log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
 			}
+
+			updateMetrics(task, m)
+
 			log.WithFields(logFields).Info("removing task")
-			deleteTask(task)
+			if err := task.Delete(); err != nil {
+				log.WithFields(log.Fields{
+					"task":  task,
+					"error": err,
+				}).Error("unable to delete")
+			}
 		} else {
 			log.WithFields(logFields).Info("releasing task")
-			if err := task.conn.Release(task.ID, 0, 5*time.Second); err != nil {
+			if err := task.Release(); err != nil {
 				log.WithFields(logFields).WithField("error", err).Fatal(err)
 			}
 		}
@@ -164,54 +166,11 @@ func setupMetrics(port uint) *metrics.Metrics {
 	return m
 }
 
-// getJob retrieves the job for a task
-func getJob(t *Task) error {
-	id := string(t.Body)
-	j, err := t.ctx.Job(id)
-	if err != nil {
-		return err
-	}
-
-	if err := j.Validate(); err != nil {
-		return err
-	}
-
-	t.Job = j
-	return nil
-}
-
-// getGuest retrieves the guest for a task's job
-func getGuest(t *Task) error {
-	if t.Job == nil {
-		return errors.New("job missing guest")
-	}
-
-	g, err := t.ctx.Guest(t.Job.Guest)
-	if err != nil {
-		return err
-	}
-
-	t.Guest = g
-	return nil
-}
-
-func processTask(task *Task) (bool, error) {
+func processTask(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, error) {
 	logFields := log.Fields{
-		"task": task.ID,
-		"body": string(task.Body),
+		"task": task,
 	}
 	log.WithFields(logFields).Info("reserved task")
-
-	// Look up the job info
-	if err := getJob(task); err != nil {
-		return true, err
-	}
-	logFields["status"] = task.Job.Status
-	log.WithFields(logFields).Info("job status info")
-
-	if err := getGuest(task); err != nil {
-		return true, err
-	}
 
 	switch task.Job.Status {
 	case lochness.JobStatusDone:
@@ -223,11 +182,11 @@ func processTask(task *Task) (bool, error) {
 	case lochness.JobStatusError:
 		return true, nil
 	case lochness.JobStatusNew:
-		if err := startJob(task); err != nil {
+		if err := startJob(task, agent); err != nil {
 			return true, err
 		}
 	case lochness.JobStatusWorking:
-		if done, err := checkWorkingJob(task); done || err != nil {
+		if done, err := checkWorkingJob(task, agent); done || err != nil {
 			log.WithFields(log.Fields{
 				"task": task.ID,
 			}).Info("JOB DONE")
@@ -242,8 +201,7 @@ func processTask(task *Task) (bool, error) {
 	return false, nil
 }
 
-func startJob(task *Task) error {
-	agent := task.ctx.NewMistifyAgent()
+func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 	job := task.Job
 
 	var err error
@@ -270,8 +228,7 @@ func startJob(task *Task) error {
 	return nil
 }
 
-func checkWorkingJob(task *Task) (bool, error) {
-	agent := task.ctx.NewMistifyAgent()
+func checkWorkingJob(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, error) {
 	done, err := agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
 	if err == nil && done && task.Job.Action == "fetch" {
 		task.Job.Action = "create"
@@ -282,8 +239,7 @@ func checkWorkingJob(task *Task) (bool, error) {
 		// Save Job Status
 		if err := task.Job.Save(24 * time.Hour); err != nil {
 			log.WithFields(log.Fields{
-				"task":  task.ID,
-				"job":   task.Job.ID,
+				"task":  task,
 				"error": err,
 			}).Error("unable to save")
 			return done, err
@@ -293,7 +249,7 @@ func checkWorkingJob(task *Task) (bool, error) {
 	return done, err
 }
 
-func updateJobStatus(task *Task, status string, e error) error {
+func updateJobStatus(task *jobqueue.Task, status string, e error) error {
 	task.Job.Status = status
 	if e != nil {
 		task.Job.Error = e.Error()
@@ -303,23 +259,12 @@ func updateJobStatus(task *Task, status string, e error) error {
 	}
 	if status == lochness.JobStatusError || status == lochness.JobStatusDone {
 		task.Job.FinishedAt = time.Now()
-
-		// We're done with the task, so update the metrics
-		task.metrics.MeasureSince([]string{"action", task.Job.Action, "time"}, task.Job.StartedAt)
-		task.metrics.MeasureSince([]string{"action", "time"}, task.Job.StartedAt)
-		task.metrics.IncrCounter([]string{"action", task.Job.Action, "count"}, 1)
-		task.metrics.IncrCounter([]string{"action", "count"}, 1)
-		if e != nil {
-			task.metrics.IncrCounter([]string{"action", task.Job.Action, "error"}, 1)
-			task.metrics.IncrCounter([]string{"action", "error"}, 1)
-		}
 	}
 
 	// Save Job Status
 	if err := task.Job.Save(24 * time.Hour); err != nil {
 		log.WithFields(log.Fields{
-			"task":  task.ID,
-			"job":   task.Job.ID,
+			"task":  task,
 			"error": err,
 		}).Error("unable to save")
 		return err
@@ -327,18 +272,21 @@ func updateJobStatus(task *Task, status string, e error) error {
 	return nil
 }
 
-func postDelete(task *Task) error {
+func postDelete(task *jobqueue.Task) error {
 	log.WithFields(log.Fields{
-		"task": task.ID,
+		"task": task,
 	}).Info("post delete")
 	return task.Guest.Destroy()
 }
 
-func deleteTask(task *Task) {
-	if err := task.conn.Delete(task.ID); err != nil {
-		log.WithFields(log.Fields{
-			"task":  task.ID,
-			"error": err,
-		}).Error("unable to delete")
+func updateMetrics(task *jobqueue.Task, m *metrics.Metrics) {
+	job := task.Job
+	m.MeasureSince([]string{"action", job.Action, "time"}, job.StartedAt)
+	m.MeasureSince([]string{"action", "time"}, job.StartedAt)
+	m.IncrCounter([]string{"action", job.Action, "count"}, 1)
+	m.IncrCounter([]string{"action", "count"}, 1)
+	if job.Error != "" {
+		m.IncrCounter([]string{"action", job.Action, "error"}, 1)
+		m.IncrCounter([]string{"action", "error"}, 1)
 	}
 }
