@@ -32,16 +32,6 @@ is required.
 ## Usage
 
 ```go
-const (
-	JobStatusNew     = "new"
-	JobStatusWorking = "working"
-	JobStatusDone    = "done"
-	JobStatusError   = "error"
-)
-```
-Job Status
-
-```go
 var (
 	// ConfigPath is the path in the config store.
 	ConfigPath = "lochness/config/"
@@ -84,13 +74,6 @@ var (
 var (
 	// HypervisorPath is the path in the config store
 	HypervisorPath = "lochness/hypervisors/"
-)
-```
-
-```go
-var (
-	// JobPath is the path in the config store
-	JobPath = "lochness/jobs/"
 )
 ```
 
@@ -262,13 +245,6 @@ func (c *Context) Hypervisor(id string) (*Hypervisor, error)
 ```
 Hypervisor fetches a Hypervisor from the config store.
 
-#### func (*Context) Job
-
-```go
-func (c *Context) Job(id string) (*Job, error)
-```
-Job retrieves a single job from the data store.
-
 #### func (*Context) Network
 
 ```go
@@ -303,13 +279,6 @@ NewGuest create a new blank Guest
 func (c *Context) NewHypervisor() *Hypervisor
 ```
 NewHypervisor create a new blank Hypervisor.
-
-#### func (*Context) NewJob
-
-```go
-func (c *Context) NewJob() *Job
-```
-NewJob creates a new job.
 
 #### func (*Context) NewMistifyAgent
 
@@ -762,44 +731,6 @@ CandidateIsAlive returns Hypervisors that are "alive" based on heartbeat
 func CandidateRandomize(g *Guest, hs Hypervisors) (Hypervisors, error)
 ```
 CandidateRandomize shuffles the list of Hypervisors.
-
-#### type Job
-
-```go
-type Job struct {
-	ID         string    `json:"id"`
-	RemoteID   string    `json:"remote"` // ID of remote hypervisor/guest job
-	Action     string    `json:"action"`
-	Guest      string    `json:"guest"`
-	Error      string    `json:"error,omitempty"`
-	Status     string    `json:"status,omitempty"`
-	StartedAt  time.Time `json:"started_at,omitempty"`
-	FinishedAt time.Time `json:"finished_at,omitempty"`
-}
-```
-
-Job is a single job for a guest such as create, delete, etc.
-
-#### func (*Job) Refresh
-
-```go
-func (j *Job) Refresh() error
-```
-Refresh reloads a Job from the data store.
-
-#### func (*Job) Save
-
-```go
-func (j *Job) Save(ttl time.Duration) error
-```
-Save persists a job.
-
-#### func (*Job) Validate
-
-```go
-func (j *Job) Validate() error
-```
-Validate ensures required fields are populated.
 
 #### type MistifyAgent
 

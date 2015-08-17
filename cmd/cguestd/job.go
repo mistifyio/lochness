@@ -18,8 +18,8 @@ func RegisterJobRoutes(prefix string, router *mux.Router, m *metricsContext) {
 func GetJob(w http.ResponseWriter, r *http.Request) {
 	hr := HTTPResponse{w}
 	vars := mux.Vars(r)
-	ctx := GetContext(r)
-	job, err := ctx.Job(vars["jobID"])
+	jobQueue := GetJobQueue(r)
+	job, err := jobQueue.Job(vars["jobID"])
 	if err != nil {
 		hr.JSONError(http.StatusInternalServerError, err)
 		return

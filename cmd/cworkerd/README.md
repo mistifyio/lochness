@@ -2,8 +2,9 @@
 
 [![cworkerd](https://godoc.org/github.com/mistifyio/lochness/cmd/cworkerd?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/cworkerd)
 
-cworkerd is the worker daemon for guest actions. It takes tasks out of a beanstalk
-queue, communicates with agents to perform the work, and updates guest metadata.
+cworkerd is the worker daemon for guest actions. It takes tasks out of a
+beanstalk queue, communicates with agents to perform the work, and updates guest
+metadata.
 
 
 ### Command Usage

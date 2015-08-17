@@ -46,7 +46,7 @@ a lochness.Guest for synchronous actions or the following for async actions:
 		"guest": {...}
 	}
 
-The job command either returns the job id or a JSON lochness.Job.
+The job command either returns the job id or a JSON jobqueue.Job.
 
 Examples
 
