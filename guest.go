@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"code.google.com/p/go-uuid/uuid"
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 )
 
@@ -293,19 +294,39 @@ func (g *Guest) Candidates(f ...CandidateFunction) (Hypervisors, error) {
 
 // CandidateIsAlive returns Hypervisors that are "alive" based on heartbeat
 func CandidateIsAlive(g *Guest, hs Hypervisors) (Hypervisors, error) {
+	logFields := log.Fields{
+		"guestID": g.ID,
+		"func":    "CandidateIsAlive",
+	}
 
 	var hypervisors Hypervisors
 	for _, h := range hs {
 		if h.IsAlive() {
 			hypervisors = append(hypervisors, h)
+		} else {
+			log.WithFields(logFields).WithFields(log.Fields{
+				"hypervisorID": h.ID,
+			}).Debug("hypervisor candidate failed")
 		}
 	}
+
+	log.WithFields(logFields).WithFields(log.Fields{
+		"in":      len(hs),
+		"out":     len(hypervisors),
+		"removed": len(hs) - len(hypervisors),
+	}).Info("hypervisor candidates filtered")
+
 	return hypervisors, nil
 }
 
 // CandidateHasResources returns Hypervisors that have availible resources
 // based on the request Flavor of the Guest.
 func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
+	logFields := log.Fields{
+		"guestID": g.ID,
+		"func":    "CandidateHasResources",
+	}
+
 	f, err := g.context.Flavor(g.FlavorID)
 	if err != nil {
 		return nil, err
@@ -314,16 +335,43 @@ func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	var hypervisors Hypervisors
 	for _, h := range hs {
 		avail := h.AvailableResources
-		if avail.Disk >= f.Disk && avail.Memory >= f.Memory && avail.CPU >= f.CPU {
+		if avail.Disk < f.Disk {
+			log.WithFields(logFields).WithFields(log.Fields{
+				"hypervisorID": h.ID,
+				"resource":     "disk",
+			}).Debug("hypervisor candidate failed")
+		} else if avail.Memory < f.Memory {
+			log.WithFields(logFields).WithFields(log.Fields{
+				"hypervisorID": h.ID,
+				"resource":     "memory",
+			}).Debug("hypervisor candidate failed")
+		} else if avail.CPU < f.CPU {
+			log.WithFields(logFields).WithFields(log.Fields{
+				"hypervisorID": h.ID,
+				"resource":     "cpu",
+			}).Debug("hypervisor candidate failed")
+		} else {
 			hypervisors = append(hypervisors, h)
 		}
 	}
+
+	log.WithFields(logFields).WithFields(log.Fields{
+		"in":      len(hs),
+		"out":     len(hypervisors),
+		"removed": len(hs) - len(hypervisors),
+	}).Info("hypervisor candidates filtered")
+
 	return hypervisors, nil
 }
 
 // CandidateHasSubnet returns Hypervisors that have subnets with availible addresses
 // in the request Network of the Guest.
 func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
+	logFields := log.Fields{
+		"guestID": g.ID,
+		"func":    "CandidateHasSubnet",
+	}
+
 	n, err := g.context.Network(g.NetworkID)
 	if err != nil {
 		return nil, err
@@ -355,8 +403,18 @@ func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
 		}
 		if hasSubnet {
 			hypervisors = append(hypervisors, h)
+		} else {
+			log.WithFields(logFields).WithFields(log.Fields{
+				"hypervisorID": h.ID,
+			}).Debug("hypervisor candidate failed")
 		}
 	}
+
+	log.WithFields(logFields).WithFields(log.Fields{
+		"in":      len(hs),
+		"out":     len(hypervisors),
+		"removed": len(hs) - len(hypervisors),
+	}).Info("hypervisor candidates removed")
 
 	return hypervisors, nil
 }
