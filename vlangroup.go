@@ -56,7 +56,7 @@ func (vg *VLANGroup) vlanKey(vlan *VLAN) string {
 	if vlan != nil {
 		key = vlan.Tag
 	}
-	return filepath.Join(VLANGroupPath, vg.ID, "vlans", string(key))
+	return filepath.Join(VLANGroupPath, vg.ID, "vlans", strconv.Itoa(key))
 }
 
 // NewVLANGroup creates a new blank VLANGroup.
@@ -80,7 +80,7 @@ func (c *Context) VLANGroup(id string) (*VLANGroup, error) {
 
 // Refresh reloads the VLAN from the data store.
 func (vg *VLANGroup) Refresh() error {
-	resp, err := vg.context.etcd.Get(filepath.Dir(vg.key()), false, false)
+	resp, err := vg.context.etcd.Get(filepath.Dir(vg.key()), false, true)
 	if err != nil {
 		return err
 	}
@@ -203,6 +203,26 @@ func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 	}
 	vlan.vlanGroups = newVLANGroups
 
+	return nil
+}
+
+// ForEachVLANGroup will run f on each VLAN. It will stop iteration if f returns an error.
+func (c *Context) ForEachVLANGroup(f func(*VLANGroup) error) error {
+	resp, err := c.etcd.Get(VLANGroupPath, false, false)
+	if err != nil {
+		return err
+	}
+	for _, n := range resp.Node.Nodes {
+		groupID := filepath.Base(n.Key)
+		vlanGroup, err := c.VLANGroup(groupID)
+		if err != nil {
+			return err
+		}
+
+		if err := f(vlanGroup); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

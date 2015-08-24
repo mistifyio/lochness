@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strconv"
 
 	"github.com/coreos/go-etcd/etcd"
 )
@@ -48,7 +49,7 @@ func (c *Context) NewVLAN() *VLAN {
 
 // key is a helper to generate the config store key.
 func (v *VLAN) key() string {
-	return filepath.Join(VLANPath, string(v.Tag), "metadata")
+	return filepath.Join(VLANPath, strconv.Itoa(v.Tag), "metadata")
 }
 
 func (v *VLAN) vlanGroupKey(vlanGroup *VLANGroup) string {
@@ -56,7 +57,7 @@ func (v *VLAN) vlanGroupKey(vlanGroup *VLANGroup) string {
 	if vlanGroup != nil {
 		key = vlanGroup.ID
 	}
-	return filepath.Join(VLANPath, string(v.Tag), "vlangroups", key)
+	return filepath.Join(VLANPath, strconv.Itoa(v.Tag), "vlangroups", key)
 }
 
 // VLAN fetches a VLAN from the data store.
@@ -70,7 +71,7 @@ func (c *Context) VLAN(tag int) (*VLAN, error) {
 
 // Refresh reloads the VLAN from the data store.
 func (v *VLAN) Refresh() error {
-	resp, err := v.context.etcd.Get(filepath.Dir(v.key()), false, false)
+	resp, err := v.context.etcd.Get(filepath.Dir(v.key()), false, true)
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func (v *VLAN) Refresh() error {
 			v.modifiedIndex = node.ModifiedIndex
 		case "vlangroups":
 			for _, x := range node.Nodes {
-				v.vlanGroups = append(v.vlanGroups, x.Key)
+				v.vlanGroups = append(v.vlanGroups, filepath.Base(x.Key))
 			}
 		}
 	}
@@ -144,6 +145,26 @@ func (v *VLAN) Destroy() error {
 	// Delete the VLAN
 	if _, err := v.context.etcd.Delete(filepath.Dir(v.key()), true); err != nil {
 		return err
+	}
+	return nil
+}
+
+// ForEachVLAN will run f on each VLAN. It will stop iteration if f returns an error.
+func (c *Context) ForEachVLAN(f func(*VLAN) error) error {
+	resp, err := c.etcd.Get(VLANPath, false, false)
+	if err != nil {
+		return err
+	}
+	for _, n := range resp.Node.Nodes {
+		vlanTag, _ := strconv.Atoi(filepath.Base(n.Key))
+		vlan, err := c.VLAN(vlanTag)
+		if err != nil {
+			return err
+		}
+
+		if err := f(vlan); err != nil {
+			return err
+		}
 	}
 	return nil
 }
