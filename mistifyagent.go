@@ -68,6 +68,11 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 		vlans = vlanGroup.VLANs()
 	}
 
+	// Default to vlan tag 1
+	if len(vlans) == 0 {
+		vlans = []int{1}
+	}
+
 	nic := client.Nic{
 		Name:    "eth0",
 		Network: g.Bridge,
