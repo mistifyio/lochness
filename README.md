@@ -91,6 +91,20 @@ var (
 )
 ```
 
+```go
+var (
+	// VLANGroupPath is the path in the config store for VLAN groups
+	VLANGroupPath = "/lochness/vlangroups/"
+)
+```
+
+```go
+var (
+	// VLANPath is the path in the config store for VLANs
+	VLANPath = "/lochness/vlans/"
+)
+```
+
 #### func  GetHypervisorID
 
 ```go
@@ -310,6 +324,20 @@ func (c *Context) NewSubnet() *Subnet
 NewSubnet creates a new "blank" subnet. Fill in the needed values and then call
 Save
 
+#### func (*Context) NewVLAN
+
+```go
+func (c *Context) NewVLAN() *VLAN
+```
+NewVLAN creates a new blank VLAN.
+
+#### func (*Context) NewVLANGroup
+
+```go
+func (c *Context) NewVLANGroup() *VLANGroup
+```
+NewVLANGroup creates a new blank VLANGroup.
+
 #### func (*Context) SetConfig
 
 ```go
@@ -324,6 +352,20 @@ SetConfig sets a single value from the config store. The key can contain slashes
 func (c *Context) Subnet(id string) (*Subnet, error)
 ```
 Subnet fetches a single subnet by ID
+
+#### func (*Context) VLAN
+
+```go
+func (c *Context) VLAN(tag int) (*VLAN, error)
+```
+VLAN fetches a VLAN from the data store.
+
+#### func (*Context) VLANGroup
+
+```go
+func (c *Context) VLANGroup(id string) (*VLANGroup, error)
+```
+VLANGroup fetches a VLAN from the data store.
 
 #### type ErrorHTTPCode
 
@@ -993,6 +1035,129 @@ type Subnets []*Subnet
 ```
 
 Subnets is an alias to a slice of *Subnet
+
+#### type VLAN
+
+```go
+type VLAN struct {
+	Tag         int    `json:"tag"`
+	Description string `json:"description"`
+}
+```
+
+VLAN devines the virtual lan for a guest interface
+
+#### func (*VLAN) Destroy
+
+```go
+func (v *VLAN) Destroy() error
+```
+Destroy removes the VLAN
+
+#### func (*VLAN) Refresh
+
+```go
+func (v *VLAN) Refresh() error
+```
+Refresh reloads the VLAN from the data store.
+
+#### func (*VLAN) Save
+
+```go
+func (v *VLAN) Save() error
+```
+Save persists a VLAN. It will call Validate.
+
+#### func (*VLAN) VLANGroups
+
+```go
+func (v *VLAN) VLANGroups() []string
+```
+VLANGroups returns the IDs of the VLANGroups associated with the VLAN
+
+#### func (*VLAN) Validate
+
+```go
+func (v *VLAN) Validate() error
+```
+Validate ensures a VLAN has resonable data.
+
+#### type VLANGroup
+
+```go
+type VLANGroup struct {
+	ID          string            `json:"id"`
+	Description string            `json:"description"`
+	Metadata    map[string]string `json:"metadata"`
+}
+```
+
+VLANGroup defines a set of VLANs for a guest interface
+
+#### func (*VLANGroup) AddVLAN
+
+```go
+func (vg *VLANGroup) AddVLAN(vlan *VLAN) error
+```
+AddVLAN adds a VLAN to the VLANGroup
+
+#### func (*VLANGroup) Destroy
+
+```go
+func (vg *VLANGroup) Destroy() error
+```
+Destroy removes a VLANGroup
+
+#### func (*VLANGroup) Refresh
+
+```go
+func (vg *VLANGroup) Refresh() error
+```
+Refresh reloads the VLAN from the data store.
+
+#### func (*VLANGroup) RemoveVLAN
+
+```go
+func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error
+```
+RemoveVLAN removes a VLAN from the VLANGroup
+
+#### func (*VLANGroup) Save
+
+```go
+func (vg *VLANGroup) Save() error
+```
+Save persists a VLANgroup. It will call Validate.
+
+#### func (*VLANGroup) VLANs
+
+```go
+func (vg *VLANGroup) VLANs() []int
+```
+VLANs returns the Tags of the VLANs associated with the VLANGroup
+
+#### func (*VLANGroup) Validate
+
+```go
+func (vg *VLANGroup) Validate() error
+```
+Validate ensures a VLANGroup has resonable data.
+
+#### type VLANGroups
+
+```go
+type VLANGroups []*VLANGroup
+```
+
+VLANGroups is an alias to a slice of *VLANGroup
+
+#### type VLANs
+
+```go
+type VLANs []*VLAN
+```
+
+VLANs is an alias to a slice of *VLAN
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

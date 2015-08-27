@@ -59,6 +59,20 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 		return nil, err
 	}
 
+	var vlans []int
+	if g.VLANGroupID != "" {
+		vlanGroup, err := agent.context.VLANGroup(g.VLANGroupID)
+		if err != nil {
+			return nil, err
+		}
+		vlans = vlanGroup.VLANs()
+	}
+
+	// Default to vlan tag 1
+	if len(vlans) == 0 {
+		vlans = []int{1}
+	}
+
 	nic := client.Nic{
 		Name:    "eth0",
 		Network: g.Bridge,
@@ -67,6 +81,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 		Address: g.IP.String(),
 		Netmask: subnet.CIDR.Mask.String(),
 		Gateway: subnet.Gateway.String(),
+		VLANs:   vlans,
 	}
 
 	disk := client.Disk{

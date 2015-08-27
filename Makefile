@@ -98,6 +98,17 @@ cmd/cguestd/cguestd: cmd/cguestd/main.go \
 $(SBIN_DIR)/cguestd: cmd/cguestd/cguestd
 	install -D $< $(DESTDIR)$@
 
+cmd/cnetworkd/cnetworkd: cmd/cnetworkd/main.go \
+		cmd/cnetworkd/vlan.go \
+		cmd/cnetworkd/vlangroup.go \
+		cmd/cnetworkd/helpers.go \
+		cmd/cnetworkd/http.go
+	cd $(dir $<) && \
+	go get && \
+	go build -v
+
+$(SBIN_DIR)/cnetworkd: cmd/cnetworkd/cnetworkd
+	install -D $< $(DESTDIR)$@
 
 clean:
 	cd cmd/nfirewalld && \
@@ -127,6 +138,9 @@ clean:
 	cd cmd/cguestd && \
 	go clean -x
 
+	cd cmd/cnetworkd && \
+	go clean -x
+
 
 install: \
   $(SBIN_DIR)/nfirewalld \
@@ -138,4 +152,5 @@ install: \
   $(SBIN_DIR)/nconfigd \
   $(SBIN_DIR)/cplacerd \
   $(SBIN_DIR)/cguestd \
+  $(SBIN_DIR)/cnetworkd \
 

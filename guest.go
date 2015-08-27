@@ -32,6 +32,7 @@ type (
 		NetworkID     string            `json:"network"`
 		SubnetID      string            `json:"subnet"`
 		FWGroupID     string            `json:"fwgroup"`
+		VLANGroupID   string            `json:"vlangroup"`
 		MAC           net.HardwareAddr  `json:"mac"`
 		IP            net.IP            `json:"ip"`
 		Bridge        string            `json:"bridge"`
@@ -50,6 +51,7 @@ type (
 		NetworkID    string            `json:"network"`
 		SubnetID     string            `json:"subnet"`
 		FWGroupID    string            `json:"fwgroup"`
+		VLANGroupID  string            `json:"vlangroup"`
 		MAC          string            `json:"mac"`
 		IP           net.IP            `json:"ip"`
 		Bridge       string            `json:"bridge"`
@@ -69,6 +71,7 @@ func (g *Guest) MarshalJSON() ([]byte, error) {
 		NetworkID:    g.NetworkID,
 		SubnetID:     g.SubnetID,
 		FWGroupID:    g.FWGroupID,
+		VLANGroupID:  g.VLANGroupID,
 		HypervisorID: g.HypervisorID,
 		IP:           g.IP,
 		MAC:          g.MAC.String(),
@@ -106,6 +109,9 @@ func (g *Guest) UnmarshalJSON(input []byte) error {
 	}
 	if data.FWGroupID != "" {
 		g.FWGroupID = data.FWGroupID
+	}
+	if data.VLANGroupID != "" {
+		g.VLANGroupID = data.VLANGroupID
 	}
 	if data.HypervisorID != "" {
 		g.HypervisorID = data.HypervisorID
