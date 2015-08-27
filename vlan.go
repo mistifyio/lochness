@@ -96,7 +96,8 @@ func (v *VLAN) Refresh() error {
 
 // Validate ensures a VLAN has resonable data.
 func (v *VLAN) Validate() error {
-	if v.Tag <= 0 {
+	// Tag must be positive and fit in 12bit
+	if v.Tag <= 0 || v.Tag > 4095 {
 		return errors.New("invalid tag")
 	}
 	return nil
