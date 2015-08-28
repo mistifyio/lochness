@@ -97,7 +97,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 		Nics:     []client.Nic{nic},
 		Disks:    []client.Disk{disk},
 		Memory:   uint(flavor.Memory),
-		Cpu:      uint(flavor.CPU),
+		CPU:      uint(flavor.CPU),
 		Metadata: g.Metadata,
 	}, nil
 }
