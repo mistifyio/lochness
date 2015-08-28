@@ -91,7 +91,7 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	}
 
 	return &client.Guest{
-		Id:       g.ID,
+		ID:       g.ID,
 		Type:     g.Type,
 		Image:    flavor.Image,
 		Nics:     []client.Nic{nic},
@@ -291,7 +291,7 @@ func (agent *MistifyAgent) FetchImage(guestID string) (string, error) {
 
 	host := hypervisor.IP.String()
 	req := &rpc.ImageRequest{
-		Id:   flavor.Image,
+		ID:   flavor.Image,
 		Type: guest.Type,
 	}
 	url := fmt.Sprintf("http://%s:8080/images", host) // TODO: Get port from somewhere. Config?

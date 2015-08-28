@@ -71,7 +71,7 @@ func (agent *StubAgent) guestFromID(guestID string) (*client.Guest, error) {
 	}
 
 	return &client.Guest{
-		Id:       g.ID,
+		ID:       g.ID,
 		Type:     g.Type,
 		Nics:     []client.Nic{nic},
 		Disks:    []client.Disk{disk},
