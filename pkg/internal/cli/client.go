@@ -155,6 +155,7 @@ func parseError(dec *json.Decoder) (string, []interface{}) {
 	return msg, stack
 }
 
+// ProcessResponse processes an http response
 func ProcessResponse(response *http.Response, title, action string, expectedStatuses []int, dest interface{}) {
 	defer response.Body.Close()
 

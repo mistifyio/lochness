@@ -155,7 +155,7 @@ func writeConfig(confType, path string, checksum []byte, generator func(io.Write
 	return hash.Sum(nil), nil
 }
 
-func restart_dhcpd() {
+func restartDhcpd() {
 	cmd := exec.Command("systemctl", "restart", "dhcpd.service")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -205,7 +205,7 @@ func main() {
 	// Update at the start of each run
 	restart, err := updateConfigs(f, r, hconfPath, gconfPath)
 	if restart {
-		restart_dhcpd()
+		restartDhcpd()
 	}
 	if err != nil {
 		os.Exit(1)
@@ -254,7 +254,7 @@ func main() {
 		if refresh {
 			restart, err := updateConfigs(f, r, hconfPath, gconfPath)
 			if restart {
-				restart_dhcpd()
+				restartDhcpd()
 			}
 			if err != nil {
 				log.WithFields(log.Fields{
