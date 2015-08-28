@@ -8,6 +8,8 @@ import (
 	"errors"
 	"net"
 	"os"
+
+	logx "github.com/mistifyio/mistify-logrus-ext"
 )
 
 // ErrNotifyNoSocket is an error for when a valid notify socket name isn't prvided
@@ -33,7 +35,7 @@ func Notify(state string) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer logx.LogReturnedErr(conn.Close, nil, "failed to close connection")
 
 	_, err = conn.Write([]byte(state))
 	if err != nil {

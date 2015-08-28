@@ -13,6 +13,7 @@ import (
 	magent "github.com/mistifyio/mistify-agent"
 	"github.com/mistifyio/mistify-agent/client"
 	"github.com/mistifyio/mistify-agent/rpc"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 )
 
 type (
@@ -149,7 +150,7 @@ func (agent *MistifyAgent) request(url, httpMethod string, expectedCode int, dat
 	if reqErr != nil {
 		return nil, "", reqErr
 	}
-	defer resp.Body.Close()
+	defer logx.LogReturnedErr(resp.Body.Close, nil, "failed to close response body")
 
 	if resp.StatusCode != expectedCode {
 		return nil, "", ErrorHTTPCode{expectedCode, resp.StatusCode}

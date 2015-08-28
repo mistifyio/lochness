@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/mistifyio/lochness/pkg/hostport"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 )
 
 func ExampleSplit() {
@@ -41,7 +42,7 @@ func ExampleSplit() {
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%v\n", hp, host, port, err)
 	}
-	w.Flush()
+	logx.LogReturnedErr(w.Flush, nil, "failed to flush tabwriter")
 
 	// Output:
 	// HOSTPORT					HOST					PORT	ERR

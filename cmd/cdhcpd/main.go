@@ -132,7 +132,12 @@ func writeConfig(confType, path string, checksum []byte, generator func(io.Write
 
 	if bytes.Equal(checksum, hash.Sum(nil)) {
 		log.Debug("no change to conf file")
-		os.Remove(tmp)
+		if err := os.Remove(tmp); err != nil {
+			log.WithFields(log.Fields{
+				"error":    err,
+				"filepath": tmp,
+			}).Error("failed to remove temp file")
+		}
 		return nil, nil
 	}
 

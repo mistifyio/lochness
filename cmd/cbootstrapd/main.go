@@ -176,12 +176,17 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	configs := map[string]string{
 		"ETCD_ADDRESS": s.etcdAddr,
 	}
-	s.ctx.ForEachConfig(func(key, val string) error {
+	err := s.ctx.ForEachConfig(func(key, val string) error {
 		if s.r.MatchString(key) {
 			configs[key] = val
 		}
 		return nil
 	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("failed to load configs")
+	}
 
 	for key, val := range hv.Config {
 		if s.r.MatchString(key) {

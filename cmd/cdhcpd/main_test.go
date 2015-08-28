@@ -8,6 +8,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // func writeConfig(confType, path string, checksum []byte, generator func(io.Writer) error) ([]byte, error) {
@@ -16,7 +18,12 @@ func TestWriteConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal("could not allocate temporary file", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		log.WithFields(log.Fields{
+			"error":    err,
+			"filename": f.Name(),
+		}).Error("failed to close temp file")
+	}
 
 	wrapper := func(contents []byte) func(io.Writer) error {
 		return func(w io.Writer) error {
@@ -84,6 +91,11 @@ func TestWriteConfig(t *testing.T) {
 			t.Fatal("wanted a nil checksum to signify no changes, got:", string(hash))
 		}
 
-		os.Remove(f.Name())
+		if err := os.Remove(f.Name()); err != nil {
+			log.WithFields(log.Fields{
+				"error":    err,
+				"filename": f.Name(),
+			}).Error("failed to remove temp file")
+		}
 	}
 }
