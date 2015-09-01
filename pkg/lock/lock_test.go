@@ -2,6 +2,7 @@ package lock
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -21,33 +22,39 @@ func newClient(t *testing.T) *etcd.Client {
 
 func TestAcquire(t *testing.T) {
 	t.Parallel()
-	kv := "some-dir/" + uuid.New()
-	c := newClient(t)
 
-	_, err := Acquire(c, kv, kv, 60, false)
+	key := "lock-TestAcquire"
+	id := uuid.New()
+	c := newClient(t)
+	defer cleanup(c, key)
+
+	_, err := Acquire(c, key, id, 60, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := c.Get(kv, false, false)
+	resp, err := c.Get(key, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.Node.Value != kv {
-		t.Fatalf("wanted: %s, got: %s\n", resp.Node.Value, kv)
+	if resp.Node.Value != id {
+		t.Fatalf("wanted: %s, got: %s\n", id, resp.Node.Value)
 	}
 }
 
 func TestAcquireExists(t *testing.T) {
 	t.Parallel()
-	kv := uuid.New()
-	c := newClient(t)
 
-	_, err := Acquire(c, kv, kv, 60, false)
+	key := "lock-TestAcquireExists"
+	id := uuid.New()
+	c := newClient(t)
+	defer cleanup(c, key)
+
+	_, err := Acquire(c, key, id, 60, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	l, err := Acquire(c, kv, kv, 60, false)
+	l, err := Acquire(c, key, id, 60, false)
 	if err == nil {
 		t.Fatal("expected a non-nil error, got:", err, l)
 	}
@@ -55,17 +62,21 @@ func TestAcquireExists(t *testing.T) {
 
 func TestAcquireExistsWait(t *testing.T) {
 	t.Parallel()
-	kv := uuid.New()
+
+	key := "lock-TestAcquireExistsWait"
+	id1 := uuid.New()
+	id2 := uuid.New()
 	ttl := uint64(2)
 	c := newClient(t)
+	defer cleanup(c, key)
 
-	_, err := Acquire(c, kv, kv, ttl, false)
+	_, err := Acquire(c, key, id1, ttl, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tstart := time.Now().Unix()
-	_, err = Acquire(c, kv, kv+kv, ttl, true)
+	_, err = Acquire(c, key, id2, ttl, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,22 +85,25 @@ func TestAcquireExistsWait(t *testing.T) {
 		t.Fatalf("expected atleast %ds(ttl-1)  wait time, got: %d\n", ttl-1, tstop-tstart)
 	}
 
-	resp, err := c.Get(kv, false, false)
+	resp, err := c.Get(key, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.Node.Value != kv+kv {
-		t.Fatalf("incorrect data in lock, wanted: %s, got: %s\n", kv+kv, resp.Node.Value)
+	if resp.Node.Value != id2 {
+		t.Fatalf("incorrect data in lock, wanted: %s, got: %s\n", id2, resp.Node.Value)
 	}
 }
 
 func TestRefresh(t *testing.T) {
 	t.Parallel()
-	kv := uuid.New()
-	ttl := uint64(1)
-	c := newClient(t)
 
-	l, err := Acquire(c, kv, kv, ttl, false)
+	key := "lock-TestRefresh"
+	id := uuid.New()
+	ttl := uint64(2)
+	c := newClient(t)
+	defer cleanup(c, key)
+
+	l, err := Acquire(c, key, id, ttl, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,16 +128,19 @@ func TestRefresh(t *testing.T) {
 
 func TestRelease(t *testing.T) {
 	t.Parallel()
-	kv := uuid.New()
+
+	key := "lock-TestRelease"
+	id := uuid.New()
 	ttl := uint64(2)
 	c := newClient(t)
+	defer cleanup(c, key)
 
 	l := &Lock{}
 	if err := l.Release(); err != ErrLockNotHeld {
 		t.Fatalf("wanted: %v, got: %v\n", ErrLockNotHeld, err)
 	}
 
-	l, err := Acquire(c, kv, kv, ttl, false)
+	l, err := Acquire(c, key, id, ttl, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +149,7 @@ func TestRelease(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l, err = Acquire(c, kv, kv, ttl, false)
+	l, err = Acquire(c, key, id, ttl, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,10 +166,13 @@ func TestRelease(t *testing.T) {
 
 func TestJSON(t *testing.T) {
 	t.Parallel()
-	kv := "some-dir/" + uuid.New()
-	c := newClient(t)
 
-	l, err := Acquire(c, kv, kv, 60, false)
+	key := "lock-TestJSON"
+	id := uuid.New()
+	c := newClient(t)
+	defer cleanup(c, key)
+
+	l, err := Acquire(c, key, id, 60, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,5 +209,11 @@ LOOP:
 	l2.c = l.c
 	if !reflect.DeepEqual(*l, *l2) {
 		t.Fatalf("lock mismatch\nwanted: %#v\n   got: %#v\n", l, l2)
+	}
+}
+
+func cleanup(c *etcd.Client, key string) {
+	if _, err := c.Delete(key, true); err != nil && !isKeyNotFound(err) {
+		fmt.Printf("Unable to delete key '%s': %+v", key, err)
 	}
 }
