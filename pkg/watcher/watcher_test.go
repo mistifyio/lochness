@@ -31,6 +31,7 @@ func clean(t *testing.T, w *Watcher, prefixes ...string) {
 		if err != nil && err != ErrPrefixNotWatched {
 			t.Fatalf("error removing prefix: %s, err: %s", prefix, err)
 		}
+		_, _ = w.c.Delete(prefix, true)
 	}
 }
 
