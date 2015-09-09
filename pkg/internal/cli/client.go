@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 )
 
 // Client interacts with an http api
@@ -155,8 +156,9 @@ func parseError(dec *json.Decoder) (string, []interface{}) {
 	return msg, stack
 }
 
+// ProcessResponse processes an http response
 func ProcessResponse(response *http.Response, title, action string, expectedStatuses []int, dest interface{}) {
-	defer response.Body.Close()
+	defer logx.LogReturnedErr(response.Body.Close, nil, "failed to close response body")
 
 	dec := json.NewDecoder(response.Body)
 	if okRespStatus(response.StatusCode, expectedStatuses) {

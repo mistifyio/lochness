@@ -24,7 +24,6 @@ import (
 	flag "github.com/ogier/pflag"
 )
 
-// XXX: allow different tube names?
 // TaskFunc is a convenience wrapper for function calls on tasks
 type TaskFunc struct {
 	name     string

@@ -13,6 +13,7 @@ import (
 	magent "github.com/mistifyio/mistify-agent"
 	"github.com/mistifyio/mistify-agent/client"
 	"github.com/mistifyio/mistify-agent/rpc"
+	logx "github.com/mistifyio/mistify-logrus-ext"
 )
 
 type (
@@ -91,13 +92,13 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 	}
 
 	return &client.Guest{
-		Id:       g.ID,
+		ID:       g.ID,
 		Type:     g.Type,
 		Image:    flavor.Image,
 		Nics:     []client.Nic{nic},
 		Disks:    []client.Disk{disk},
 		Memory:   uint(flavor.Memory),
-		Cpu:      uint(flavor.CPU),
+		CPU:      uint(flavor.CPU),
 		Metadata: g.Metadata,
 	}, nil
 }
@@ -149,7 +150,7 @@ func (agent *MistifyAgent) request(url, httpMethod string, expectedCode int, dat
 	if reqErr != nil {
 		return nil, "", reqErr
 	}
-	defer resp.Body.Close()
+	defer logx.LogReturnedErr(resp.Body.Close, nil, "failed to close response body")
 
 	if resp.StatusCode != expectedCode {
 		return nil, "", ErrorHTTPCode{expectedCode, resp.StatusCode}
@@ -291,7 +292,7 @@ func (agent *MistifyAgent) FetchImage(guestID string) (string, error) {
 
 	host := hypervisor.IP.String()
 	req := &rpc.ImageRequest{
-		Id:   flavor.Image,
+		ID:   flavor.Image,
 		Type: guest.Type,
 	}
 	url := fmt.Sprintf("http://%s:8080/images", host) // TODO: Get port from somewhere. Config?

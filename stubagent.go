@@ -71,13 +71,13 @@ func (agent *StubAgent) guestFromID(guestID string) (*client.Guest, error) {
 	}
 
 	return &client.Guest{
-		Id:       g.ID,
+		ID:       g.ID,
 		Type:     g.Type,
 		Nics:     []client.Nic{nic},
 		Disks:    []client.Disk{disk},
 		State:    "running",
 		Memory:   uint(flavor.Memory),
-		Cpu:      uint(flavor.CPU),
+		CPU:      uint(flavor.CPU),
 		VNC:      1337,
 		Metadata: g.Metadata,
 	}, nil

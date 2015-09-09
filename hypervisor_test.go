@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	log "github.com/Sirupsen/logrus"
 	h "github.com/bakins/test-helpers"
 	"github.com/mistifyio/lochness"
 )
@@ -122,7 +123,12 @@ func TestSetHypervisorID(t *testing.T) {
 
 	// set with ENV
 	uuid = "3e0f2128-0342-49f6-8e5f-ecd401bae99e"
-	os.Setenv("HYPERVISOR_ID", uuid)
+	if err := os.Setenv("HYPERVISOR_ID", uuid); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"uuid":  uuid,
+		}).Error("failed to set HYPERVISOR_ID env variable")
+	}
 	id, err = lochness.SetHypervisorID("")
 	h.Ok(t, err)
 	h.Equals(t, uuid, id)

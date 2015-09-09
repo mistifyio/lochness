@@ -111,7 +111,9 @@ func upload(cmd *cobra.Command, specs []string) {
 			}).Fatal("failed to open file")
 		}
 		// File remains open until function exit
-		defer file.Close()
+		defer logx.LogReturnedErr(file.Close, log.Fields{
+			"filename": sourcePath,
+		}, "failed to close image source file")
 
 		info, err := file.Stat()
 		if err != nil {
@@ -176,7 +178,9 @@ func download(cmd *cobra.Command, ids []string) {
 				}
 			}
 		}()
-		defer tempDest.Close()
+		defer logx.LogReturnedErr(tempDest.Close, log.Fields{
+			"filename": tempDest.Name(),
+		}, "failed to close temp dest")
 
 		sourceURL := fmt.Sprintf("%s/images/%s/download", getServerURL(), id)
 		resp, err := http.Get(sourceURL)
@@ -188,7 +192,7 @@ func download(cmd *cobra.Command, ids []string) {
 			}).Error("request error")
 			return
 		}
-		defer resp.Body.Close()
+		defer logx.LogReturnedErr(resp.Body.Close, nil, "failed to close response body")
 
 		if resp.StatusCode != http.StatusOK {
 			log.WithFields(log.Fields{
