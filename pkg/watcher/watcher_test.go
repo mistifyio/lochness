@@ -31,6 +31,7 @@ func clean(t *testing.T, w *Watcher, prefixes ...string) {
 		if err != nil && err != ErrPrefixNotWatched {
 			t.Fatalf("error removing prefix: %s, err: %s", prefix, err)
 		}
+		_, _ = w.c.Delete(prefix, true)
 	}
 }
 
@@ -160,7 +161,7 @@ func TestNext(t *testing.T) {
 		}
 	}
 
-	time.Sleep(200 * time.Microsecond)
+	time.Sleep(1 * time.Millisecond)
 	go func() {
 		for _, prefix := range prefixes {
 			go func(prefix string) {
@@ -205,7 +206,7 @@ func TestResponse(t *testing.T) {
 	}
 
 	num := 1024
-	time.Sleep(200 * time.Microsecond)
+	time.Sleep(1 * time.Millisecond)
 	go func() {
 		for i := 0; i < num; i++ {
 			node := strconv.Itoa(i % 10)

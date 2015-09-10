@@ -135,29 +135,6 @@ func TestFirstGuest(t *testing.T) {
 
 }
 
-func TestGuestWithoutMAC(t *testing.T) {
-	c := newContext(t)
-	defer contextCleanup(t)
-
-	f := c.NewFlavor()
-	f.Resources.Memory = 1024
-	f.Resources.CPU = 2
-	f.Resources.Disk = 8192
-	h.Ok(t, f.Save())
-
-	g := c.NewGuest()
-	g.FlavorID = f.ID
-	err := g.Save()
-
-	h.Ok(t, err)
-
-	g, err = c.Guest(g.ID)
-
-	h.Ok(t, err)
-
-	h.Equals(t, net.HardwareAddr(nil), g.MAC)
-}
-
 func TestGuestWithBadID(t *testing.T) {
 	c := newContext(t)
 	_, err := c.Guest("")

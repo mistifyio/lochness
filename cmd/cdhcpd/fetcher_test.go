@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	log "github.com/Sirupsen/logrus"
 	h "github.com/bakins/test-helpers"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/testhelper"
@@ -217,7 +218,7 @@ func TestIntegrateHypervisorResponses(t *testing.T) {
 	h.Equals(t, hvs[hv.ID].MAC.String(), mac)
 
 	// Delete-hypervisor integration (update requires modifiedIndex, which is not exported)
-	resp, err = f.etcdClient.Delete(filepath.Join(lochness.HypervisorPath, hv.ID), true)
+	resp, err = f.etcdClient.Delete(filepath.Join(lochness.HypervisorPath, hv.ID, "metadata"), false)
 	h.Ok(t, err)
 	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -260,7 +261,7 @@ func TestIntegrateGuestResponses(t *testing.T) {
 	h.Equals(t, gs[g.ID].MAC.String(), mac)
 
 	// Delete-guest integration
-	resp, err = f.etcdClient.Delete(filepath.Join(lochness.GuestPath, g.ID), true)
+	resp, err = f.etcdClient.Delete(filepath.Join(lochness.GuestPath, g.ID, "metadata"), false)
 	h.Ok(t, err)
 	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -304,7 +305,7 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	h.Equals(t, ss[s.ID].CIDR.String(), cidr)
 
 	// Delete-subnet integration
-	resp, err = f.etcdClient.Delete(filepath.Join(lochness.SubnetPath, s.ID), true)
+	resp, err = f.etcdClient.Delete(filepath.Join(lochness.SubnetPath, s.ID, "metadata"), false)
 	h.Ok(t, err)
 	refresh, err = f.IntegrateResponse(resp)
 	h.Ok(t, err)
@@ -314,4 +315,8 @@ func TestIntegrateSubnetResponses(t *testing.T) {
 	if _, ok := ss[s.ID]; ok {
 		t.Error("Newly deleted subnet is present in list")
 	}
+}
+
+func init() {
+	log.SetLevel(log.ErrorLevel)
 }
