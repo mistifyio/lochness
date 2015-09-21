@@ -9,7 +9,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/andrew-d/go-termutil"
-	"github.com/mistifyio/lochness/pkg/internal/cli"
+	"github.com/mistifyio/lochness/internal/cli"
 	"github.com/spf13/cobra"
 )
 
