@@ -14,7 +14,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/andrew-d/go-termutil"
-	"github.com/mistifyio/lochness/pkg/internal/cli"
+	"github.com/mistifyio/lochness/internal/cli"
 	"github.com/mistifyio/mistify-image-service/metadata"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	netutil "github.com/mistifyio/util/net"
