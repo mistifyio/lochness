@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/pborman/uuid"
 )
 
 var (

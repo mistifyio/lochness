@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/gorilla/mux"
 	"github.com/mistifyio/lochness"
+	"github.com/pborman/uuid"
 )
 
 // getHypervisorHelper gets the hypervisor object and handles sending a response

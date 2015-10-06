@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/pborman/uuid"
 
 	"github.com/coreos/go-etcd/etcd"
 )

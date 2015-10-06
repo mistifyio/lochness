@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/pborman/uuid"
 
 	"github.com/coreos/go-etcd/etcd"
 )

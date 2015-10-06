@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/pborman/uuid"
 )
 
 var (

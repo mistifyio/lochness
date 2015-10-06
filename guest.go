@@ -9,9 +9,9 @@ import (
 	"net"
 	"path/filepath"
 
-	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/pborman/uuid"
 )
 
 var (

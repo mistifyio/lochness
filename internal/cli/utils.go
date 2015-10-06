@@ -3,8 +3,8 @@ package cli
 import (
 	"encoding/json"
 
-	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
+	"github.com/pborman/uuid"
 )
 
 // AssertID checks whether a string is a valid id

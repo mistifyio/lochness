@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/testhelper"
 	logx "github.com/mistifyio/mistify-logrus-ext"
+	"github.com/pborman/uuid"
 	flag "github.com/spf13/pflag"
 )
 
