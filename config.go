@@ -1,9 +1,6 @@
 package lochness
 
-import (
-	"path/filepath"
-	"strconv"
-)
+import "path/filepath"
 
 //Used to get set arbitrary config variables
 
@@ -27,12 +24,6 @@ func (c *Context) GetConfig(key string) (string, error) {
 func (c *Context) SetConfig(key, val string) error {
 	_, err := c.etcd.Set(filepath.Join(ConfigPath, key), val, 0)
 	return err
-}
-
-// ToBool is a wrapper around strconv.ParseBool for easy boolean values
-func ToBool(val string) bool {
-	b, err := strconv.ParseBool(val)
-	return err != nil && b
 }
 
 // ForEachConfig will run f on each config. It will stop iteration if f returns an error.
