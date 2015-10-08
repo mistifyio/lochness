@@ -2,53 +2,87 @@ package lochness_test
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
 
-	h "github.com/bakins/test-helpers"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
-func newContext(t *testing.T) *lochness.Context {
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
-	if !e.SyncCluster() {
-		t.Fatal("cannot sync cluster. make sure etcd is running at http://127.0.0.1:4001")
-	}
-
-	c := lochness.NewContext(e)
-
-	return c
+type ContextTestSuite struct {
+	suite.Suite
+	EtcdDir    string
+	EtcdPrefix string
+	EtcdClient *etcd.Client
+	EtcdCmd    *exec.Cmd
+	Context    *lochness.Context
 }
 
-func TestNewContext(t *testing.T) {
-	_ = newContext(t)
+func (s *ContextTestSuite) SetupSuite() {
+	// Start up a test etcd
+	s.EtcdDir, _ = ioutil.TempDir("", "lochnessTest-"+uuid.New())
+	port := 54321
+	s.EtcdCmd = exec.Command("etcd",
+		"-name=lochnessTest",
+		"-data-dir="+string(s.EtcdDir),
+		fmt.Sprintf("-listen-client-urls=http://127.0.0.1:%d", port),
+		fmt.Sprintf("-listen-peer-urls=http://127.0.0.1:%d", port+1),
+	)
+	s.Require().NoError(s.EtcdCmd.Start())
+	s.EtcdClient = etcd.NewClient([]string{fmt.Sprintf("http://127.0.0.1:%d", port)})
+
+	// Wait for test etcd to be ready
+	for !s.EtcdClient.SyncCluster() {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// s.EtcdPrefix = uuid.New()
+	s.EtcdPrefix = "/lochness"
 }
 
-func contextCleanup(t *testing.T) {
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
-	if !e.SyncCluster() {
-		t.Fatal("cannot sync cluster. make sure etcd is running at http://127.0.0.1:4001")
-	}
-
-	_, err := e.Delete("lochness", true)
-	if !lochness.IsKeyNotFound(err) {
-		h.Ok(t, err)
-	}
+func (s *ContextTestSuite) SetupTest() {
+	s.Context = lochness.NewContext(s.EtcdClient)
 }
 
-func TestIsKeyNotFound(t *testing.T) {
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
-	newContext(t)
-	defer contextCleanup(t)
+func (s *ContextTestSuite) TearDownTest() {
+	// Clean out etcd
+	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
+}
 
-	_, err := e.Get("lochness/some-randon-non-existent-key", false, false)
+func (s *ContextTestSuite) TearDownSuite() {
+	// Stop the test etcd process
+	s.EtcdCmd.Process.Kill()
+	s.EtcdCmd.Wait()
 
-	if !lochness.IsKeyNotFound(err) {
-		t.Fatalf("was expecting a KeyNotFound error, got: %#v\n", err)
-	}
+	// Remove the test etcd data directory
+	s.Require().NoError(os.RemoveAll(s.EtcdDir))
+}
 
-	err = errors.New("lochness/some-random-non-key-not-found-error")
-	if lochness.IsKeyNotFound(err) {
-		t.Fatal("got unexpected positive KeyNotFound error for err:", err)
-	}
+func TestContextTestSuite(t *testing.T) {
+	suite.Run(t, new(ContextTestSuite))
+}
+
+func (s *ContextTestSuite) prefixKey(key string) string {
+	return filepath.Join(s.EtcdPrefix, key)
+}
+
+func (s *ContextTestSuite) TestNewContext() {
+	s.NotNil(s.Context)
+}
+
+func (s *ContextTestSuite) TestIsKeyNotFound() {
+	_, err := s.EtcdClient.Get(s.prefixKey("some-randon-non-existent-key"), false, false)
+
+	s.Error(err)
+	s.True(lochness.IsKeyNotFound(err))
+
+	err = errors.New("some-random-non-key-not-found-error")
+	s.False(lochness.IsKeyNotFound(err))
 }
