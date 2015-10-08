@@ -80,6 +80,12 @@ func (s *ContextTestSuite) newFlavor() *lochness.Flavor {
 	return f
 }
 
+func (s *ContextTestSuite) newFWGroup() *lochness.FWGroup {
+	fw := s.Context.NewFWGroup()
+	_ = fw.Save()
+	return fw
+}
+
 func (s *ContextTestSuite) TestNewContext() {
 	s.NotNil(s.Context)
 }
