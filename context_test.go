@@ -73,6 +73,13 @@ func (s *ContextTestSuite) prefixKey(key string) string {
 	return filepath.Join(s.EtcdPrefix, key)
 }
 
+func (s *ContextTestSuite) newFlavor() *lochness.Flavor {
+	f := s.Context.NewFlavor()
+	f.Image = uuid.New()
+	_ = f.Save()
+	return f
+}
+
 func (s *ContextTestSuite) TestNewContext() {
 	s.NotNil(s.Context)
 }
