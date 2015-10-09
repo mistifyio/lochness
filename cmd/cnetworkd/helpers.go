@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/pborman/uuid"
 
 	"github.com/gorilla/mux"
 	"github.com/mistifyio/lochness"

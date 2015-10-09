@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/mistifyio/lochness"
+	"github.com/pborman/uuid"
 )
 
 const guestKey = "guest"
