@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,6 +85,19 @@ func (s *ContextTestSuite) newFWGroup() *lochness.FWGroup {
 	fw := s.Context.NewFWGroup()
 	_ = fw.Save()
 	return fw
+}
+
+func (s *ContextTestSuite) newVLAN() *lochness.VLAN {
+	v := s.Context.NewVLAN()
+	v.Tag = rand.Intn(4066)
+	_ = v.Save()
+	return v
+}
+
+func (s *ContextTestSuite) newVLANGroup() *lochness.VLANGroup {
+	v := s.Context.NewVLANGroup()
+	s.NoError(v.Save())
+	return v
 }
 
 func (s *ContextTestSuite) TestNewContext() {
