@@ -70,7 +70,26 @@ func (s *FWGroupTestSuite) TestRefresh() {
 }
 
 func (s *FWGroupTestSuite) TestValidate() {
-	// FWGroup.Validate currently does nothing
+	tests := []struct {
+		description string
+		ID          string
+		expectedErr bool
+	}{
+		{"missing ID", "", true},
+		{"non uuid ID", "asdf", true},
+		{"uuid ID", uuid.New(), false},
+	}
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		fg := &lochness.FWGroup{ID: test.ID}
+		err := fg.Validate()
+		if test.expectedErr {
+			s.Error(err, msg("should be invalid"))
+		} else {
+			s.NoError(err, msg("should be valid"))
+		}
+	}
 }
 
 func (s *FWGroupTestSuite) TestSave() {

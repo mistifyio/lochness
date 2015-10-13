@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"errors"
 	"net"
 	"path/filepath"
 
@@ -176,9 +177,11 @@ func (f *FWGroup) Refresh() error {
 	return f.fromResponse(resp)
 }
 
-// Validate ensures a FWGroup has reasonable data. It currently does nothing.
+// Validate ensures a FWGroup has reasonable data.
 func (f *FWGroup) Validate() error {
-	// do validation stuff...
+	if _, err := canonicalizeUUID(f.ID); err != nil {
+		return errors.New("invalid ID")
+	}
 	return nil
 }
 
