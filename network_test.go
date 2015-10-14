@@ -1,55 +1,150 @@
 package lochness_test
 
 import (
-	"strings"
 	"testing"
 
-	h "github.com/bakins/test-helpers"
 	"github.com/mistifyio/lochness"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func newNetwork(t *testing.T) *lochness.Network {
-	c := newContext(t)
-	n := c.NewNetwork()
-
-	return n
+type NetworkTestSuite struct {
+	ContextTestSuite
 }
 
-func TestNewNetwork(t *testing.T) {
-	defer contextCleanup(t)
-	n := newNetwork(t)
-	h.Equals(t, 36, len(n.ID))
-	err := n.Save()
-	h.Ok(t, err)
+func TestNetworkTestSuite(t *testing.T) {
+	suite.Run(t, new(NetworkTestSuite))
 }
 
-func TestNetworkAddSubnet(t *testing.T) {
-	defer contextCleanup(t)
-	n := newNetwork(t)
-	h.Equals(t, 36, len(n.ID))
-	err := n.Save()
-	h.Ok(t, err)
-
-	s := newSubnet(t)
-
-	err = n.AddSubnet(s)
-	h.Ok(t, err)
-
-	h.Equals(t, 1, len(n.Subnets()))
+func (s *NetworkTestSuite) TestNewNetwork() {
+	network := s.Context.NewNetwork()
+	s.NotNil(uuid.Parse(network.ID))
 }
 
-func TestNetworkAlias(t *testing.T) {
-	_ = lochness.Networks([]*lochness.Network{})
+func (s *NetworkTestSuite) TestNework() {
+	network := s.newNetwork()
+
+	tests := []struct {
+		description string
+		ID          string
+		expectedErr bool
+	}{
+		{"missing id", "", true},
+		{"invalid ID", "adf", true},
+		{"nonexistant ID", uuid.New(), true},
+		{"real ID", network.ID, false},
+	}
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		n, err := s.Context.Network(test.ID)
+		if test.expectedErr {
+			s.Error(err, msg("lookup should fail"))
+			s.Nil(n, msg("failure shouldn't return a network"))
+		} else {
+			s.NoError(err, msg("lookup should succeed"))
+			s.True(assert.ObjectsAreEqual(network, n), msg("success should return correct data"))
+		}
+	}
 }
 
-func TestNetworkWithBadID(t *testing.T) {
-	c := newContext(t)
-	_, err := c.Network("")
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+func (s *NetworkTestSuite) TestRefresh() {
+	network := s.newNetwork()
+	networkCopy := &lochness.Network{}
+	*networkCopy = *network
+	network.AddSubnet(s.newSubnet())
 
-	_, err = c.Network("foo")
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+	_ = network.Save()
+	s.NoError(networkCopy.Refresh(), "refresh existing should succeed")
+	s.True(assert.ObjectsAreEqual(network, networkCopy), "refresh should pull new data")
 
+	newNetwork := s.Context.NewNetwork()
+	s.Error(newNetwork.Refresh(), "unsaved network refresh should fail")
+}
+
+func (s *NetworkTestSuite) TestValidate() {
+	tests := []struct {
+		description string
+		ID          string
+		expectedErr bool
+	}{
+		{"missing ID", "", true},
+		{"non uuid ID", "asdf", true},
+		{"uuid ID", uuid.New(), false},
+	}
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		n := &lochness.Network{ID: test.ID}
+		err := n.Validate()
+		if test.expectedErr {
+			s.Error(err, msg("should be invalid"))
+		} else {
+			s.NoError(err, msg("should be valid"))
+		}
+	}
+}
+
+func (s *NetworkTestSuite) TestSave() {
+	goodNetwork := s.Context.NewNetwork()
+
+	clobberNetwork := &lochness.Network{}
+	*clobberNetwork = *goodNetwork
+
+	tests := []struct {
+		description string
+		network     *lochness.Network
+		expectedErr bool
+	}{
+		{"invalid network", &lochness.Network{}, true},
+		{"valid network", goodNetwork, false},
+		{"existing network", goodNetwork, false},
+		{"existing network clobber", clobberNetwork, true},
+	}
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		err := test.network.Save()
+		if test.expectedErr {
+			s.Error(err, msg("should fail"))
+		} else {
+			s.NoError(err, msg("should succeed"))
+		}
+	}
+}
+
+func (s *NetworkTestSuite) TestAddSubnet() {
+	tests := []struct {
+		description string
+		network     *lochness.Network
+		subnet      *lochness.Subnet
+		expectedErr bool
+	}{
+		{"nonexisting network, nonexisting subnet", s.Context.NewNetwork(), s.Context.NewSubnet(), true},
+		{"existing network, nonexisting subnet", s.newNetwork(), s.Context.NewSubnet(), true},
+		{"nonexisting network, existing subnet", s.Context.NewNetwork(), s.newSubnet(), true},
+		{"existing network and subnet", s.newNetwork(), s.newSubnet(), false},
+	}
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		err := test.network.AddSubnet(test.subnet)
+		if test.expectedErr {
+			s.Error(err, msg("should fail"))
+			s.Len(test.network.Subnets(), 0, msg("fail should not add subnet to network"))
+			s.Empty(test.subnet.NetworkID, msg("fail should not add network to subnet"))
+		} else {
+			s.NoError(err, msg("should succeed"))
+			s.Len(test.network.Subnets(), 1, msg("fail should add subnet to network"))
+			s.NotNil(uuid.Parse(test.subnet.NetworkID), msg("fail should add network to subnet"))
+		}
+	}
+}
+
+func (s *NetworkTestSuite) TestSubnets() {
+	network := s.newNetwork()
+	_ = network.AddSubnet(s.newSubnet())
+
+	s.Len(network.Subnets(), 1)
 }

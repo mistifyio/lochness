@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 
 	"github.com/coreos/go-etcd/etcd"
@@ -88,8 +89,9 @@ func (n *Network) Refresh() error {
 			n.modifiedIndex = node.ModifiedIndex
 
 		case "subnets":
-			for _, x := range node.Nodes {
-				n.subnets = append(n.subnets, filepath.Base(x.Key))
+			n.subnets = make([]string, len(node.Nodes))
+			for i, x := range node.Nodes {
+				n.subnets[i] = filepath.Base(x.Key)
 			}
 		}
 	}
@@ -100,7 +102,9 @@ func (n *Network) Refresh() error {
 
 // Validate ensures a Network has reasonable data. It currently does nothing.
 func (n *Network) Validate() error {
-	// do validation stuff...
+	if _, err := canonicalizeUUID(n.ID); err != nil {
+		return errors.New("invalid ID")
+	}
 	return nil
 }
 
@@ -144,19 +148,52 @@ func (n *Network) subnetKey(s *Subnet) string {
 
 // AddSubnet adds a Subnet to the Network.
 func (n *Network) AddSubnet(s *Subnet) error {
-	_, err := n.context.etcd.Set(filepath.Join(n.subnetKey(s)), "", 0)
-	if err != nil {
+	// Make sure the Network exists
+	if n.modifiedIndex == 0 {
+		if err := n.Refresh(); err != nil {
+			return err
+		}
+	}
+
+	// Make sure the subnet exists
+	if s.modifiedIndex == 0 {
+		if err := s.Refresh(); err != nil {
+			return err
+		}
+	}
+
+	if _, err := n.context.etcd.Set(n.subnetKey(s), "", 0); err != nil {
 		return err
 	}
+	n.subnets = append(n.subnets, s.ID)
 
 	// an instance where transactions would be cool...
 	s.NetworkID = n.ID
-	err = s.Save()
-	if err != nil {
+	if err := s.Save(); err != nil {
 		return err
 	}
 
-	n.subnets = append(n.subnets, s.ID)
+	return nil
+}
+
+// RemoveSubnet removes a subnet from the network
+func (n *Network) RemoveSubnet(s *Subnet) error {
+	if _, err := n.context.etcd.Delete(n.subnetKey(s), false); err != nil {
+		return err
+	}
+
+	newSubnets := make([]string, 0, len(n.subnets)-1)
+	for _, subnetID := range n.subnets {
+		if subnetID != s.ID {
+			newSubnets = append(newSubnets, subnetID)
+		}
+	}
+	n.subnets = newSubnets
+
+	s.NetworkID = ""
+	if err := s.Save(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -164,5 +201,4 @@ func (n *Network) AddSubnet(s *Subnet) error {
 // Subnets returns the IDs of the Subnets associated with the network.
 func (n *Network) Subnets() []string {
 	return n.subnets
-
 }

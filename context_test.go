@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -98,6 +99,21 @@ func (s *ContextTestSuite) newVLANGroup() *lochness.VLANGroup {
 	v := s.Context.NewVLANGroup()
 	s.NoError(v.Save())
 	return v
+}
+
+func (s *ContextTestSuite) newNetwork() *lochness.Network {
+	n := s.Context.NewNetwork()
+	_ = n.Save()
+	return n
+}
+
+func (s *ContextTestSuite) newSubnet() *lochness.Subnet {
+	sub := s.Context.NewSubnet()
+	_, sub.CIDR, _ = net.ParseCIDR("192.168.100.1/24")
+	sub.StartRange = net.ParseIP("192.168.100.2")
+	sub.EndRange = net.ParseIP("192.168.100.10")
+	_ = sub.Save()
+	return sub
 }
 
 func (s *ContextTestSuite) TestNewContext() {
