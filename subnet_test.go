@@ -1,6 +1,7 @@
 package lochness_test
 
 import (
+	"encoding/json"
 	"errors"
 	"net"
 	"testing"
@@ -69,6 +70,16 @@ func (s *SubnetTestSuite) TestRefresh() {
 }
 
 func (s *SubnetTestSuite) TestJSON() {
+	subnet := s.newSubnet()
+
+	subnetBytes, err := json.Marshal(subnet)
+	s.NoError(err)
+
+	subnetFromJSON := &lochness.Subnet{}
+	s.NoError(json.Unmarshal(subnetBytes, subnetFromJSON))
+	s.Equal(subnet.ID, subnetFromJSON.ID)
+	s.Equal(subnet.CIDR, subnetFromJSON.CIDR)
+	s.Equal(subnet.StartRange, subnetFromJSON.StartRange)
 }
 
 func (s *SubnetTestSuite) TestValidate() {
