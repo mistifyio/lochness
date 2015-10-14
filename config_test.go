@@ -9,7 +9,7 @@ import (
 )
 
 type ConfigTestSuite struct {
-	ContextTestSuite
+	CommonTestSuite
 }
 
 func TestConfigTestSuite(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 )
 
 type SubnetTestSuite struct {
-	ContextTestSuite
+	CommonTestSuite
 }
 
 func TestSubnetTestSuite(t *testing.T) {

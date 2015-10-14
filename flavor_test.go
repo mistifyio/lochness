@@ -10,7 +10,7 @@ import (
 )
 
 type FlavorTestSuite struct {
-	ContextTestSuite
+	CommonTestSuite
 }
 
 func TestFlavorTestSuite(t *testing.T) {

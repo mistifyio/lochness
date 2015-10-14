@@ -10,7 +10,7 @@ import (
 )
 
 type NetworkTestSuite struct {
-	ContextTestSuite
+	CommonTestSuite
 }
 
 func TestNetworkTestSuite(t *testing.T) {

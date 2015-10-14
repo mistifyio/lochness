@@ -10,7 +10,7 @@ import (
 )
 
 type VLANTestSuite struct {
-	ContextTestSuite
+	CommonTestSuite
 }
 
 func TestVLANTestSuite(t *testing.T) {
