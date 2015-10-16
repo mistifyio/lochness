@@ -269,9 +269,9 @@ func i32ToIP(a uint32) net.IP {
 	return net.IPv4(byte(a>>24), byte(a>>16), byte(a>>8), byte(a))
 }
 
-// AvailibleAddresses returns the availible ip addresses.
+// AvailableAddresses returns the available ip addresses.
 // this is probably a horrible idea for ipv6.
-func (s *Subnet) AvailibleAddresses() []net.IP {
+func (s *Subnet) AvailableAddresses() []net.IP {
 	addresses := make([]net.IP, 0, 0)
 	start := ipToI32(s.StartRange)
 	end := ipToI32(s.EndRange)
@@ -301,10 +301,10 @@ func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 	// hacky...
 	//should this lock?? or do we assume lock is held?
 
-	avail := s.AvailibleAddresses()
+	avail := s.AvailableAddresses()
 
 	if len(avail) == 0 {
-		return nil, errors.New("no availible addresses")
+		return nil, errors.New("no available addresses")
 	}
 
 	avail = randomizeAddresses(avail)

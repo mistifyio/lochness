@@ -34,7 +34,7 @@ is required.
 ```go
 var (
 	// ConfigPath is the path in the config store.
-	ConfigPath = "lochness/config/"
+	ConfigPath = "/lochness/config/"
 )
 ```
 
@@ -131,13 +131,6 @@ stores directly. Passing in a blank string will fall back to first checking the
 environment variable "HYPERVISOR_ID" and then using the hostname. ID must be a
 valid UUID. ID will be lowercased.
 
-#### func  ToBool
-
-```go
-func ToBool(val string) bool
-```
-ToBool is a wrapper around strconv.ParseBool for easy boolean values
-
 #### type Agent
 
 ```go
@@ -182,13 +175,6 @@ NewContext creates a new context
 func (c *Context) FWGroup(id string) (*FWGroup, error)
 ```
 FWGroup fetches a FWGroup from the config store
-
-#### func (*Context) FirstGuest
-
-```go
-func (c *Context) FirstGuest(f func(*Guest) bool) (*Guest, error)
-```
-FirstGuest will return the first guest for which the function returns true.
 
 #### func (*Context) FirstHypervisor
 
@@ -235,6 +221,22 @@ returns an error.
 func (c *Context) ForEachSubnet(f func(*Subnet) error) error
 ```
 ForEachSubnet will run f on each Subnet. It will stop iteration if f returns an
+error.
+
+#### func (*Context) ForEachVLAN
+
+```go
+func (c *Context) ForEachVLAN(f func(*VLAN) error) error
+```
+ForEachVLAN will run f on each VLAN. It will stop iteration if f returns an
+error.
+
+#### func (*Context) ForEachVLANGroup
+
+```go
+func (c *Context) ForEachVLANGroup(f func(*VLANGroup) error) error
+```
+ForEachVLANGroup will run f on each VLAN. It will stop iteration if f returns an
 error.
 
 #### func (*Context) GetConfig
@@ -431,7 +433,7 @@ UnmarshalJSON is a helper for unmarshalling a FWGroup
 ```go
 func (f *FWGroup) Validate() error
 ```
-Validate ensures a FWGroup has reasonable data. It currently does nothing.
+Validate ensures a FWGroup has reasonable data.
 
 #### type FWGroups
 
@@ -518,6 +520,7 @@ type Guest struct {
 	NetworkID    string            `json:"network"`
 	SubnetID     string            `json:"subnet"`
 	FWGroupID    string            `json:"fwgroup"`
+	VLANGroupID  string            `json:"vlangroup"`
 	MAC          net.HardwareAddr  `json:"mac"`
 	IP           net.IP            `json:"ip"`
 	Bridge       string            `json:"bridge"`
@@ -573,8 +576,7 @@ UnmarshalJSON is a helper for unmarshalling a Guest
 ```go
 func (g *Guest) Validate() error
 ```
-Validate ensures a Guest has reasonable data. It currently does nothing. TODO: a
-guest needs a valid flavor, firewall group, and network
+Validate ensures a Guest has reasonable data.
 
 #### type Guests
 
@@ -749,7 +751,7 @@ Hypervisors is an alias to a slice of *Hypervisor
 ```go
 func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error)
 ```
-CandidateHasResources returns Hypervisors that have availible resources based on
+CandidateHasResources returns Hypervisors that have available resources based on
 the request Flavor of the Guest.
 
 #### func  CandidateHasSubnet
@@ -757,7 +759,7 @@ the request Flavor of the Guest.
 ```go
 func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error)
 ```
-CandidateHasSubnet returns Hypervisors that have subnets with availible
+CandidateHasSubnet returns Hypervisors that have subnets with available
 addresses in the request Network of the Guest.
 
 #### func  CandidateIsAlive
@@ -852,6 +854,13 @@ AddSubnet adds a Subnet to the Network.
 func (n *Network) Refresh() error
 ```
 Refresh reloads the Network from the data store.
+
+#### func (*Network) RemoveSubnet
+
+```go
+func (n *Network) RemoveSubnet(s *Subnet) error
+```
+RemoveSubnet removes a subnet from the network
 
 #### func (*Network) Save
 
@@ -962,12 +971,12 @@ func (s *Subnet) Addresses() map[string]string
 ```
 Addresses returns used IP addresses.
 
-#### func (*Subnet) AvailibleAddresses
+#### func (*Subnet) AvailableAddresses
 
 ```go
-func (s *Subnet) AvailibleAddresses() []net.IP
+func (s *Subnet) AvailableAddresses() []net.IP
 ```
-AvailibleAddresses returns the availible ip addresses. this is probably a
+AvailableAddresses returns the available ip addresses. this is probably a
 horrible idea for ipv6.
 
 #### func (*Subnet) Delete

@@ -167,9 +167,9 @@ func (s *SubnetTestSuite) TestDelete() {
 	}
 }
 
-func (s *SubnetTestSuite) TestAvailibleAddresses() {
+func (s *SubnetTestSuite) TestAvailableAddresses() {
 	subnet := s.newSubnet()
-	addresses := subnet.AvailibleAddresses()
+	addresses := subnet.AvailableAddresses()
 	s.Len(addresses, 9, "all addresses should be available")
 	s.Equal(subnet.StartRange, addresses[0], "should start at the beginning of the range")
 	s.Equal(subnet.EndRange, addresses[len(addresses)-1], "should end at the end of the array")
@@ -177,18 +177,18 @@ func (s *SubnetTestSuite) TestAvailibleAddresses() {
 
 func (s *SubnetTestSuite) TestReserveAddress() {
 	subnet := s.newSubnet()
-	n := len(subnet.AvailibleAddresses())
+	n := len(subnet.AvailableAddresses())
 	for i := 0; i <= n; i++ {
 		msg := testMsgFunc("attempt " + string(i))
 		ip, err := subnet.ReserveAddress("foo")
 		if i < n {
-			s.NoError(err, msg("should succeed when addresses availible"))
-			s.NotNil(ip, msg("should return ip when addresses availible"))
-			s.Len(subnet.AvailibleAddresses(), n-i-1, msg("should update availible addresses"))
+			s.NoError(err, msg("should succeed when addresses available"))
+			s.NotNil(ip, msg("should return ip when addresses available"))
+			s.Len(subnet.AvailableAddresses(), n-i-1, msg("should update available addresses"))
 		} else {
-			s.Error(err, msg("should fail when no addresses availible"))
-			s.Nil(ip, msg("should not return ip when no addresses availible"))
-			s.Len(subnet.AvailibleAddresses(), 0, msg("should have no available addresses"))
+			s.Error(err, msg("should fail when no addresses available"))
+			s.Nil(ip, msg("should not return ip when no addresses available"))
+			s.Len(subnet.AvailableAddresses(), 0, msg("should have no available addresses"))
 		}
 	}
 }
@@ -196,18 +196,18 @@ func (s *SubnetTestSuite) TestReserveAddress() {
 func (s *SubnetTestSuite) TestReleaseAddress() {
 	subnet := s.newSubnet()
 	ip, _ := subnet.ReserveAddress("foobar")
-	n := len(subnet.AvailibleAddresses())
+	n := len(subnet.AvailableAddresses())
 
 	s.Error(subnet.ReleaseAddress(net.ParseIP("192.168.0.1")))
-	s.Len(subnet.AvailibleAddresses(), n)
+	s.Len(subnet.AvailableAddresses(), n)
 
 	s.NoError(subnet.ReleaseAddress(ip))
-	s.Len(subnet.AvailibleAddresses(), n+1)
+	s.Len(subnet.AvailableAddresses(), n+1)
 }
 
 func (s *SubnetTestSuite) TestAddresses() {
 	subnet := s.newSubnet()
-	addresses := subnet.AvailibleAddresses()
+	addresses := subnet.AvailableAddresses()
 
 	ip, _ := subnet.ReserveAddress("foobar")
 

@@ -516,7 +516,7 @@ LOOP:
 				if err != nil {
 					return err
 				}
-				avail := subnet.AvailibleAddresses()
+				avail := subnet.AvailableAddresses()
 				if len(avail) > 0 {
 					s = subnet
 					bridge = br

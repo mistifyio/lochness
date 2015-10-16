@@ -332,7 +332,7 @@ func CandidateIsAlive(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	return hypervisors, nil
 }
 
-// CandidateHasResources returns Hypervisors that have availible resources
+// CandidateHasResources returns Hypervisors that have available resources
 // based on the request Flavor of the Guest.
 func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	logFields := log.Fields{
@@ -377,7 +377,7 @@ func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	return hypervisors, nil
 }
 
-// CandidateHasSubnet returns Hypervisors that have subnets with availible addresses
+// CandidateHasSubnet returns Hypervisors that have subnets with available addresses
 // in the request Network of the Guest.
 func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	logFields := log.Fields{
@@ -399,8 +399,8 @@ func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
 		if err != nil {
 			return nil, err
 		}
-		// only include subnets that have availible addresses
-		avail := subnet.AvailibleAddresses()
+		// only include subnets that have available addresses
+		avail := subnet.AvailableAddresses()
 		if len(avail) > 0 {
 			subnets[k] = true
 		}

@@ -107,7 +107,7 @@ func main() {
 	addresses := s.Addresses()
 	print(addresses)
 
-	print(s.AvailibleAddresses())
+	print(s.AvailableAddresses())
 
 	if err := n.AddSubnet(s); err != nil {
 		log.WithFields(log.Fields{
