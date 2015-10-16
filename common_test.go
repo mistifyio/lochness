@@ -26,6 +26,8 @@ type CommonTestSuite struct {
 }
 
 func (s *CommonTestSuite) SetupSuite() {
+	//	log.SetLevel(log.ErrorLevel)
+
 	// Start up a test etcd
 	s.EtcdDir, _ = ioutil.TempDir("", "lochnessTest-"+uuid.New())
 	port := 54321
@@ -72,6 +74,11 @@ func (s *CommonTestSuite) prefixKey(key string) string {
 func (s *CommonTestSuite) newFlavor() *lochness.Flavor {
 	f := s.Context.NewFlavor()
 	f.Image = uuid.New()
+	f.Resources = lochness.Resources{
+		Memory: 128,
+		Disk:   1024,
+		CPU:    1,
+	}
 	_ = f.Save()
 	return f
 }
@@ -108,4 +115,48 @@ func (s *CommonTestSuite) newSubnet() *lochness.Subnet {
 	sub.EndRange = net.ParseIP("192.168.100.10")
 	_ = sub.Save()
 	return sub
+}
+
+func (s *CommonTestSuite) newHypervisor() *lochness.Hypervisor {
+	h := s.Context.NewHypervisor()
+	h.IP = net.ParseIP("192.168.100.11")
+	h.Netmask = net.ParseIP("225.225.225.225")
+	h.Gateway = net.ParseIP("192.168.100.1")
+	h.MAC, _ = net.ParseMAC("96:E0:51:F9:31:C1")
+	h.TotalResources = lochness.Resources{
+		Memory: 16 * 1024,
+		Disk:   1024 * 1024,
+		CPU:    32,
+	}
+	h.AvailableResources = h.TotalResources
+	_ = h.Save()
+	return h
+}
+
+func (s *CommonTestSuite) newGuest() *lochness.Guest {
+	flavor := s.newFlavor()
+	network := s.newNetwork()
+	mac, _ := net.ParseMAC("4C:3F:B1:7E:54:64")
+
+	guest := s.Context.NewGuest()
+	guest.FlavorID = flavor.ID
+	guest.NetworkID = network.ID
+	guest.MAC = mac
+
+	_ = guest.Save()
+	return guest
+}
+
+func (s *CommonTestSuite) newHypervisorWithGuest() (*lochness.Hypervisor, *lochness.Guest) {
+	guest := s.newGuest()
+	hypervisor := s.newHypervisor()
+
+	subnet := s.newSubnet()
+	network, _ := s.Context.Network(guest.NetworkID)
+	_ = network.AddSubnet(subnet)
+	_ = hypervisor.AddSubnet(subnet, "mistify0")
+
+	_ = hypervisor.AddGuest(guest)
+
+	return hypervisor, guest
 }
