@@ -118,7 +118,7 @@ func (s *VLANTestSuite) TestSave() {
 func (s *VLANTestSuite) TestDestroy() {
 	vlan := s.newVLAN()
 	vlangroup := s.newVLANGroup()
-	vlangroup.AddVLAN(vlan)
+	_ = vlangroup.AddVLAN(vlan)
 
 	invalidV := s.Context.NewVLAN()
 	invalidV.Tag = 0
@@ -140,7 +140,7 @@ func (s *VLANTestSuite) TestDestroy() {
 			s.Error(err, msg("should be invalid"))
 		} else {
 			s.NoError(err, msg("should be valid"))
-			vlangroup.Refresh()
+			_ = vlangroup.Refresh()
 			s.Len(vlangroup.VLANs(), 0, msg("should remove vlan link"))
 		}
 	}

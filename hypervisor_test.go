@@ -119,7 +119,7 @@ func (s *HypervisorTestSuite) TestGetAndSetHypervisorID() {
 
 	for _, test := range tests {
 		msg := testMsgFunc(test.description)
-		os.Setenv("HYPERVISOR_ID", test.env)
+		_ = os.Setenv("HYPERVISOR_ID", test.env)
 		id, err := lochness.SetHypervisorID(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -144,7 +144,7 @@ func (s *HypervisorTestSuite) TestVerifyOnHV() {
 
 func (s *HypervisorTestSuite) TestUpdateResources() {
 	hypervisor, guest := s.newHypervisorWithGuest()
-	hypervisor.SetConfig("guestDiskDir", "/")
+	_ = hypervisor.SetConfig("guestDiskDir", "/")
 
 	flavor, _ := s.Context.Flavor(guest.FlavorID)
 	_, _ = lochness.SetHypervisorID(hypervisor.ID)
@@ -354,7 +354,7 @@ func (s *HypervisorTestSuite) TestForEachGuest() {
 	hypervisor, guest := s.newHypervisorWithGuest()
 	guest2 := s.newGuest()
 	guest2.NetworkID = guest.NetworkID
-	hypervisor.AddGuest(guest2)
+	_ = hypervisor.AddGuest(guest2)
 
 	expectedFound := map[string]bool{
 		guest.ID:  true,

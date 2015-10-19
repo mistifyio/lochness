@@ -174,7 +174,7 @@ func (s *GuestTestSuite) TestDestroy() {
 		} else {
 			s.NoError(err, msg("should succeed"))
 			if test.g.HypervisorID != "" {
-				hypervisor.Refresh()
+				_ = hypervisor.Refresh()
 				s.Len(hypervisor.Guests(), 0, msg("should have been removed from hypervisor"))
 			}
 		}
@@ -196,7 +196,7 @@ func (s *GuestTestSuite) TestCandidates() {
 	for i := 0; i < len(hypervisors); i++ {
 		if i != 0 {
 			_, _ = lochness.SetHypervisorID(hypervisors[i].ID)
-			hypervisors[i].Heartbeat(60 * time.Second)
+			_ = hypervisors[i].Heartbeat(60 * time.Second)
 		}
 		if i != 1 {
 			_ = hypervisors[i].AddSubnet(subnet, "mistify0")
@@ -224,7 +224,7 @@ func (s *GuestTestSuite) TestCandidateIsAlive() {
 		s.newHypervisor(),
 	}
 	_, _ = lochness.SetHypervisorID(hypervisors[1].ID)
-	hypervisors[1].Heartbeat(60 * time.Second)
+	_ = hypervisors[1].Heartbeat(60 * time.Second)
 
 	candidates, err := lochness.CandidateIsAlive(guest, hypervisors)
 	s.NoError(err)

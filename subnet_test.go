@@ -58,7 +58,7 @@ func (s *SubnetTestSuite) TestRefresh() {
 	*subnetCopy = *subnet
 
 	network := s.newNetwork()
-	network.AddSubnet(subnet)
+	_ = network.AddSubnet(subnet)
 	_, _ = subnet.ReserveAddress("foobar")
 
 	_ = subnet.Save()
@@ -118,7 +118,6 @@ func (s *SubnetTestSuite) TestValidate() {
 			s.NoError(err, msg("should be valid"))
 		}
 	}
-
 }
 
 func (s *SubnetTestSuite) TestSave() {
@@ -126,7 +125,7 @@ func (s *SubnetTestSuite) TestSave() {
 	subnetCopy := &lochness.Subnet{}
 	*subnetCopy = *subnet
 	network := s.newNetwork()
-	network.AddSubnet(subnet)
+	_ = network.AddSubnet(subnet)
 
 	_ = subnet.Save()
 	s.NoError(subnetCopy.Refresh(), "refresh existing should succeed")
@@ -139,7 +138,7 @@ func (s *SubnetTestSuite) TestSave() {
 func (s *SubnetTestSuite) TestDelete() {
 	subnet := s.newSubnet()
 	network := s.newNetwork()
-	network.AddSubnet(subnet)
+	_ = network.AddSubnet(subnet)
 
 	invalidSub := s.Context.NewSubnet()
 	invalidSub.ID = "asdf"
@@ -161,7 +160,7 @@ func (s *SubnetTestSuite) TestDelete() {
 			s.Error(err, msg("should be invalid"))
 		} else {
 			s.NoError(err, msg("should be valid"))
-			network.Refresh()
+			_ = network.Refresh()
 			s.Len(network.Subnets(), 0, msg("should remove subnet link"))
 		}
 	}

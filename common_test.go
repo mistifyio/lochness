@@ -60,8 +60,8 @@ func (s *CommonTestSuite) TearDownTest() {
 
 func (s *CommonTestSuite) TearDownSuite() {
 	// Stop the test etcd process
-	s.EtcdCmd.Process.Kill()
-	s.EtcdCmd.Wait()
+	_ = s.EtcdCmd.Process.Kill()
+	_ = s.EtcdCmd.Wait()
 
 	// Remove the test etcd data directory
 	s.Require().NoError(os.RemoveAll(s.EtcdDir))

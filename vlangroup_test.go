@@ -54,7 +54,7 @@ func (s *VLANGroupTestSuite) TestRefresh() {
 	vlangroup := s.newVLANGroup()
 	vlangroupCopy := &lochness.VLANGroup{}
 	*vlangroupCopy = *vlangroup
-	vlangroup.AddVLAN(s.newVLAN())
+	_ = vlangroup.AddVLAN(s.newVLAN())
 
 	_ = vlangroup.Save()
 	s.NoError(vlangroupCopy.Refresh(), "refresh existing should succeed")
@@ -118,7 +118,7 @@ func (s *VLANGroupTestSuite) TestSave() {
 func (s *VLANGroupTestSuite) TestDestroy() {
 	vlangroup := s.newVLANGroup()
 	vlan := s.newVLAN()
-	vlangroup.AddVLAN(vlan)
+	_ = vlangroup.AddVLAN(vlan)
 
 	blankVG := s.Context.NewVLANGroup()
 	blankVG.ID = ""
@@ -140,7 +140,7 @@ func (s *VLANGroupTestSuite) TestDestroy() {
 			s.Error(err, msg("should fail"))
 		} else {
 			s.NoError(err, msg("should succeed"))
-			vlan.Refresh()
+			_ = vlan.Refresh()
 			s.Len(vlan.VLANGroups(), 0, msg("should remove vlan link"))
 		}
 	}

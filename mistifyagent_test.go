@@ -36,7 +36,7 @@ func (s *MistifyAgentTestSuite) SetupSuite() {
 		switch {
 		case path == fmt.Sprintf("/guests/%s", s.guest.ID):
 			guestBytes, _ := json.Marshal(s.guest)
-			w.Write(guestBytes)
+			_, _ = w.Write(guestBytes)
 		case path == "/guests", actionRegexp.MatchString(path), path == "/images":
 			w.Header().Set("X-Guest-Job-ID", uuid.New())
 			w.WriteHeader(http.StatusAccepted)
@@ -45,7 +45,7 @@ func (s *MistifyAgentTestSuite) SetupSuite() {
 				Status: magent.Complete,
 			}
 			jobBytes, _ := json.Marshal(job)
-			w.Write(jobBytes)
+			_, _ = w.Write(jobBytes)
 		}
 	}))
 }

@@ -53,7 +53,7 @@ func (s *NetworkTestSuite) TestRefresh() {
 	network := s.newNetwork()
 	networkCopy := &lochness.Network{}
 	*networkCopy = *network
-	network.AddSubnet(s.newSubnet())
+	_ = network.AddSubnet(s.newSubnet())
 
 	_ = network.Save()
 	s.NoError(networkCopy.Refresh(), "refresh existing should succeed")
