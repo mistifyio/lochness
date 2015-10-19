@@ -10,6 +10,6 @@ type (
 		CreateGuest(string) (string, error)
 		DeleteGuest(string) (string, error)
 		GuestAction(string, string) (string, error)
-		CheckJobStatus(string, string, string) (bool, error)
+		CheckJobStatus(string, string) (bool, error)
 	}
 )

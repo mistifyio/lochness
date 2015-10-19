@@ -62,7 +62,7 @@ func main() {
 	if m != nil {
 	}
 
-	agent := ctx.NewMistifyAgent()
+	agent := ctx.NewMistifyAgent(0)
 
 	// Start consuming
 	consume(jobQueue, agent, m)
@@ -229,7 +229,7 @@ func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 }
 
 func checkWorkingJob(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, error) {
-	done, err := agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
+	done, err := agent.CheckJobStatus(task.Guest.ID, task.Job.RemoteID)
 	if err == nil && done && task.Job.Action == "fetch" {
 		task.Job.Action = "create"
 		task.Job.RemoteID = ""

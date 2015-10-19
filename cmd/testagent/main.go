@@ -169,7 +169,7 @@ func main() {
 		}).Fatal("failed to reserver address")
 	}
 
-	agent := c.NewMistifyAgent()
+	agent := c.NewMistifyAgent(0)
 	clientGuest, err := agent.CreateGuest(g.ID)
 	if err != nil {
 		log.WithFields(log.Fields{

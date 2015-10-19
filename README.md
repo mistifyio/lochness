@@ -139,7 +139,7 @@ type Agent interface {
 	CreateGuest(string) (string, error)
 	DeleteGuest(string) (string, error)
 	GuestAction(string, string) (string, error)
-	CheckJobStatus(string, string, string) (bool, error)
+	CheckJobStatus(string, string) (bool, error)
 }
 ```
 
@@ -299,7 +299,7 @@ NewHypervisor create a new blank Hypervisor.
 #### func (*Context) NewMistifyAgent
 
 ```go
-func (context *Context) NewMistifyAgent() *MistifyAgent
+func (context *Context) NewMistifyAgent(port int) *MistifyAgent
 ```
 NewMistifyAgent creates a new MistifyAgent instance within the context
 
@@ -309,14 +309,6 @@ NewMistifyAgent creates a new MistifyAgent instance within the context
 func (c *Context) NewNetwork() *Network
 ```
 NewNetwork creates a new, blank Network.
-
-#### func (*Context) NewStubAgent
-
-```go
-func (context *Context) NewStubAgent(failPercent int) *StubAgent
-```
-NewStubAgent creates a new StubAgent instance within the context and initialies
-the random number generator for failures
 
 #### func (*Context) NewSubnet
 
@@ -789,7 +781,7 @@ actions relating to guests
 #### func (*MistifyAgent) CheckJobStatus
 
 ```go
-func (agent *MistifyAgent) CheckJobStatus(action, guestID, jobID string) (bool, error)
+func (agent *MistifyAgent) CheckJobStatus(guestID, jobID string) (bool, error)
 ```
 CheckJobStatus looks up whether a guest job has been completed or not.
 
@@ -902,51 +894,6 @@ type Resources struct {
 ```
 
 Resources represents compute resources
-
-#### type StubAgent
-
-```go
-type StubAgent struct {
-}
-```
-
-StubAgent is an Agenter with stubbed methods for testing
-
-#### func (*StubAgent) CheckJobStatus
-
-```go
-func (agent *StubAgent) CheckJobStatus(action, guestID, jobID string) (bool, error)
-```
-CheckJobStatus looks up whether a guest job has been completed or not.
-
-#### func (*StubAgent) CreateGuest
-
-```go
-func (agent *StubAgent) CreateGuest(guestID string) (string, error)
-```
-CreateGuest is a stub for creating a guest via request to the agent.
-
-#### func (*StubAgent) DeleteGuest
-
-```go
-func (agent *StubAgent) DeleteGuest(guestID string) (string, error)
-```
-DeleteGuest is a stub for deleting a guest via request to the agent.
-
-#### func (*StubAgent) GetGuest
-
-```go
-func (agent *StubAgent) GetGuest(guestID string) (*client.Guest, error)
-```
-GetGuest is a stub for retrieving a guest via request to the agent.
-
-#### func (*StubAgent) GuestAction
-
-```go
-func (agent *StubAgent) GuestAction(guestID, actionName string) (string, error)
-```
-GuestAction is a stub for issuing other basic guest actions via request to the
-agent
 
 #### type Subnet
 

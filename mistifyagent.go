@@ -21,6 +21,7 @@ type (
 	// actions relating to guests
 	MistifyAgent struct {
 		context *Context
+		port    int
 	}
 
 	// ErrorHTTPCode should be used for errors resulting from an http response
@@ -37,9 +38,13 @@ func (e ErrorHTTPCode) Error() string {
 }
 
 // NewMistifyAgent creates a new MistifyAgent instance within the context
-func (context *Context) NewMistifyAgent() *MistifyAgent {
+func (context *Context) NewMistifyAgent(port int) *MistifyAgent {
+	if port <= 0 {
+		port = 8080
+	}
 	return &MistifyAgent{
 		context: context,
+		port:    port,
 	}
 }
 
@@ -105,8 +110,6 @@ func (agent *MistifyAgent) generateClientGuest(g *Guest) (*client.Guest, error) 
 
 // guestActionURL crafts the guest action url
 func (agent *MistifyAgent) guestActionURL(host, guestID, action string) string {
-	port := 8080 // TODO: Get port from somewhere. Config?
-
 	// Create and Get don't have the action name in the URL, so blank it out
 	// Create doesn't specify a guest id in the URL
 	if action == "create" || action == "get" {
@@ -118,13 +121,12 @@ func (agent *MistifyAgent) guestActionURL(host, guestID, action string) string {
 	// Join with appropriate seperators whether action is blank or not
 	urlPath := path.Join("guests", guestID, action)
 
-	return fmt.Sprintf("http://%s:%d/%s", host, port, urlPath)
+	return fmt.Sprintf("http://%s:%d/%s", host, agent.port, urlPath)
 }
 
 // jobURL crafts the job status url
 func (agent *MistifyAgent) jobURL(host, jobID string) string {
-	port := 8080 // TODO: Get port from somewhere
-	return fmt.Sprintf("http://%s:%d/jobs/%s", host, port, jobID)
+	return fmt.Sprintf("http://%s:%d/jobs/%s", host, agent.port, jobID)
 }
 
 // request is the generic way to hit an agent endpoint with minimal response
@@ -191,7 +193,10 @@ func (agent *MistifyAgent) requestGuestAction(guestID, actionName string) (strin
 }
 
 // CheckJobStatus looks up whether a guest job has been completed or not.
-func (agent *MistifyAgent) CheckJobStatus(action, guestID, jobID string) (bool, error) {
+func (agent *MistifyAgent) CheckJobStatus(guestID, jobID string) (bool, error) {
+	if jobID == "" {
+		return false, errors.New("missing job id")
+	}
 	hypervisor, err := agent.getHypervisor(guestID)
 	if err != nil {
 		return false, err
@@ -295,7 +300,7 @@ func (agent *MistifyAgent) FetchImage(guestID string) (string, error) {
 		ID:   flavor.Image,
 		Type: guest.Type,
 	}
-	url := fmt.Sprintf("http://%s:8080/images", host) // TODO: Get port from somewhere. Config?
+	url := fmt.Sprintf("http://%s:%d/images", host, agent.port)
 	_, jobID, err := agent.request(url, "POST", http.StatusAccepted, req)
 	return jobID, err
 }
