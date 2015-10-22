@@ -44,7 +44,7 @@ func (c *Client) NewJob() *Job {
 	return &Job{
 		ID:     uuid.New(),
 		client: c,
-		Status: "new",
+		Status: JobStatusNew,
 	}
 }
 

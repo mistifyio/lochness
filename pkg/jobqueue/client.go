@@ -1,6 +1,7 @@
 package jobqueue
 
 import (
+	"errors"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
@@ -26,6 +27,10 @@ type Client struct {
 
 // NewClient creates a new Client and initializes the beanstalk connection + tubes
 func NewClient(bstalk string, e *etcd.Client) (*Client, error) {
+	if e == nil {
+		return nil, errors.New("missing etcd client")
+	}
+
 	conn, err := beanstalk.Dial("tcp", bstalk)
 	if err != nil {
 		return nil, err
@@ -41,6 +46,10 @@ func NewClient(bstalk string, e *etcd.Client) (*Client, error) {
 
 // AddTask creates a new task in the appropriate beanstalk queue
 func (c *Client) AddTask(j *Job) (uint64, error) {
+	if j == nil {
+		return 0, errors.New("missing job")
+	}
+
 	ts := c.tubes.work
 	if j.Action == "select-hypervisor" {
 		ts = c.tubes.create
