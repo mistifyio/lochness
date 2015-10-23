@@ -150,7 +150,7 @@ func (s *LockTestSuite) TestRelease() {
 }
 
 func (s *LockTestSuite) TestJSON() {
-	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 1, false)
+	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 5, false)
 	lockBytes, err := json.Marshal(l)
 	s.NoError(err)
 
@@ -160,4 +160,5 @@ func (s *LockTestSuite) TestJSON() {
 	lockBytes2, err := json.Marshal(lockFromJSON)
 	s.NoError(err)
 	s.Equal(lockBytes, lockBytes2)
+	s.NoError(lockFromJSON.Refresh())
 }
