@@ -1,219 +1,156 @@
-package lock
+package lock_test
 
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/pborman/uuid"
-
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/lock"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
-func newClient(t *testing.T) *etcd.Client {
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
-	if !e.SyncCluster() {
-		t.Fatal("cannot sync cluster. make sure etcd is running at http://127.0.0.1:4001")
-	}
-	return e
+type LockTestSuite struct {
+	suite.Suite
+	EtcdDir    string
+	EtcdPrefix string
+	EtcdClient *etcd.Client
+	EtcdCmd    *exec.Cmd
 }
 
-func TestAcquire(t *testing.T) {
-	t.Parallel()
+func (s *LockTestSuite) SetupSuite() {
+	// Start up a test etcd
+	s.EtcdDir, _ = ioutil.TempDir("", "jobqueueTestEtcd-"+uuid.New())
+	port := 54333
+	s.EtcdCmd = exec.Command("etcd",
+		"-name=lochnessTest",
+		"-data-dir="+string(s.EtcdDir),
+		fmt.Sprintf("-listen-client-urls=http://127.0.0.1:%d", port),
+		fmt.Sprintf("-listen-peer-urls=http://127.0.0.1:%d", port+1),
+	)
+	s.Require().NoError(s.EtcdCmd.Start())
+	s.EtcdClient = etcd.NewClient([]string{fmt.Sprintf("http://127.0.0.1:%d", port)})
 
-	key := "lock-TestAcquire"
-	id := uuid.New()
-	c := newClient(t)
-	defer cleanup(c, key)
+	// Wait for test etcd to be ready
+	for !s.EtcdClient.SyncCluster() {
+		time.Sleep(10 * time.Millisecond)
+	}
 
-	_, err := Acquire(c, key, id, 60, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp, err := c.Get(key, false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.Node.Value != id {
-		t.Fatalf("wanted: %s, got: %s\n", id, resp.Node.Value)
-	}
+	// s.EtcdPrefix = uuid.New()
+	s.EtcdPrefix = "/lochness"
 }
 
-func TestAcquireExists(t *testing.T) {
-	t.Parallel()
-
-	key := "lock-TestAcquireExists"
-	id := uuid.New()
-	c := newClient(t)
-	defer cleanup(c, key)
-
-	_, err := Acquire(c, key, id, 60, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	l, err := Acquire(c, key, id, 60, false)
-	if err == nil {
-		t.Fatal("expected a non-nil error, got:", err, l)
-	}
+func (s *LockTestSuite) TearDownTest() {
+	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
 }
 
-func TestAcquireExistsWait(t *testing.T) {
-	t.Parallel()
-
-	key := "lock-TestAcquireExistsWait"
-	id1 := uuid.New()
-	id2 := uuid.New()
-	ttl := uint64(2)
-	c := newClient(t)
-	defer cleanup(c, key)
-
-	_, err := Acquire(c, key, id1, ttl, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tstart := time.Now().Unix()
-	_, err = Acquire(c, key, id2, ttl, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tstop := time.Now().Unix()
-	if uint64(tstop-tstart) < ttl-1 {
-		t.Fatalf("expected atleast %ds(ttl-1)  wait time, got: %d\n", ttl-1, tstop-tstart)
-	}
-
-	resp, err := c.Get(key, false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.Node.Value != id2 {
-		t.Fatalf("incorrect data in lock, wanted: %s, got: %s\n", id2, resp.Node.Value)
-	}
+func (s *LockTestSuite) TearDownSuite() {
+	_ = s.EtcdCmd.Process.Kill()
+	_ = s.EtcdCmd.Wait()
+	_ = os.RemoveAll(s.EtcdDir)
 }
 
-func TestRefresh(t *testing.T) {
-	t.Parallel()
-
-	key := "lock-TestRefresh"
-	id := uuid.New()
-	ttl := uint64(2)
-	c := newClient(t)
-	defer cleanup(c, key)
-
-	l, err := Acquire(c, key, id, ttl, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := l.Refresh(); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(time.Duration(ttl) * time.Second)
-	if err := l.Refresh(); err != nil {
-		t.Fatal(err)
-	}
-
-	time.Sleep(time.Duration(ttl+1) * time.Second)
-	if err := l.Refresh(); err != ErrKeyNotFound {
-		t.Fatalf("wanted: %v, got: %v\n", ErrKeyNotFound, err)
-	}
-
-	if err := l.Refresh(); err != ErrLockNotHeld {
-		t.Fatalf("wanted: %v, got: %v\n", ErrLockNotHeld, err)
-	}
+func TestLockTestSuite(t *testing.T) {
+	suite.Run(t, new(LockTestSuite))
 }
 
-func TestRelease(t *testing.T) {
-	t.Parallel()
-
-	key := "lock-TestRelease"
-	id := uuid.New()
-	ttl := uint64(2)
-	c := newClient(t)
-	defer cleanup(c, key)
-
-	l := &Lock{}
-	if err := l.Release(); err != ErrLockNotHeld {
-		t.Fatalf("wanted: %v, got: %v\n", ErrLockNotHeld, err)
-	}
-
-	l, err := Acquire(c, key, id, ttl, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := l.Release(); err != nil {
-		t.Fatal(err)
-	}
-
-	l, err = Acquire(c, key, id, ttl, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	time.Sleep(time.Duration(ttl+1) * time.Second)
-	if err := l.Release(); err != ErrKeyNotFound {
-		t.Fatalf("wanted: %v, got: %v\n", ErrKeyNotFound, err)
-	}
-
-	if err := l.Release(); err != ErrLockNotHeld {
-		t.Fatalf("wanted: %v, got: %v\n", ErrLockNotHeld, err)
-	}
+func (s *LockTestSuite) prefixKey(key string) string {
+	return filepath.Join(s.EtcdPrefix, key)
 }
 
-func TestJSON(t *testing.T) {
-	t.Parallel()
-
-	key := "lock-TestJSON"
-	id := uuid.New()
-	c := newClient(t)
-	defer cleanup(c, key)
-
-	l, err := Acquire(c, key, id, 60, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data, err := json.Marshal(&l)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	l2 := &Lock{}
-	err = json.Unmarshal(data, l2)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if l2.c == nil {
-		t.Fatal("l2.c should not be nil")
-	}
-
-	match := false
-LOOP:
-	for _, h := range l.c.GetCluster() {
-		for _, h2 := range l2.c.GetCluster() {
-			if h == h2 {
-				match = true
-				break LOOP
-			}
+func testMsgFunc(prefix string) func(...interface{}) string {
+	return func(val ...interface{}) string {
+		if len(val) == 0 {
+			return prefix
+		}
+		msgPrefix := prefix + " : "
+		if len(val) == 1 {
+			return msgPrefix + val[0].(string)
+		} else {
+			return msgPrefix + fmt.Sprintf(val[0].(string), val[1:]...)
 		}
 	}
-	if !match {
-		t.Fatalf("could not find a matching host in clusters, wanted: %v, got: %v\n",
-			l.c.GetCluster, l2.c.GetCluster())
+}
+
+func (s *LockTestSuite) TestAcquire() {
+	// Key/Value to test conflicts
+	lockKey := uuid.New()
+	lockValue := uuid.New()
+
+	tests := []struct {
+		description string
+		key         string
+		value       string
+		ttl         uint64
+		blocking    bool
+		expectedErr bool
+	}{
+		{"key missing", "", uuid.New(), 5, false, true},
+		{"value missing", uuid.New(), "", 5, false, false},
+		{"0 ttl", uuid.New(), uuid.New(), 0, false, false},
+		{"all present", lockKey, lockValue, 5, false, false},
+		{"repeated request", lockKey, lockValue, 5, false, true},
+		{"lock already held, blocking", lockKey, uuid.New(), 5, true, false},
+		{"lock already held, nonblocking", lockKey, uuid.New(), 5, false, true},
 	}
-	l2.c = l.c
-	if !reflect.DeepEqual(*l, *l2) {
-		t.Fatalf("lock mismatch\nwanted: %#v\n   got: %#v\n", l, l2)
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		l, err := lock.Acquire(s.EtcdClient, test.key, test.value, test.ttl, test.blocking)
+		if test.expectedErr {
+			s.Error(err, msg("should fail"))
+			s.Nil(l, msg("should not return lock"))
+		} else {
+			s.NoError(err, msg("should acquire lock"))
+			s.NotNil(l, msg("should return lock"))
+		}
 	}
 }
 
-func cleanup(c *etcd.Client, key string) {
-	if _, err := c.Delete(key, true); err != nil && !isKeyNotFound(err) {
-		fmt.Printf("Unable to delete key '%s': %+v", key, err)
-	}
+func (s *LockTestSuite) TestRefresh() {
+	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 1, false)
+
+	// Refresh
+	s.NoError(l.Refresh(), "before expiration should succeed")
+
+	// Expire
+	time.Sleep(2 * time.Second)
+	s.Error(l.Refresh(), "after expiration should fail")
+
+	// Not held
+	s.Error(l.Refresh(), "lock not held should fail")
+}
+
+func (s *LockTestSuite) TestRelease() {
+	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 1, false)
+
+	// Release held lock
+	s.NoError(l.Release(), "held lock should succeed")
+
+	// Release not held lock
+	s.Error(l.Release(), "not held lock should fail")
+
+	// Release expired lock
+	l, _ = lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 1, false)
+	time.Sleep(2 * time.Second)
+	s.Error(l.Release(), "expired lock should fail")
+}
+
+func (s *LockTestSuite) TestJSON() {
+	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 1, false)
+	lockBytes, err := json.Marshal(l)
+	s.NoError(err)
+
+	lockFromJSON := &lock.Lock{}
+	s.NoError(json.Unmarshal(lockBytes, lockFromJSON))
+	// Since all fields are unexported, convert back to JSON and compare that
+	lockBytes2, err := json.Marshal(lockFromJSON)
+	s.NoError(err)
+	s.Equal(lockBytes, lockBytes2)
 }
