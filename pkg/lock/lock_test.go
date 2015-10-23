@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 type LockTestSuite struct {
 	suite.Suite
 	EtcdDir    string
-	EtcdPrefix string
 	EtcdClient *etcd.Client
 	EtcdCmd    *exec.Cmd
 }
@@ -49,12 +47,6 @@ func (s *LockTestSuite) SetupSuite() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// s.EtcdPrefix = uuid.New()
-	s.EtcdPrefix = "/lochness"
-}
-
-func (s *LockTestSuite) TearDownTest() {
-	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
 }
 
 func (s *LockTestSuite) TearDownSuite() {
@@ -65,10 +57,6 @@ func (s *LockTestSuite) TearDownSuite() {
 
 func TestLockTestSuite(t *testing.T) {
 	suite.Run(t, new(LockTestSuite))
-}
-
-func (s *LockTestSuite) prefixKey(key string) string {
-	return filepath.Join(s.EtcdPrefix, key)
 }
 
 func testMsgFunc(prefix string) func(...interface{}) string {
