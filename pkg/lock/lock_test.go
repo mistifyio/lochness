@@ -26,16 +26,23 @@ type LockTestSuite struct {
 
 func (s *LockTestSuite) SetupSuite() {
 	// Start up a test etcd
-	s.EtcdDir, _ = ioutil.TempDir("", "jobqueueTestEtcd-"+uuid.New())
-	port := 54333
+	s.EtcdDir, _ = ioutil.TempDir("", "lockTestEtcd-"+uuid.New())
+	port := 54444
+	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
 	s.EtcdCmd = exec.Command("etcd",
-		"-name=lochnessTest",
-		"-data-dir="+string(s.EtcdDir),
-		fmt.Sprintf("-listen-client-urls=http://127.0.0.1:%d", port),
-		fmt.Sprintf("-listen-peer-urls=http://127.0.0.1:%d", port+1),
+		"-name", "lockTest",
+		"-data-dir", s.EtcdDir,
+		"-initial-cluster-state", "new",
+		"-initial-cluster-token", "lockTest",
+		"-initial-cluster", "lockTest="+peerURL,
+		"-initial-advertise-peer-urls", peerURL,
+		"-listen-peer-urls", peerURL,
+		"-listen-client-urls", clientURL,
+		"-advertise-client-urls", clientURL,
 	)
 	s.Require().NoError(s.EtcdCmd.Start())
-	s.EtcdClient = etcd.NewClient([]string{fmt.Sprintf("http://127.0.0.1:%d", port)})
+	s.EtcdClient = etcd.NewClient([]string{clientURL})
 
 	// Wait for test etcd to be ready
 	for !s.EtcdClient.SyncCluster() {
