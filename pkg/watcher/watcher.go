@@ -18,8 +18,8 @@ var ErrStopped = errors.New("watcher has been stopped")
 type Watcher struct {
 	c         *etcd.Client
 	responses chan *etcd.Response
-	errors    chan error
-	err       error
+	errors    chan *Error
+	err       *Error
 	response  *etcd.Response
 
 	mu       sync.Mutex // mu protects the following two vars
@@ -27,11 +27,23 @@ type Watcher struct {
 	prefixes map[string]chan bool
 }
 
+type Error struct {
+	Prefix string
+	Err    error
+}
+
+func (e *Error) Error() string {
+	return e.Err.Error()
+}
+
 // New creates a new Watcher
 func New(c *etcd.Client) (*Watcher, error) {
+	if c == nil {
+		return nil, errors.New("missing etcd client")
+	}
 	w := &Watcher{
 		responses: make(chan *etcd.Response),
-		errors:    make(chan error),
+		errors:    make(chan *Error),
 		c:         c,
 		prefixes:  map[string]chan bool{},
 	}
@@ -56,8 +68,6 @@ func (w *Watcher) Add(prefix string) error {
 	ch := make(chan bool)
 	w.prefixes[prefix] = ch
 	go w.watch(prefix, ch)
-	<-ch
-	<-ch
 	return nil
 }
 
@@ -81,33 +91,35 @@ func (w *Watcher) Response() *etcd.Response {
 }
 
 // Err returns the last error received
-func (w *Watcher) Err() error {
+func (w *Watcher) Err() *Error {
 	return w.err
 }
 
 // Remove will remove said prefix from the watch list, it will return an error
 // if the prefix is not being watched.
-func (w *Watcher) Remove(prefix string) error {
+func (w *Watcher) Remove(prefix string) *Error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.removeLocked(prefix)
 }
 
-func (w *Watcher) removeLocked(prefix string) error {
+func (w *Watcher) removeLocked(prefix string) *Error {
 	ch, ok := w.prefixes[prefix]
 	if !ok {
-		return ErrPrefixNotWatched
+		return &Error{Prefix: prefix, Err: ErrPrefixNotWatched}
 	}
 
-	ch <- true
-	<-ch
+	// Stop the etcd prefix watch
+	close(ch)
+
+	// Remove the prefix
 	delete(w.prefixes, prefix)
 	return nil
 }
 
 // Close will stop all watches and disable any new watches from being started.
 // Close may be called multiple times in case there is a transient error.
-func (w *Watcher) Close() error {
+func (w *Watcher) Close() *Error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -123,20 +135,29 @@ func (w *Watcher) Close() error {
 }
 
 func (w *Watcher) watch(prefix string, stop chan bool) {
-	defer close(stop)
+	defer w.Remove(prefix)
+
+	// Get the index to start watching from.
+	// This minimizes the window between calling etcd.Watch() and the watch
+	// actually starting where changes can be missed.  Since etcd.Watch()
+	// itself blocks, we have no direct way of knowing when the watch actually
+	// starts, so this is the best we can do.
+	waitIndex := uint64(0)
+	resp, err := w.c.Get("/", false, false)
+	if err == nil {
+		waitIndex = resp.EtcdIndex
+	}
 
 	responses := make(chan *etcd.Response)
 	go func() {
-		stop <- false
 		for resp := range responses {
 			w.responses <- resp
 		}
 	}()
 
-	stop <- false
-	_, err := w.c.Watch(prefix, 0, true, responses, stop)
+	_, err = w.c.Watch(prefix, waitIndex, true, responses, stop)
 	if err == nil || err == etcd.ErrWatchStoppedByUser {
 		return
 	}
-	w.errors <- err
+	w.errors <- &Error{Prefix: prefix, Err: err}
 }
