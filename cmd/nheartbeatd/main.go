@@ -58,7 +58,7 @@ func main() {
 				"func":  "hv.UpdateResources",
 			}).Fatal("failed to update hypervisor resources")
 		}
-		if err = hv.Heartbeat(time.Duration(*ttl)); err != nil {
+		if err = hv.Heartbeat(time.Duration(*ttl) * time.Second); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "hv.Heartbeat",
