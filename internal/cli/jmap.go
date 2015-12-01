@@ -10,7 +10,10 @@ type JMap map[string]interface{}
 
 // ID returns the id value
 func (j JMap) ID() string {
-	return j["id"].(string)
+	if id, ok := j["id"]; ok {
+		return id.(string)
+	}
+	return ""
 }
 
 // String marshals into a json string
