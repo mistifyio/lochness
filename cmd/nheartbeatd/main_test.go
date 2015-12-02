@@ -27,8 +27,7 @@ func (s *TestSuite) SetupSuite() {
 func (s *TestSuite) SetupTest() {
 	s.CommonTestSuite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
-	s.Hypervisor.SetConfig("guestDiskDir", "/dev/null")
-	s.Require().NoError(s.Hypervisor.Save())
+	s.Require().NoError(s.Hypervisor.SetConfig("guestDiskDir", "/dev/null"))
 }
 
 func TestTestSuite(t *testing.T) {
