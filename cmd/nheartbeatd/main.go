@@ -30,6 +30,10 @@ func main() {
 		*ttl = 2 * (*interval)
 	}
 
+	if *ttl < *interval {
+		log.Fatal("ttl must be greater than interval")
+	}
+
 	e := etcd.NewClient([]string{*eaddr})
 	c := lochness.NewContext(e)
 
