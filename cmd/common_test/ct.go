@@ -4,10 +4,14 @@ Package ct contains common utilities and suites to be used in other tests
 package ct
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -185,4 +189,28 @@ func (s *CommonTestSuite) NewHypervisorWithGuest() (*lochness.Hypervisor, *lochn
 	_ = hypervisor.AddGuest(guest)
 
 	return hypervisor, guest
+}
+
+func (s *CommonTestSuite) DoRequest(method, url string, expectedRespCode int, postBodyStruct interface{}, respBody interface{}) {
+	var postBody io.Reader
+	if postBodyStruct != nil {
+		bodyBytes, _ := json.Marshal(postBodyStruct)
+		postBody = bytes.NewBuffer(bodyBytes)
+	}
+
+	req, err := http.NewRequest(method, url, postBody)
+	if postBody != nil {
+		req.Header.Add("Content-Type", "application/json")
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	s.NoError(err)
+	s.Equal(expectedRespCode, resp.StatusCode)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	s.NoError(err)
+
+	s.NoError(json.Unmarshal(body, respBody))
 }
