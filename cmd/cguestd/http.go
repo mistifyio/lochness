@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
+	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/bakins/logrus-middleware"
 	"github.com/bakins/net-http-recover"
 	"github.com/gorilla/context"
@@ -15,6 +18,7 @@ import (
 	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
+	"github.com/tylerb/graceful"
 )
 
 const (
@@ -38,7 +42,7 @@ type (
 )
 
 // Run starts the server
-func Run(port uint, ctx *lochness.Context, jobQueue *jobqueue.Client, m *metricsContext) error {
+func Run(port uint, ctx *lochness.Context, jobQueue *jobqueue.Client, m *metricsContext) *graceful.Server {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
@@ -77,12 +81,26 @@ func Run(port uint, ctx *lochness.Context, jobQueue *jobqueue.Client, m *metrics
 			hr.JSON(http.StatusOK, m.sink)
 		})
 
-	server := &http.Server{
-		Addr:           fmt.Sprintf(":%d", port),
-		Handler:        commonMiddleware.Then(router),
-		MaxHeaderBytes: 1 << 20,
+	server := &graceful.Server{
+		Timeout: 5 * time.Second,
+		Server: &http.Server{
+			Addr:           fmt.Sprintf(":%d", port),
+			Handler:        commonMiddleware.Then(router),
+			MaxHeaderBytes: 1 << 20,
+		},
 	}
-	return server.ListenAndServe()
+	go listenAndServe(server)
+	return server
+}
+
+func listenAndServe(server *graceful.Server) {
+	if err := server.ListenAndServe(); err != nil {
+		// Ignore the error from closing the listener, which is involved in the
+		// graceful shutdown
+		if !strings.Contains(err.Error(), "use of closed network connection") {
+			log.WithField("error", err).Fatal("server error")
+		}
+	}
 }
 
 // JSON writes appropriate headers and JSON body to the http response
