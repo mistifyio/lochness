@@ -191,7 +191,7 @@ func (s *CommonTestSuite) NewHypervisorWithGuest() (*lochness.Hypervisor, *lochn
 	return hypervisor, guest
 }
 
-func (s *CommonTestSuite) DoRequest(method, url string, expectedRespCode int, postBodyStruct interface{}, respBody interface{}) {
+func (s *CommonTestSuite) DoRequest(method, url string, expectedRespCode int, postBodyStruct interface{}, respBody interface{}) *http.Response {
 	var postBody io.Reader
 	if postBodyStruct != nil {
 		bodyBytes, _ := json.Marshal(postBodyStruct)
@@ -206,11 +206,16 @@ func (s *CommonTestSuite) DoRequest(method, url string, expectedRespCode int, po
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	s.NoError(err)
-	s.Equal(expectedRespCode, resp.StatusCode)
+	correctResponse := s.Equal(expectedRespCode, resp.StatusCode)
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	s.NoError(err)
 
-	s.NoError(json.Unmarshal(body, respBody))
+	if correctResponse {
+		s.NoError(json.Unmarshal(body, respBody))
+	} else {
+		s.T().Log(string(body))
+	}
+	return resp
 }
