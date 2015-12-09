@@ -61,13 +61,14 @@ func (s *CommonTestSuite) SetupSuite() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	s.Context = lochness.NewContext(s.EtcdClient)
+
 	// s.EtcdPrefix = uuid.New()
 	s.EtcdPrefix = "/lochness"
 }
 
-// SetupTest prepares the lochness context.
+// SetupTest prepares anything needed per test.
 func (s *CommonTestSuite) SetupTest() {
-	s.Context = lochness.NewContext(s.EtcdClient)
 }
 
 // TearDownTest cleans the etcd instance.
