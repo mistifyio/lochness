@@ -70,24 +70,23 @@ func (s *APITestSuite) SetupSuite() {
 
 	// Jobqueue
 	s.JobQueue, _ = jobqueue.NewClient(s.BeanstalkdPath, s.EtcdClient)
+
+	// Run the server
+	s.APIServer = Run(s.Port, s.Context, s.JobQueue, s.MetricsContext)
+	time.Sleep(100 * time.Millisecond)
+
 }
 
 func (s *APITestSuite) SetupTest() {
 	s.CommonTestSuite.SetupTest()
 	s.Guest = s.NewGuest()
-	s.APIServer = Run(s.Port, s.Context, s.JobQueue, s.MetricsContext)
-	time.Sleep(100 * time.Millisecond)
 }
 
-func (s *APITestSuite) TearDownTest() {
+func (s *APITestSuite) TearDownSuite() {
 	stopChan := s.APIServer.StopChan()
 	s.APIServer.Stop(5 * time.Second)
 	<-stopChan
 
-	s.CommonTestSuite.TearDownTest()
-}
-
-func (s *APITestSuite) TearDownSuite() {
 	_ = s.BeanstalkdCmd.Process.Kill()
 	_ = s.BeanstalkdCmd.Wait()
 

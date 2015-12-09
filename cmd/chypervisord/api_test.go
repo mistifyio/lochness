@@ -28,22 +28,23 @@ func (s *APITestSuite) SetupSuite() {
 	log.SetLevel(log.FatalLevel)
 	s.Port = 51123
 	s.APIURL = fmt.Sprintf("http://localhost:%d/hypervisors", s.Port)
+
+	s.APIServer = Run(s.Port, s.Context)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func (s *APITestSuite) SetupTest() {
 	s.CommonTestSuite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
 	s.Hypervisor.SetConfig("foo", "bar")
-	s.APIServer = Run(s.Port, s.Context)
-	time.Sleep(100 * time.Millisecond)
 }
 
-func (s *APITestSuite) TearDownTest() {
+func (s *APITestSuite) TearDownSuite() {
 	stopChan := s.APIServer.StopChan()
 	s.APIServer.Stop(5 * time.Second)
 	<-stopChan
 
-	s.CommonTestSuite.TearDownTest()
+	s.CommonTestSuite.TearDownSuite()
 }
 
 func TestAPITestSuite(t *testing.T) {
