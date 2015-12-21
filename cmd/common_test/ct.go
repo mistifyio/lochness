@@ -28,6 +28,7 @@ type CommonTestSuite struct {
 	suite.Suite
 	EtcdDir    string
 	EtcdPrefix string
+	EtcdURL    string
 	EtcdClient *etcd.Client
 	EtcdCmd    *exec.Cmd
 	Context    *lochness.Context
@@ -55,6 +56,7 @@ func (s *CommonTestSuite) SetupSuite() {
 	)
 	s.Require().NoError(s.EtcdCmd.Start())
 	s.EtcdClient = etcd.NewClient([]string{clientURL})
+	s.EtcdURL = clientURL
 
 	// Wait for test etcd to be ready
 	for !s.EtcdClient.SyncCluster() {
