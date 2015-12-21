@@ -1,322 +1,180 @@
-package main
+package main_test
 
 import (
 	"encoding/json"
-	"net"
-	"path/filepath"
+	"fmt"
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	h "github.com/bakins/test-helpers"
-	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/testhelper"
+	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/cmd/cdhcpd"
+	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestFetchHypervisors(t *testing.T) {
-
-	// Setup
-	f := NewFetcher("http://127.0.0.1:4001")
-	defer testhelper.Cleanup(f.etcdClient)
-
-	// Create supporting objects
-	n, err := testhelper.NewNetwork(f.context)
-	h.Ok(t, err)
-	s, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
-	h.Ok(t, err)
-
-	// Create two hypervisors
-	h1, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
-	h.Ok(t, err)
-	h2, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
-	h.Ok(t, err)
-
-	// Fetch and make sure they're present
-	hvs, err := f.Hypervisors()
-	h.Ok(t, err)
-	if _, ok := hvs[h1.ID]; !ok {
-		t.Error("Hypervisor #1 is missing from list")
-	}
-	h.Equals(t, hvs[h1.ID].MAC.String(), "de:ad:be:ef:7f:21")
-	if _, ok := hvs[h2.ID]; !ok {
-		t.Error("Hypervisor #2 is missing from list")
-	}
-	h.Equals(t, hvs[h2.ID].MAC.String(), "de:ad:be:ef:7f:23")
-
+type FetcherTestSuite struct {
+	ct.CommonTestSuite
+	Fetcher *main.Fetcher
 }
 
-func TestFetchGuests(t *testing.T) {
-
-	// Setup
-	f := NewFetcher("http://127.0.0.1:4001")
-	defer testhelper.Cleanup(f.etcdClient)
-
-	// Create supporting objects
-	f1, err := testhelper.NewFlavor(f.context, 4, 4096, 8192)
-	h.Ok(t, err)
-	n, err := testhelper.NewNetwork(f.context)
-	h.Ok(t, err)
-	fw, err := testhelper.NewFirewallGroup(f.context)
-	h.Ok(t, err)
-	s, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
-	h.Ok(t, err)
-	h1, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
-	h.Ok(t, err)
-
-	// Create two guests
-	g1, err := testhelper.NewGuest(f.context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
-	h.Ok(t, err)
-	g2, err := testhelper.NewGuest(f.context, "23:45:67:89:ab:cd", n, s, f1, fw, h1)
-	h.Ok(t, err)
-
-	// Fetch and make sure they're present
-	gs, err := f.Guests()
-	h.Ok(t, err)
-	if _, ok := gs[g1.ID]; !ok {
-		t.Error("Guest #1 is missing from list")
-	}
-	h.Equals(t, gs[g1.ID].MAC.String(), "01:23:45:67:89:ab")
-	if _, ok := gs[g2.ID]; !ok {
-		t.Error("Guest #2 is missing from list")
-	}
-	h.Equals(t, gs[g2.ID].MAC.String(), "23:45:67:89:ab:cd")
-
-}
-
-func TestFetchSubnets(t *testing.T) {
-
-	// Setup
-	f := NewFetcher("http://127.0.0.1:4001")
-	defer testhelper.Cleanup(f.etcdClient)
-
-	// Create supporting object
-	n, err := testhelper.NewNetwork(f.context)
-	h.Ok(t, err)
-
-	// Create two subnets
-	s1, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
-	h.Ok(t, err)
-	s2, err := testhelper.NewSubnet(f.context, "12.12.12.0/24", net.IPv4(12, 12, 12, 1), net.IPv4(12, 12, 12, 12), net.IPv4(12, 12, 12, 250), n)
-	h.Ok(t, err)
-
-	// Fetch and make sure they're present
-	ss, err := f.Subnets()
-	h.Ok(t, err)
-	if _, ok := ss[s1.ID]; !ok {
-		t.Error("Subnet #1 is missing from list")
-	}
-	h.Equals(t, ss[s1.ID].CIDR.String(), "10.10.10.0/24")
-	if _, ok := ss[s2.ID]; !ok {
-		t.Error("Subnet #2 is missing from list")
-	}
-	h.Equals(t, ss[s2.ID].CIDR.String(), "12.12.12.0/24")
-
-}
-
-func TestFetchAll(t *testing.T) {
-
-	// Setup
-	f := NewFetcher("http://127.0.0.1:4001")
-	defer testhelper.Cleanup(f.etcdClient)
-
-	// Create objects
-	f1, err := testhelper.NewFlavor(f.context, 4, 4096, 8192)
-	h.Ok(t, err)
-	f2, err := testhelper.NewFlavor(f.context, 6, 8192, 1024)
-	h.Ok(t, err)
-	n, err := testhelper.NewNetwork(f.context)
-	h.Ok(t, err)
-	fw, err := testhelper.NewFirewallGroup(f.context)
-	h.Ok(t, err)
-	s, err := testhelper.NewSubnet(f.context, "10.10.10.0/24", net.IPv4(10, 10, 10, 1), net.IPv4(10, 10, 10, 10), net.IPv4(10, 10, 10, 250), n)
-	h.Ok(t, err)
-	h1, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:21", net.IPv4(192, 168, 100, 200), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
-	h.Ok(t, err)
-	h2, err := testhelper.NewHypervisor(f.context, "de:ad:be:ef:7f:23", net.IPv4(192, 168, 100, 203), net.IPv4(192, 168, 100, 1), net.IPv4(255, 255, 255, 0), "br0", s)
-	h.Ok(t, err)
-	g1, err := testhelper.NewGuest(f.context, "01:23:45:67:89:ab", n, s, f1, fw, h1)
-	h.Ok(t, err)
-	g2, err := testhelper.NewGuest(f.context, "23:45:67:89:ab:cd", n, s, f1, fw, h1)
-	h.Ok(t, err)
-	g3, err := testhelper.NewGuest(f.context, "45:67:89:ab:cd:ef", n, s, f1, fw, h2)
-	h.Ok(t, err)
-	g4, err := testhelper.NewGuest(f.context, "67:89:ab:cd:ef:01", n, s, f2, fw, h2)
-	h.Ok(t, err)
-
-	// Fetch and make sure everything expected is present
-	err = f.FetchAll()
-	h.Ok(t, err)
-
-	// Check hypervisors
-	hvs, err := f.Hypervisors()
-	h.Ok(t, err)
-	if _, ok := hvs[h1.ID]; !ok {
-		t.Error("Hypervisor #1 is missing from list")
-	}
-	h.Equals(t, hvs[h1.ID].MAC.String(), "de:ad:be:ef:7f:21")
-	if _, ok := hvs[h2.ID]; !ok {
-		t.Error("Hypervisor #2 is missing from list")
-	}
-	h.Equals(t, hvs[h2.ID].MAC.String(), "de:ad:be:ef:7f:23")
-
-	// Check guests
-	gs, err := f.Guests()
-	if _, ok := gs[g1.ID]; !ok {
-		t.Error("Guest #1 is missing from list")
-	}
-	h.Equals(t, gs[g1.ID].MAC.String(), "01:23:45:67:89:ab")
-	if _, ok := gs[g2.ID]; !ok {
-		t.Error("Guest #2 is missing from list")
-	}
-	h.Equals(t, gs[g2.ID].MAC.String(), "23:45:67:89:ab:cd")
-	if _, ok := gs[g3.ID]; !ok {
-		t.Error("Guest #3 is missing from list")
-	}
-	h.Equals(t, gs[g3.ID].MAC.String(), "45:67:89:ab:cd:ef")
-	if _, ok := gs[g4.ID]; !ok {
-		t.Error("Guest #4 is missing from list")
-	}
-	h.Equals(t, gs[g4.ID].MAC.String(), "67:89:ab:cd:ef:01")
-
-	// Check subnet
-	ss, err := f.Subnets()
-	h.Ok(t, err)
-	if _, ok := ss[s.ID]; !ok {
-		t.Error("Subnet is missing from list")
-	}
-	h.Equals(t, ss[s.ID].CIDR.String(), "10.10.10.0/24")
-
-}
-
-func TestIntegrateHypervisorResponses(t *testing.T) {
-
-	// Setup
-	f := NewFetcher("http://127.0.0.1:4001")
-	defer testhelper.Cleanup(f.etcdClient)
-	_, err := f.Hypervisors()
-	h.Ok(t, err)
-
-	// Create-hypervisor integration
-	hv := f.context.NewHypervisor()
-	mac := "55:55:55:55:55:55"
-	hv.MAC, err = net.ParseMAC(mac)
-	if err != nil {
-		t.Error("Could not parse MAC '" + mac + "': " + err.Error())
-	}
-	hj, err := json.Marshal(hv)
-	h.Ok(t, err)
-	key := filepath.Join(lochness.HypervisorPath, hv.ID, "metadata")
-	resp, err := f.etcdClient.Create(key, string(hj), 0)
-	h.Ok(t, err)
-	refresh, err := f.IntegrateResponse(resp)
-	h.Ok(t, err)
-	h.Equals(t, refresh, true)
-	hvs, err := f.Hypervisors()
-	h.Ok(t, err)
-	if _, ok := hvs[hv.ID]; !ok {
-		t.Error("Newly integrated hypervisor is missing from list")
-	}
-	h.Equals(t, hvs[hv.ID].MAC.String(), mac)
-
-	// Delete-hypervisor integration (update requires modifiedIndex, which is not exported)
-	resp, err = f.etcdClient.Delete(filepath.Join(lochness.HypervisorPath, hv.ID, "metadata"), false)
-	h.Ok(t, err)
-	refresh, err = f.IntegrateResponse(resp)
-	h.Ok(t, err)
-	h.Equals(t, refresh, true)
-	hvs, err = f.Hypervisors()
-	h.Ok(t, err)
-	if _, ok := hvs[hv.ID]; ok {
-		t.Error("Newly deleted hypervisor is present in list")
-	}
-}
-
-func TestIntegrateGuestResponses(t *testing.T) {
-
-	// Setup
-	f := NewFetcher("http://127.0.0.1:4001")
-	defer testhelper.Cleanup(f.etcdClient)
-	_, err := f.Guests()
-	h.Ok(t, err)
-
-	// Create-guest integration
-	g := f.context.NewGuest()
-	mac := "66:66:66:66:66:66"
-	g.MAC, err = net.ParseMAC(mac)
-	if err != nil {
-		t.Error("Could not parse MAC '" + mac + "': " + err.Error())
-	}
-	gj, err := json.Marshal(g)
-	h.Ok(t, err)
-	key := filepath.Join(lochness.GuestPath, g.ID, "metadata")
-	resp, err := f.etcdClient.Create(key, string(gj), 0)
-	h.Ok(t, err)
-	refresh, err := f.IntegrateResponse(resp)
-	h.Ok(t, err)
-	h.Equals(t, refresh, true)
-	gs, err := f.Guests()
-	h.Ok(t, err)
-	if _, ok := gs[g.ID]; !ok {
-		t.Error("Newly integrated guest is missing from list")
-	}
-	h.Equals(t, gs[g.ID].MAC.String(), mac)
-
-	// Delete-guest integration
-	resp, err = f.etcdClient.Delete(filepath.Join(lochness.GuestPath, g.ID, "metadata"), false)
-	h.Ok(t, err)
-	refresh, err = f.IntegrateResponse(resp)
-	h.Ok(t, err)
-	h.Equals(t, refresh, true)
-	gs, err = f.Guests()
-	h.Ok(t, err)
-	if _, ok := gs[g.ID]; ok {
-		t.Error("Newly deleted guest is present in list")
-	}
-}
-
-func TestIntegrateSubnetResponses(t *testing.T) {
-
-	// Setup
-	f := NewFetcher("http://127.0.0.1:4001")
-	defer testhelper.Cleanup(f.etcdClient)
-	_, err := f.Subnets()
-	h.Ok(t, err)
-
-	// Create-subnet integration
-	s := f.context.NewSubnet()
-	cidr := "77.77.77.0/24"
-	_, s.CIDR, err = net.ParseCIDR(cidr)
-	if err != nil {
-		t.Error("Could not parse CIDR '" + cidr + "': " + err.Error())
-	}
-	sj, err := json.Marshal(s)
-	h.Ok(t, err)
-	key := filepath.Join(lochness.SubnetPath, s.ID, "metadata")
-	resp, err := f.etcdClient.Create(key, string(sj), 0)
-	h.Ok(t, err)
-	refresh, err := f.IntegrateResponse(resp)
-	h.Ok(t, err)
-	h.Equals(t, refresh, true)
-	h.Ok(t, err)
-	ss, err := f.Subnets()
-	h.Ok(t, err)
-	if _, ok := ss[s.ID]; !ok {
-		t.Error("Newly integrated subnet is missing from list")
-	}
-	h.Equals(t, ss[s.ID].CIDR.String(), cidr)
-
-	// Delete-subnet integration
-	resp, err = f.etcdClient.Delete(filepath.Join(lochness.SubnetPath, s.ID, "metadata"), false)
-	h.Ok(t, err)
-	refresh, err = f.IntegrateResponse(resp)
-	h.Ok(t, err)
-	h.Equals(t, refresh, true)
-	ss, err = f.Subnets()
-	h.Ok(t, err)
-	if _, ok := ss[s.ID]; ok {
-		t.Error("Newly deleted subnet is present in list")
-	}
-}
-
-func init() {
+func (s *FetcherTestSuite) SetupSuite() {
+	s.CommonTestSuite.SetupSuite()
 	log.SetLevel(log.ErrorLevel)
+}
+
+func (s *FetcherTestSuite) SetupTest() {
+	s.CommonTestSuite.SetupTest()
+	s.Fetcher = main.NewFetcher(s.EtcdURL)
+
+	log.SetLevel(log.FatalLevel)
+}
+
+func TestFetcherTestSuite(t *testing.T) {
+	suite.Run(t, new(FetcherTestSuite))
+}
+
+func (s *FetcherTestSuite) TestHypervisors() {
+	hypervisor, _ := s.NewHypervisorWithGuest()
+	hypervisors, err := s.Fetcher.Hypervisors()
+	s.NoError(err)
+
+	h, ok := hypervisors[hypervisor.ID]
+	if !s.True(ok) {
+		return
+	}
+	s.Equal(hypervisor.MAC, h.MAC)
+}
+
+func (s *FetcherTestSuite) TestGuests() {
+	_, guest := s.NewHypervisorWithGuest()
+	guests, err := s.Fetcher.Guests()
+	s.NoError(err)
+	g, ok := guests[guest.ID]
+	if !s.True(ok) {
+		return
+	}
+	s.Equal(guest.MAC, g.MAC)
+}
+
+func (s *FetcherTestSuite) TestSubnets() {
+	subnet := s.NewSubnet()
+	network := s.NewNetwork()
+	network.AddSubnet(subnet)
+
+	subnets, err := s.Fetcher.Subnets()
+	s.NoError(err)
+	sub, ok := subnets[subnet.ID]
+	if !s.True(ok) {
+		return
+	}
+	s.Equal(subnet.StartRange, sub.StartRange)
+}
+
+func (s *FetcherTestSuite) TestFetchAll() {
+	s.NoError(s.Fetcher.FetchAll())
+	hypervisor, guest := s.NewHypervisorWithGuest()
+	s.NoError(s.Fetcher.FetchAll())
+
+	hypervisors, err := s.Fetcher.Hypervisors()
+	s.NoError(err)
+	_, ok := hypervisors[hypervisor.ID]
+	s.True(ok)
+
+	guests, err := s.Fetcher.Guests()
+	s.NoError(err)
+	_, ok = guests[guest.ID]
+	s.True(ok)
+
+	subnets, err := s.Fetcher.Subnets()
+	s.NoError(err)
+	_, ok = subnets[guest.SubnetID]
+	s.True(ok)
+}
+
+func getResp(resp *etcd.Response, err error) *etcd.Response { return resp }
+
+func (s *FetcherTestSuite) TestIntegrateResponse() {
+	hypervisor, guest := s.NewHypervisorWithGuest()
+	subnet, _ := s.Context.Subnet(guest.SubnetID)
+
+	hJSON, _ := json.Marshal(hypervisor)
+	gJSON, _ := json.Marshal(guest)
+	sJSON, _ := json.Marshal(subnet)
+
+	hPath := s.EtcdPrefix + "/hypervisors/%s/metadata"
+	sPath := s.EtcdPrefix + "/subnets/%s/metadata"
+	gPath := s.EtcdPrefix + "/guests/%s/metadata"
+
+	// Should fail before first fetch
+	resp, err := s.EtcdClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)
+	refresh, err := s.Fetcher.IntegrateResponse(resp)
+	s.False(refresh)
+	s.Error(err)
+
+	s.Fetcher.FetchAll()
+
+	tests := []struct {
+		description string
+		resp        *etcd.Response
+		refresh     bool
+		expectedErr bool
+	}{
+		{
+			"create wrong key",
+			getResp(s.EtcdClient.Create("/foobar", "baz", 0)),
+			false, true,
+		},
+		{
+			"get hypervisor",
+			getResp(s.EtcdClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)),
+			false, false,
+		},
+		{
+			"set hypervisor",
+			getResp(s.EtcdClient.Set(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
+			true, false,
+		},
+		{
+			"set guest",
+			getResp(s.EtcdClient.Set(fmt.Sprintf(gPath, guest.ID), string(gJSON), 0)),
+			true, false,
+		},
+		{
+			"set subnet",
+			getResp(s.EtcdClient.Set(fmt.Sprintf(sPath, subnet.ID), string(sJSON), 0)),
+			true, false,
+		},
+		{
+			"delete guest",
+			getResp(s.EtcdClient.Delete(fmt.Sprintf(gPath, guest.ID), false)),
+			true, false,
+		},
+		{
+			"delete subnet",
+			getResp(s.EtcdClient.Delete(fmt.Sprintf(sPath, subnet.ID), false)),
+			true, false,
+		},
+		{
+			"delete hypervisor",
+			getResp(s.EtcdClient.Delete(fmt.Sprintf(hPath, hypervisor.ID), false)),
+			true, false,
+		},
+		{
+			"create hypervisor",
+			getResp(s.EtcdClient.Create(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
+			true, false,
+		},
+	}
+
+	for _, test := range tests {
+		msg := ct.TestMsgFunc(test.description)
+		refresh, err := s.Fetcher.IntegrateResponse(test.resp)
+
+		s.Equal(test.refresh, refresh, msg("wrong refresh conclusion"))
+		if test.expectedErr {
+			s.Error(err, msg("should have errored"))
+		} else {
+			s.NoError(err, msg("should have succeeded"))
+		}
+	}
 }
