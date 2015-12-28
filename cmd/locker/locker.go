@@ -27,7 +27,7 @@ ExecStart=
 ExecStart=%s
 `
 
-type params struct {
+type Params struct {
 	Interval uint64     `json:"interval"`
 	TTL      uint64     `json:"ttl"`
 	Key      string     `json:"key"`
@@ -160,7 +160,7 @@ func main() {
 	d := deferer.NewDeferer(nil)
 	defer d.Run()
 
-	params := params{}
+	params := Params{}
 	arg, err := base64.StdEncoding.DecodeString(os.Args[1])
 	if err != nil {
 		d.FatalWithFields(log.Fields{
