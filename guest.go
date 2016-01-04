@@ -298,7 +298,7 @@ func (g *Guest) Candidates(f ...CandidateFunction) (Hypervisors, error) {
 		}
 		hypervisors = hs
 		if len(hypervisors) == 0 {
-			return nil, errors.New("no hypervisors")
+			return nil, errors.New("no suitable hypervisors")
 		}
 	}
 
