@@ -2,6 +2,7 @@ package jobqueue
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
@@ -110,4 +111,27 @@ func (c *Client) AddJob(guestID, action string) (*Job, error) {
 	}
 	_, err := c.AddTask(job)
 	return job, err
+}
+
+func tubeStats(tube *tubeSet) (map[string]string, error) {
+	stats, err := tube.publish.Stats()
+	if err != nil {
+		return nil, err
+	}
+	ready, _ := strconv.Atoi(stats["current-jobs-ready"])
+	reserved, _ := strconv.Atoi(stats["current-jobs-reserved"])
+	buried, _ := strconv.Atoi(stats["current-jobs-buried"])
+	delayed, _ := strconv.Atoi(stats["current-jobs-delayed"])
+	stats["current-jobs-total"] = strconv.Itoa(ready + reserved + buried + delayed)
+	return stats, err
+}
+
+// StatsCreate returns the stats for the create create queue
+func (c *Client) StatsCreate() (map[string]string, error) {
+	return tubeStats(c.tubes.create)
+}
+
+// StatsWork returns the stats for the work queue
+func (c *Client) StatsWork() (map[string]string, error) {
+	return tubeStats(c.tubes.work)
 }

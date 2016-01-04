@@ -1,9 +1,11 @@
 package jobqueue_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
@@ -120,4 +122,27 @@ func (s *ClientTestSuite) TestAddJob() {
 			s.NotNil(job, msg("should return job"))
 		}
 	}
+}
+
+func (s *ClientTestSuite) TestStats() {
+	stats, err := s.Client.StatsCreate()
+	if connErr, ok := err.(beanstalk.ConnError); ok {
+		err = connErr.Err
+	}
+	s.Equal(beanstalk.ErrNotFound, err, "fresh tube should not be found")
+
+	_, _ = s.Client.AddJob(uuid.New(), "select-hypervisor")
+
+	stats, err = s.Client.StatsCreate()
+	s.NoError(err, "should not error")
+	totalCreateJobs, _ := strconv.Atoi(stats["current-jobs-total"])
+	s.Equal(1, totalCreateJobs, "should equal current total of all job types")
+
+	_, _ = s.Client.AddJob(uuid.New(), "foo")
+	_, _ = s.Client.AddJob(uuid.New(), "bar")
+
+	stats, err = s.Client.StatsWork()
+	s.NoError(err, "should not error")
+	totalWorkJobs, _ := strconv.Atoi(stats["current-jobs-total"])
+	s.Equal(2, totalWorkJobs, "should equal current total of all job types")
 }
