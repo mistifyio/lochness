@@ -1,4 +1,3 @@
-/* TODO: Fix nfirewalld and then finish tests
 package main_test
 
 import (
@@ -83,4 +82,3 @@ func newFWRule(fwgroup *lochness.FWGroup, action, source string, start, end uint
 	fwgroup.Rules = lochness.FWRules{fwrule}
 	return fwgroup.Save()
 }
-*/
