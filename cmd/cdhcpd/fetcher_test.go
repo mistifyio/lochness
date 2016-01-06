@@ -59,7 +59,7 @@ func (s *FetcherTestSuite) TestGuests() {
 func (s *FetcherTestSuite) TestSubnets() {
 	subnet := s.NewSubnet()
 	network := s.NewNetwork()
-	network.AddSubnet(subnet)
+	_ = network.AddSubnet(subnet)
 
 	subnets, err := s.Fetcher.Subnets()
 	s.NoError(err)
@@ -111,7 +111,7 @@ func (s *FetcherTestSuite) TestIntegrateResponse() {
 	s.False(refresh)
 	s.Error(err)
 
-	s.Fetcher.FetchAll()
+	_ = s.Fetcher.FetchAll()
 
 	tests := []struct {
 		description string

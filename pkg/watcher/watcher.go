@@ -136,7 +136,7 @@ func (w *Watcher) Close() *Error {
 }
 
 func (w *Watcher) watch(prefix string, stop chan bool) {
-	defer w.Remove(prefix)
+	defer func() { _ = w.Remove(prefix) }()
 
 	// Get the index to start watching from.
 	// This minimizes the window between calling etcd.Watch() and the watch

@@ -62,7 +62,7 @@ func (s *MainTestSuite) TestCmd() {
 
 	s.checkConfFiles(hypervisor2, guest2)
 
-	s.EtcdClient.Delete(s.EtcdPrefix, true)
+	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
 	time.Sleep(1 * time.Second)
 	hData, _ := ioutil.ReadFile(s.HypervisorConfig)
 	s.NotContains(string(hData), hypervisor.ID, "hypervisor not removed")

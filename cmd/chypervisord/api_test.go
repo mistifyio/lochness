@@ -36,7 +36,7 @@ func (s *APITestSuite) SetupSuite() {
 func (s *APITestSuite) SetupTest() {
 	s.CommonTestSuite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
-	s.Hypervisor.SetConfig("foo", "bar")
+	_ = s.Hypervisor.SetConfig("foo", "bar")
 }
 
 func (s *APITestSuite) TearDownSuite() {
@@ -146,7 +146,7 @@ func (s *APITestSuite) TestHypervisorSubnetList() {
 
 func (s *APITestSuite) TestHypervisorSubnetUpdate() {
 	subnet := s.NewSubnet()
-	s.Hypervisor.AddSubnet(subnet, "foobar")
+	_ = s.Hypervisor.AddSubnet(subnet, "foobar")
 
 	var subnets map[string]string
 	s.DoRequest("GET", fmt.Sprintf("%s/%s/subnets", s.APIURL, s.Hypervisor.ID), http.StatusOK, nil, &subnets)

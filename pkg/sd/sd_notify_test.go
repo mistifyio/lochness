@@ -48,12 +48,12 @@ func (s *SDNotifyTestSuite) TestNotify() {
 	for _, test := range tests {
 		msg := testMsgFunc(test.description)
 		socket := s.socketPath(test.socket)
-		os.Setenv("NOTIFY_SOCKET", socket)
+		_ = os.Setenv("NOTIFY_SOCKET", socket)
 
 		unixAddr, _ := net.ResolveUnixAddr("unixgram", socket)
 		lConn, lErr := net.ListenUnixgram("unixgram", unixAddr)
 		if lErr == nil {
-			defer lConn.Close()
+			defer func() { _ = lConn.Close() }()
 		}
 
 		err := sd.Notify(test.state)

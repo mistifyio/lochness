@@ -155,7 +155,7 @@ func (s *WatcherTestSuite) TestRemove() {
 }
 
 func (s *WatcherTestSuite) TestClose() {
-	s.Watcher.Add(uuid.New())
+	_ = s.Watcher.Add(uuid.New())
 	s.NoError(s.Watcher.Close())
 	s.NoError(s.Watcher.Close())
 }

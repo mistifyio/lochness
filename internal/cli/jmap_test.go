@@ -36,7 +36,7 @@ func (s *JMapTestSuite) TestPrint() {
 	os.Stdout = w
 
 	defer func() {
-		w.Close()
+		_ = w.Close()
 		os.Stdout = stdout
 	}()
 

@@ -176,7 +176,7 @@ func (s *APITestSuite) TestSetGroupsForVLAN() {
 	s.Len(vlanGroups, 1)
 	s.Equal(s.VLANGroup.ID, vlanGroups[0])
 
-	s.VLAN.Refresh()
+	_ = s.VLAN.Refresh()
 	s.Equal(s.VLANGroup.ID, s.VLAN.VLANGroups()[0])
 }
 
@@ -196,7 +196,7 @@ func (s *APITestSuite) TestSetVLANsForGroup() {
 	s.Len(vlans, 1)
 	s.Equal(s.VLAN.Tag, vlans[0])
 
-	s.VLANGroup.Refresh()
+	_ = s.VLANGroup.Refresh()
 	s.Equal(s.VLAN.Tag, s.VLANGroup.VLANs()[0])
 
 }

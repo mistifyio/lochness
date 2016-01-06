@@ -211,7 +211,7 @@ func (s *CommonTestSuite) DoRequest(method, url string, expectedRespCode int, po
 	resp, err := client.Do(req)
 	s.NoError(err)
 	correctResponse := s.Equal(expectedRespCode, resp.StatusCode)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	s.NoError(err)

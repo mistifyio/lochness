@@ -50,7 +50,7 @@ func (s *LockerTestSuite) TestCmd() {
 
 	for id, test := range tests {
 		file, _ := ioutil.TempFile("", "lockerTest-")
-		defer os.Remove(file.Name())
+		defer func() { _ = os.Remove(file.Name()) }()
 
 		msg := ct.TestMsgFunc(test.description)
 		params := &main.Params{
@@ -63,10 +63,10 @@ func (s *LockerTestSuite) TestCmd() {
 		}
 		params.Args = []string{"/bin/perl", "-e", fmt.Sprintf(perlCmd, file.Name(), test.fileOut)}
 		params.Lock, _ = lock.Acquire(s.EtcdClient, params.Key, uuid.New(), params.TTL, params.Blocking)
-		defer params.Lock.Release()
+		defer func() { _ = params.Lock.Release() }()
 
 		// Time in microseconds
-		os.Setenv("WATCHDOG_USEC", strconv.FormatUint(test.watchdog*uint64(time.Second/time.Microsecond), 10))
+		_ = os.Setenv("WATCHDOG_USEC", strconv.FormatUint(test.watchdog*uint64(time.Second/time.Microsecond), 10))
 
 		args, _ := json.Marshal(&params)
 		arg := base64.StdEncoding.EncodeToString(args)

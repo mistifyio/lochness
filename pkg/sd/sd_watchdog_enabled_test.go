@@ -36,8 +36,8 @@ func (s *SDWatchdogEnabledTestSuite) TestWatchdogEnabled() {
 	}
 
 	for _, test := range tests {
-		os.Setenv("WATCHDOG_PID", test.pid)
-		os.Setenv("WATCHDOG_USEC", test.usec)
+		_ = os.Setenv("WATCHDOG_PID", test.pid)
+		_ = os.Setenv("WATCHDOG_USEC", test.usec)
 		msg := testMsgFunc(test.description)
 
 		time, err := sd.WatchdogEnabled()
