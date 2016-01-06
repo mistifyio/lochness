@@ -205,6 +205,10 @@ func processTask(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, error
 func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 	job := task.Job
 
+	if task.Guest == nil {
+		return errors.New("guest does not exist")
+	}
+
 	var err error
 	var jobID string
 	switch job.Action {
