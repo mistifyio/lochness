@@ -194,6 +194,7 @@ func (s *CommonTestSuite) NewHypervisorWithGuest() (*lochness.Hypervisor, *lochn
 	return hypervisor, guest
 }
 
+// DoRequest is a convenience method for making an http request and doing basic handling of the response.
 func (s *CommonTestSuite) DoRequest(method, url string, expectedRespCode int, postBodyStruct interface{}, respBody interface{}) *http.Response {
 	var postBody io.Reader
 	if postBodyStruct != nil {

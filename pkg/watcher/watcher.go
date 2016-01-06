@@ -27,6 +27,7 @@ type Watcher struct {
 	prefixes map[string]chan bool
 }
 
+// Error contains both the watched prefix and the error.
 type Error struct {
 	Prefix string
 	Err    error

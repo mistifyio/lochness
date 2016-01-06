@@ -27,6 +27,7 @@ ExecStart=
 ExecStart=%s
 `
 
+// Params is the configuration param struct that will be accepted via command line.
 type Params struct {
 	Interval uint64     `json:"interval"`
 	TTL      uint64     `json:"ttl"`
