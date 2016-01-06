@@ -45,9 +45,9 @@ parent property is set, finishing with a call to log.Fatal()
 #### func (*Deferer) FatalWithFields
 
 ```go
-func (d *Deferer) FatalWithFields(fields logrus.Fields, v ...interface{})
+func (d *Deferer) FatalWithFields(fields log.Fields, v ...interface{})
 ```
-FatalWithFields is a mash up of Fatal and logrus
+FatalWithFields accepts additional logging fields for the fatal log
 
 #### func (*Deferer) Run
 
