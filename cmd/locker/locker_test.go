@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strconv"
 	"testing"
 	"time"
@@ -34,6 +35,10 @@ func TestLockerTestSuite(t *testing.T) {
 
 func (s *LockerTestSuite) TestCmd() {
 	perlCmd := `sleep 1; open(my $fh,">","%s"); print $fh "%s"; close $fh;`
+	perlPath, err := exec.LookPath("perl")
+	if !s.NoError(err, "perl not found") {
+		return
+	}
 
 	tests := []struct {
 		description  string
@@ -61,7 +66,7 @@ func (s *LockerTestSuite) TestCmd() {
 			Blocking: false,
 			ID:       id,
 		}
-		params.Args = []string{"/bin/perl", "-e", fmt.Sprintf(perlCmd, file.Name(), test.fileOut)}
+		params.Args = []string{perlPath, "-e", fmt.Sprintf(perlCmd, file.Name(), test.fileOut)}
 		params.Lock, _ = lock.Acquire(s.EtcdClient, params.Key, uuid.New(), params.TTL, params.Blocking)
 		defer func() { _ = params.Lock.Release() }()
 
