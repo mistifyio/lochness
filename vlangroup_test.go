@@ -12,7 +12,7 @@ import (
 )
 
 type VLANGroupTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 }
 
 func TestVLANGroupTestSuite(t *testing.T) {

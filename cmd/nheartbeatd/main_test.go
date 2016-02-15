@@ -12,29 +12,29 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type TestSuite struct {
-	ct.CommonTestSuite
+type CmdSuite struct {
+	ct.Suite
 	Hypervisor *lochness.Hypervisor
 	BinName    string
 }
 
-func (s *TestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *CmdSuite) SetupSuite() {
+	s.Suite.SetupSuite()
 	s.Require().NoError(ct.Build())
 	s.BinName = "nheartbeatd"
 }
 
-func (s *TestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *CmdSuite) SetupTest() {
+	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
 	s.Require().NoError(s.Hypervisor.SetConfig("guestDiskDir", "/dev/null"))
 }
 
-func TestTestSuite(t *testing.T) {
-	suite.Run(t, new(TestSuite))
+func TestNHeartbeatd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
 }
 
-func (s *TestSuite) TestCmd() {
+func (s *CmdSuite) TestCmd() {
 	tests := []struct {
 		description string
 		id          string

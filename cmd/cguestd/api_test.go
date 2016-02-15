@@ -21,8 +21,8 @@ import (
 	"github.com/tylerb/graceful"
 )
 
-type APITestSuite struct {
-	ct.CommonTestSuite
+type APISuite struct {
+	ct.Suite
 	Port           uint
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string
@@ -33,8 +33,8 @@ type APITestSuite struct {
 	APIURL         string
 }
 
-func (s *APITestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *APISuite) SetupSuite() {
+	s.Suite.SetupSuite()
 
 	log.SetLevel(log.FatalLevel)
 	s.Port = 51124
@@ -77,12 +77,12 @@ func (s *APITestSuite) SetupSuite() {
 
 }
 
-func (s *APITestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *APISuite) SetupTest() {
+	s.Suite.SetupTest()
 	s.Guest = s.NewGuest()
 }
 
-func (s *APITestSuite) TearDownSuite() {
+func (s *APISuite) TearDownSuite() {
 	stopChan := s.APIServer.StopChan()
 	s.APIServer.Stop(5 * time.Second)
 	<-stopChan
@@ -90,14 +90,14 @@ func (s *APITestSuite) TearDownSuite() {
 	_ = s.BeanstalkdCmd.Process.Kill()
 	_ = s.BeanstalkdCmd.Wait()
 
-	s.CommonTestSuite.TearDownSuite()
+	s.Suite.TearDownSuite()
 }
 
-func TestAPITestSuite(t *testing.T) {
-	suite.Run(t, new(APITestSuite))
+func TestCGuestdAPI(t *testing.T) {
+	suite.Run(t, new(APISuite))
 }
 
-func (s *APITestSuite) TestGuestsList() {
+func (s *APISuite) TestGuestsList() {
 	var guests lochness.Guests
 	s.DoRequest("GET", s.APIURL, http.StatusOK, nil, &guests)
 
@@ -105,7 +105,7 @@ func (s *APITestSuite) TestGuestsList() {
 	s.Equal(s.Guest.ID, guests[0].ID)
 }
 
-func (s *APITestSuite) TestGuestAdd() {
+func (s *APISuite) TestGuestAdd() {
 	s.Guest.ID = uuid.New()
 
 	var guestResp lochness.Guest
@@ -115,14 +115,14 @@ func (s *APITestSuite) TestGuestAdd() {
 	s.Equal(s.Guest.ID, guestResp.ID)
 }
 
-func (s *APITestSuite) TestGuestGet() {
+func (s *APISuite) TestGuestGet() {
 	var guest lochness.Guest
 	s.DoRequest("GET", fmt.Sprintf("%s/%s", s.APIURL, s.Guest.ID), http.StatusOK, nil, &guest)
 
 	s.Equal(s.Guest.ID, guest.ID)
 }
 
-func (s *APITestSuite) TestGuestUpdate() {
+func (s *APISuite) TestGuestUpdate() {
 	s.Guest.MAC, _ = net.ParseMAC("01:23:45:67:89:ab")
 
 	var guestResp lochness.Guest
@@ -136,7 +136,7 @@ func (s *APITestSuite) TestGuestUpdate() {
 	s.Equal(s.Guest.MAC, g.MAC)
 }
 
-func (s *APITestSuite) TestGuestDestroy() {
+func (s *APISuite) TestGuestDestroy() {
 	var guestResp lochness.Guest
 	resp := s.DoRequest("DELETE", fmt.Sprintf("%s/%s", s.APIURL, s.Guest.ID), http.StatusAccepted, nil, &guestResp)
 	s.NotEmpty(resp.Header.Get("X-Guest-Job-ID"))
@@ -144,7 +144,7 @@ func (s *APITestSuite) TestGuestDestroy() {
 	s.Equal(s.Guest.ID, guestResp.ID)
 }
 
-func (s *APITestSuite) TestGuestAction() {
+func (s *APISuite) TestGuestAction() {
 	var guestResp lochness.Guest
 	resp := s.DoRequest("POST", fmt.Sprintf("%s/%s/%s", s.APIURL, s.Guest.ID, "reboot"), http.StatusAccepted, nil, &guestResp)
 	s.NotEmpty(resp.Header.Get("X-Guest-Job-ID"))
@@ -152,7 +152,7 @@ func (s *APITestSuite) TestGuestAction() {
 	s.Equal(s.Guest.ID, guestResp.ID)
 }
 
-func (s *APITestSuite) TestGuestJob() {
+func (s *APISuite) TestGuestJob() {
 	var guestResp lochness.Guest
 	resp := s.DoRequest("POST", fmt.Sprintf("%s/%s/%s", s.APIURL, s.Guest.ID, "reboot"), http.StatusAccepted, nil, &guestResp)
 	jobID := resp.Header.Get("X-Guest-Job-ID")
