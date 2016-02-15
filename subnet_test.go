@@ -7,13 +7,14 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type SubnetTestSuite struct {
-	CommonTestSuite
+	ct.CommonTestSuite
 }
 
 func TestSubnetTestSuite(t *testing.T) {
@@ -26,7 +27,7 @@ func (s *SubnetTestSuite) TestNewSubnet() {
 }
 
 func (s *SubnetTestSuite) TestSubnet() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 
 	tests := []struct {
 		description string
@@ -53,11 +54,11 @@ func (s *SubnetTestSuite) TestSubnet() {
 }
 
 func (s *SubnetTestSuite) TestRefresh() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 	subnetCopy := &lochness.Subnet{}
 	*subnetCopy = *subnet
 
-	network := s.newNetwork()
+	network := s.NewNetwork()
 	_ = network.AddSubnet(subnet)
 	_, _ = subnet.ReserveAddress("foobar")
 
@@ -65,12 +66,12 @@ func (s *SubnetTestSuite) TestRefresh() {
 	s.NoError(subnetCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(subnet, subnetCopy), "refresh should pull new data")
 
-	newSubnet := s.Context.NewSubnet()
-	s.Error(newSubnet.Refresh(), "unsaved subnet refresh should fail")
+	NewSubnet := s.Context.NewSubnet()
+	s.Error(NewSubnet.Refresh(), "unsaved subnet refresh should fail")
 }
 
 func (s *SubnetTestSuite) TestJSON() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 
 	subnetBytes, err := json.Marshal(subnet)
 	s.NoError(err)
@@ -121,23 +122,23 @@ func (s *SubnetTestSuite) TestValidate() {
 }
 
 func (s *SubnetTestSuite) TestSave() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 	subnetCopy := &lochness.Subnet{}
 	*subnetCopy = *subnet
-	network := s.newNetwork()
+	network := s.NewNetwork()
 	_ = network.AddSubnet(subnet)
 
 	_ = subnet.Save()
 	s.NoError(subnetCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(subnet, subnetCopy), "refresh should pull new data")
 
-	newSubnet := s.Context.NewSubnet()
-	s.Error(newSubnet.Refresh(), "unsaved subnet refresh should fail")
+	NewSubnet := s.Context.NewSubnet()
+	s.Error(NewSubnet.Refresh(), "unsaved subnet refresh should fail")
 }
 
 func (s *SubnetTestSuite) TestDelete() {
-	subnet := s.newSubnet()
-	network := s.newNetwork()
+	subnet := s.NewSubnet()
+	network := s.NewNetwork()
 	_ = network.AddSubnet(subnet)
 
 	invalidSub := s.Context.NewSubnet()
@@ -167,7 +168,7 @@ func (s *SubnetTestSuite) TestDelete() {
 }
 
 func (s *SubnetTestSuite) TestAvailableAddresses() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 	addresses := subnet.AvailableAddresses()
 	s.Len(addresses, 9, "all addresses should be available")
 	s.Equal(subnet.StartRange, addresses[0], "should start at the beginning of the range")
@@ -175,7 +176,7 @@ func (s *SubnetTestSuite) TestAvailableAddresses() {
 }
 
 func (s *SubnetTestSuite) TestReserveAddress() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 	n := len(subnet.AvailableAddresses())
 	for i := 0; i <= n; i++ {
 		msg := testMsgFunc("attempt " + string(i))
@@ -193,7 +194,7 @@ func (s *SubnetTestSuite) TestReserveAddress() {
 }
 
 func (s *SubnetTestSuite) TestReleaseAddress() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 	ip, _ := subnet.ReserveAddress("foobar")
 	n := len(subnet.AvailableAddresses())
 
@@ -205,7 +206,7 @@ func (s *SubnetTestSuite) TestReleaseAddress() {
 }
 
 func (s *SubnetTestSuite) TestAddresses() {
-	subnet := s.newSubnet()
+	subnet := s.NewSubnet()
 	addresses := subnet.AvailableAddresses()
 
 	ip, _ := subnet.ReserveAddress("foobar")
@@ -223,8 +224,8 @@ func (s *SubnetTestSuite) TestAddresses() {
 }
 
 func (s *SubnetTestSuite) TestForEachSubnet() {
-	subnet := s.newSubnet()
-	subnet2 := s.newSubnet()
+	subnet := s.NewSubnet()
+	subnet2 := s.NewSubnet()
 	expectedFound := map[string]bool{
 		subnet.ID:  true,
 		subnet2.ID: true,

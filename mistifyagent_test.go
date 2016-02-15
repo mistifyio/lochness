@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/cmd/common_test"
 	magent "github.com/mistifyio/mistify-agent"
 	mnet "github.com/mistifyio/util/net"
 	"github.com/pborman/uuid"
@@ -19,7 +20,7 @@ import (
 )
 
 type MistifyAgentTestSuite struct {
-	CommonTestSuite
+	ct.CommonTestSuite
 	agent      *lochness.MistifyAgent
 	api        *httptest.Server
 	guest      *lochness.Guest
@@ -56,7 +57,7 @@ func (s *MistifyAgentTestSuite) SetupTest() {
 	host, sPort, _ := mnet.SplitHostPort(u.Host)
 	port, _ := strconv.Atoi(sPort)
 	s.agent = s.Context.NewMistifyAgent(port)
-	s.hypervisor, s.guest = s.newHypervisorWithGuest()
+	s.hypervisor, s.guest = s.NewHypervisorWithGuest()
 	s.hypervisor.IP = net.ParseIP(host)
 	_ = s.hypervisor.Save()
 }

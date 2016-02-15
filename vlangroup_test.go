@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type VLANGroupTestSuite struct {
-	CommonTestSuite
+	ct.CommonTestSuite
 }
 
 func TestVLANGroupTestSuite(t *testing.T) {
@@ -24,7 +25,7 @@ func (s *VLANGroupTestSuite) TestNewVLANGroup() {
 }
 
 func (s *VLANGroupTestSuite) TestVLANGroup() {
-	vlangroup := s.newVLANGroup()
+	vlangroup := s.NewVLANGroup()
 
 	tests := []struct {
 		description string
@@ -51,17 +52,17 @@ func (s *VLANGroupTestSuite) TestVLANGroup() {
 }
 
 func (s *VLANGroupTestSuite) TestRefresh() {
-	vlangroup := s.newVLANGroup()
+	vlangroup := s.NewVLANGroup()
 	vlangroupCopy := &lochness.VLANGroup{}
 	*vlangroupCopy = *vlangroup
-	_ = vlangroup.AddVLAN(s.newVLAN())
+	_ = vlangroup.AddVLAN(s.NewVLAN())
 
 	_ = vlangroup.Save()
 	s.NoError(vlangroupCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(vlangroup, vlangroupCopy), "refresh should pull new data")
 
-	newVLANGroup := s.Context.NewVLANGroup()
-	s.Error(newVLANGroup.Refresh(), "unsaved vlangroup refresh should fail")
+	NewVLANGroup := s.Context.NewVLANGroup()
+	s.Error(NewVLANGroup.Refresh(), "unsaved vlangroup refresh should fail")
 }
 
 func (s *VLANGroupTestSuite) TestValidate() {
@@ -116,8 +117,8 @@ func (s *VLANGroupTestSuite) TestSave() {
 }
 
 func (s *VLANGroupTestSuite) TestDestroy() {
-	vlangroup := s.newVLANGroup()
-	vlan := s.newVLAN()
+	vlangroup := s.NewVLANGroup()
+	vlan := s.NewVLAN()
 	_ = vlangroup.AddVLAN(vlan)
 
 	blankVG := s.Context.NewVLANGroup()
@@ -148,8 +149,8 @@ func (s *VLANGroupTestSuite) TestDestroy() {
 }
 
 func (s *VLANGroupTestSuite) TestForEachVLANGroup() {
-	vlangroup := s.newVLANGroup()
-	vlangroup2 := s.newVLANGroup()
+	vlangroup := s.NewVLANGroup()
+	vlangroup2 := s.NewVLANGroup()
 	expectedFound := map[string]bool{
 		vlangroup.ID:  true,
 		vlangroup2.ID: true,
@@ -180,9 +181,9 @@ func (s *VLANGroupTestSuite) TestAddVLAN() {
 		expectedErr bool
 	}{
 		{"nonexisting vlangroup, nonexisting vlan", s.Context.NewVLANGroup(), s.Context.NewVLAN(), true},
-		{"existing vlangroup, nonexisting vlan", s.newVLANGroup(), s.Context.NewVLAN(), true},
-		{"nonexisting vlangroup, existing vlan", s.Context.NewVLANGroup(), s.newVLAN(), true},
-		{"existing vlangroup and vlan", s.newVLANGroup(), s.newVLAN(), false},
+		{"existing vlangroup, nonexisting vlan", s.NewVLANGroup(), s.Context.NewVLAN(), true},
+		{"nonexisting vlangroup, existing vlan", s.Context.NewVLANGroup(), s.NewVLAN(), true},
+		{"existing vlangroup and vlan", s.NewVLANGroup(), s.NewVLAN(), false},
 	}
 
 	for _, test := range tests {
@@ -201,8 +202,8 @@ func (s *VLANGroupTestSuite) TestAddVLAN() {
 }
 
 func (s *VLANGroupTestSuite) TestRemoveVLAN() {
-	vlan := s.newVLAN()
-	vlanGroup := s.newVLANGroup()
+	vlan := s.NewVLAN()
+	vlanGroup := s.NewVLANGroup()
 	_ = vlanGroup.AddVLAN(vlan)
 
 	tests := []struct {
@@ -236,8 +237,8 @@ func (s *VLANGroupTestSuite) TestRemoveVLAN() {
 }
 
 func (s *VLANGroupTestSuite) TestVLANs() {
-	vlanGroup := s.newVLANGroup()
-	_ = vlanGroup.AddVLAN(s.newVLAN())
+	vlanGroup := s.NewVLANGroup()
+	_ = vlanGroup.AddVLAN(s.NewVLAN())
 
 	s.Len(vlanGroup.VLANs(), 1)
 }

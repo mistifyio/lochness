@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type FWGroupTestSuite struct {
-	CommonTestSuite
+	ct.CommonTestSuite
 }
 
 func TestFWGroupTestSuite(t *testing.T) {
@@ -25,7 +26,7 @@ func (s *FWGroupTestSuite) TestNewFWGroup() {
 }
 
 func (s *FWGroupTestSuite) TestFWGroup() {
-	fwgroup := s.newFWGroup()
+	fwgroup := s.NewFWGroup()
 
 	tests := []struct {
 		description string
@@ -54,7 +55,7 @@ func (s *FWGroupTestSuite) TestFWGroup() {
 }
 
 func (s *FWGroupTestSuite) TestRefresh() {
-	fwgroup := s.newFWGroup()
+	fwgroup := s.NewFWGroup()
 	fwgroupCopy := &lochness.FWGroup{}
 	*fwgroupCopy = *fwgroup
 	fwgroup.Rules = lochness.FWRules{&lochness.FWRule{}}
