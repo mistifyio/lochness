@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	magent "github.com/mistifyio/mistify-agent"
 	mnet "github.com/mistifyio/util/net"
 	"github.com/pborman/uuid"

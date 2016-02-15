@@ -15,7 +15,7 @@ import (
 
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/mistifyio/mistify-agent"
 	mnet "github.com/mistifyio/util/net"
