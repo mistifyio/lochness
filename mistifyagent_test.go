@@ -20,7 +20,7 @@ import (
 )
 
 type MistifyAgentTestSuite struct {
-	ct.Suite
+	common.Suite
 	agent      *lochness.MistifyAgent
 	api        *httptest.Server
 	guest      *lochness.Guest

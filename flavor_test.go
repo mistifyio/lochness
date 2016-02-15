@@ -11,7 +11,7 @@ import (
 )
 
 type FlavorTestSuite struct {
-	ct.Suite
+	common.Suite
 }
 
 func TestFlavorTestSuite(t *testing.T) {

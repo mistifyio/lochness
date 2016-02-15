@@ -1,7 +1,5 @@
-/*
-Package ct contains common utilities and suites to be used in other tests
-*/
-package ct
+// Package common contains common utilities and suites to be used in other tests
+package common
 
 import (
 	"bytes"
