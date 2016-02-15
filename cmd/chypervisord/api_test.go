@@ -15,7 +15,7 @@ import (
 )
 
 type APISuite struct {
-	ct.Suite
+	common.Suite
 	Port       uint
 	APIServer  *graceful.Server
 	Hypervisor *lochness.Hypervisor
