@@ -1,6 +1,6 @@
 # ct
 
-[![ct](https://godoc.org/github.com/mistifyio/lochness/cmd/common_test?status.png)](https://godoc.org/github.com/mistifyio/lochness/cmd/common_test)
+[![ct](https://godoc.org/github.com/mistifyio/lochness/internal/tests/common?status.png)](https://godoc.org/github.com/mistifyio/lochness/internal/tests/common)
 
 ct contains common utilities and suites to be used in other tests
 

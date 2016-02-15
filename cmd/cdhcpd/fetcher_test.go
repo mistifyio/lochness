@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness/cmd/cdhcpd"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/stretchr/testify/suite"
 )
 

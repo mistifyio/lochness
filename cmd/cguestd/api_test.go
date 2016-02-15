@@ -14,7 +14,7 @@ import (
 	"github.com/bakins/go-metrics-middleware"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
