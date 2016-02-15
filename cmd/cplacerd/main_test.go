@@ -15,7 +15,7 @@ import (
 )
 
 type CPlacerd struct {
-	ct.Suite
+	common.Suite
 	BinName        string
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string
@@ -25,7 +25,7 @@ type CPlacerd struct {
 
 func (s *CPlacerd) SetupSuite() {
 	s.Suite.SetupSuite()
-	s.Require().NoError(ct.Build())
+	s.Require().NoError(common.Build())
 	s.BinName = "cplacerd"
 	s.Port = "45362"
 
@@ -86,7 +86,7 @@ func (s *CPlacerd) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 		if test.description == "valid" {
 			s.NoError(hypervisor.Heartbeat(1 * time.Hour))
 		}
@@ -114,7 +114,7 @@ func (s *CPlacerd) TestCmd() {
 			"-b", s.BeanstalkdPath,
 			"-l", "fatal",
 		}
-		cmd, err := ct.Exec("./"+s.BinName, args...)
+		cmd, err := common.Exec("./"+s.BinName, args...)
 		s.Require().NoError(err)
 
 		// Wait for processing

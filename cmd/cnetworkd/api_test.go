@@ -14,7 +14,7 @@ import (
 )
 
 type API struct {
-	ct.Suite
+	common.Suite
 	Port      uint
 	APIServer *graceful.Server
 	VLAN      *lochness.VLAN

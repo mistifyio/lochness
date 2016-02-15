@@ -18,7 +18,7 @@ import (
 )
 
 type NConfigd struct {
-	ct.Suite
+	common.Suite
 	BinName        string
 	WorkPath       string
 	ConfigPath     string
@@ -48,7 +48,7 @@ func (s *NConfigd) SetupSuite() {
 }`)
 	s.Require().NoError(err, "failed to parse config template")
 
-	s.Require().NoError(ct.Build(), "failed to build nconfigd")
+	s.Require().NoError(common.Build(), "failed to build nconfigd")
 	s.BinName = "nconfigd"
 }
 
@@ -109,9 +109,9 @@ func (s *NConfigd) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 
-		cmd, err := ct.Exec("./"+s.BinName, args...)
+		cmd, err := common.Exec("./"+s.BinName, args...)
 		if !s.NoError(err, msg("command exec should not error")) {
 			continue
 		}

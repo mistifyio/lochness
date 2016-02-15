@@ -18,13 +18,13 @@ import (
 )
 
 type Locker struct {
-	ct.Suite
+	common.Suite
 	BinName string
 }
 
 func (s *Locker) SetupSuite() {
 	s.Suite.SetupSuite()
-	s.Require().NoError(ct.Build())
+	s.Require().NoError(common.Build())
 	s.BinName = "locker"
 }
 
@@ -52,7 +52,7 @@ func (s *Locker) TestCmd() {
 		file, _ := ioutil.TempFile("", "lockerTest-")
 		defer func() { _ = os.Remove(file.Name()) }()
 
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 		params := &main.Params{
 			Interval: 1,
 			TTL:      2,
@@ -70,7 +70,7 @@ func (s *Locker) TestCmd() {
 
 		args, _ := json.Marshal(&params)
 		arg := base64.StdEncoding.EncodeToString(args)
-		cmd, err := ct.Exec("./"+s.BinName, arg)
+		cmd, err := common.Exec("./"+s.BinName, arg)
 		if !s.NoError(err, msg("should not have errored execing command")) {
 			continue
 		}

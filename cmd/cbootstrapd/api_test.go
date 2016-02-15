@@ -20,7 +20,7 @@ import (
 )
 
 type API struct {
-	ct.Suite
+	common.Suite
 	Port           uint
 	APIURL         string
 	Opts           string
@@ -31,7 +31,7 @@ type API struct {
 	ImageNames     []string
 	Hypervisor     *lochness.Hypervisor
 	BinName        string
-	Cmd            *ct.Cmd
+	Cmd            *common.Cmd
 }
 
 func (s *API) SetupSuite() {
@@ -76,7 +76,7 @@ func (s *API) SetupSuite() {
 	}
 
 	// Run API
-	s.Require().NoError(ct.Build())
+	s.Require().NoError(common.Build())
 	s.BinName = "cbootstrapd"
 	args := []string{
 		"-b", s.APIURL,
@@ -88,7 +88,7 @@ func (s *API) SetupSuite() {
 	}
 
 	var err error
-	s.Cmd, err = ct.Exec("./"+s.BinName, args...)
+	s.Cmd, err = common.Exec("./"+s.BinName, args...)
 	s.Require().NoError(err)
 	time.Sleep(1 * time.Second)
 }
@@ -127,7 +127,7 @@ func (s *API) TestIPXEGet() {
 }
 
 func (s *API) checkIPXE(description string, h *lochness.Hypervisor, expectedVersion string) {
-	msg := ct.TestMsgFunc(description)
+	msg := common.TestMsgFunc(description)
 	resp, err := http.Get(fmt.Sprintf("%s/ipxe/%s", s.APIURL, h.IP))
 	s.NoError(err)
 	defer logx.LogReturnedErr(resp.Body.Close, nil, "failed to close resp body")

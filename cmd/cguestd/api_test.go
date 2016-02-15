@@ -22,7 +22,7 @@ import (
 )
 
 type API struct {
-	ct.Suite
+	common.Suite
 	Port           uint
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string

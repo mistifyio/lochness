@@ -13,14 +13,14 @@ import (
 )
 
 type TestSuite struct {
-	ct.Suite
+	common.Suite
 	Hypervisor *lochness.Hypervisor
 	BinName    string
 }
 
 func (s *TestSuite) SetupSuite() {
 	s.Suite.SetupSuite()
-	s.Require().NoError(ct.Build())
+	s.Require().NoError(common.Build())
 	s.BinName = "nheartbeatd"
 }
 
@@ -50,7 +50,7 @@ func (s *TestSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 		args := []string{
 			"-e", s.EtcdClient.GetCluster()[0],
 			"-d", test.id,
@@ -58,7 +58,7 @@ func (s *TestSuite) TestCmd() {
 			"-t", strconv.Itoa(test.ttl),
 			"-l", test.loglevel,
 		}
-		cmd, err := ct.Exec("./"+s.BinName, args...)
+		cmd, err := common.Exec("./"+s.BinName, args...)
 		if !s.NoError(err, msg("command exec should not error")) {
 			continue
 		}

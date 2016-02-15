@@ -24,7 +24,7 @@ import (
 )
 
 type CWorkerd struct {
-	ct.Suite
+	common.Suite
 	BinName        string
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string
@@ -38,7 +38,7 @@ type CWorkerd struct {
 
 func (s *CWorkerd) SetupSuite() {
 	s.Suite.SetupSuite()
-	s.Require().NoError(ct.Build())
+	s.Require().NoError(common.Build())
 	s.BinName = "cworkerd"
 	s.Port = "45363"
 
@@ -115,7 +115,7 @@ func (s *CWorkerd) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 
 		job, _ := s.JobQueue.AddJob(test.guestID, test.jobAction)
 		if test.jobStatus != jobqueue.JobStatusNew {
@@ -131,7 +131,7 @@ func (s *CWorkerd) TestCmd() {
 			"-a", s.AgentPort,
 			"-l", "fatal",
 		}
-		cmd, err := ct.Exec("./"+s.BinName, args...)
+		cmd, err := common.Exec("./"+s.BinName, args...)
 		s.Require().NoError(err, msg("failed to execute daemon"))
 
 		// Wait for processing

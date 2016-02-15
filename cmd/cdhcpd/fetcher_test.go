@@ -13,7 +13,7 @@ import (
 )
 
 type Fetcher struct {
-	ct.Suite
+	common.Suite
 	Fetcher *main.Fetcher
 }
 
@@ -167,7 +167,7 @@ func (s *Fetcher) TestIntegrateResponse() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 		refresh, err := s.Fetcher.IntegrateResponse(test.resp)
 
 		s.Equal(test.refresh, refresh, msg("wrong refresh conclusion"))

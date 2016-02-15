@@ -13,7 +13,7 @@ import (
 )
 
 type Main struct {
-	ct.Suite
+	common.Suite
 	BinName          string
 	ConfDir          string
 	HypervisorConfig string
@@ -22,7 +22,7 @@ type Main struct {
 
 func (s *Main) SetupSuite() {
 	s.Suite.SetupSuite()
-	s.Require().NoError(ct.Build())
+	s.Require().NoError(common.Build())
 	s.BinName = "cdhcpd"
 }
 
@@ -51,7 +51,7 @@ func (s *Main) TestCmd() {
 		"-c", s.ConfDir,
 		"-l", "fatal",
 	}
-	cmd, err := ct.Exec("./"+s.BinName, args...)
+	cmd, err := common.Exec("./"+s.BinName, args...)
 	s.Require().NoError(err)
 	time.Sleep(1 * time.Second)
 
