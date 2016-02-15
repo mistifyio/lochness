@@ -15,7 +15,7 @@ import (
 )
 
 type HypervisorTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 }
 
 func TestHypervisorTestSuite(t *testing.T) {

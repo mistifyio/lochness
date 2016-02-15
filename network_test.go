@@ -11,7 +11,7 @@ import (
 )
 
 type NetworkTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 }
 
 func TestNetworkTestSuite(t *testing.T) {

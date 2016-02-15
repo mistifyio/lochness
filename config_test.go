@@ -10,7 +10,7 @@ import (
 )
 
 type ConfigTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 }
 
 func TestConfigTestSuite(t *testing.T) {

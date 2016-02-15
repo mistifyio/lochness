@@ -12,37 +12,37 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type MainTestSuite struct {
-	ct.CommonTestSuite
+type CmdSuite struct {
+	ct.Suite
 	BinName          string
 	ConfDir          string
 	HypervisorConfig string
 	GuestConfig      string
 }
 
-func (s *MainTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *CmdSuite) SetupSuite() {
+	s.Suite.SetupSuite()
 	s.Require().NoError(ct.Build())
 	s.BinName = "cdhcpd"
 }
 
-func (s *MainTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *CmdSuite) SetupTest() {
+	s.Suite.SetupTest()
 	s.ConfDir, _ = ioutil.TempDir("", "cdhcpd-Test")
 	s.HypervisorConfig = filepath.Join(s.ConfDir, "hypervisors.conf")
 	s.GuestConfig = filepath.Join(s.ConfDir, "guests.conf")
 }
 
-func (s *MainTestSuite) TearDownTest() {
-	s.CommonTestSuite.TearDownTest()
+func (s *CmdSuite) TearDownTest() {
+	s.Suite.TearDownTest()
 	_ = os.RemoveAll(s.ConfDir)
 }
 
-func TestMainTestSuite(t *testing.T) {
-	suite.Run(t, new(MainTestSuite))
+func TestMain(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
 }
 
-func (s *MainTestSuite) TestCmd() {
+func (s *CmdSuite) TestCmd() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 
 	args := []string{
@@ -76,7 +76,7 @@ func (s *MainTestSuite) TestCmd() {
 	s.Equal(-1, status, "expected status code to be that of a killed process")
 }
 
-func (s *MainTestSuite) checkConfFiles(hypervisor *lochness.Hypervisor, guest *lochness.Guest) bool {
+func (s *CmdSuite) checkConfFiles(hypervisor *lochness.Hypervisor, guest *lochness.Guest) bool {
 	passed := true
 	hData, err := ioutil.ReadFile(s.HypervisorConfig)
 	passed = s.NoError(err) && passed

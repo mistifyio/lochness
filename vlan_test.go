@@ -11,7 +11,7 @@ import (
 )
 
 type VLANTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 }
 
 func TestVLANTestSuite(t *testing.T) {
