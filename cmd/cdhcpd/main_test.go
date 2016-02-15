@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/stretchr/testify/suite"
 )
 

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/mistifyio/lochness/cmd/locker"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/lock"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
