@@ -20,7 +20,7 @@ import (
 )
 
 type MistifyAgentTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 	agent      *lochness.MistifyAgent
 	api        *httptest.Server
 	guest      *lochness.Guest
@@ -28,7 +28,7 @@ type MistifyAgentTestSuite struct {
 }
 
 func (s *MistifyAgentTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+	s.Suite.SetupSuite()
 
 	s.api = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.String()
@@ -52,7 +52,7 @@ func (s *MistifyAgentTestSuite) SetupSuite() {
 }
 
 func (s *MistifyAgentTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+	s.Suite.SetupTest()
 	u, _ := url.Parse(s.api.URL)
 	host, sPort, _ := mnet.SplitHostPort(u.Host)
 	port, _ := strconv.Atoi(sPort)
@@ -64,7 +64,7 @@ func (s *MistifyAgentTestSuite) SetupTest() {
 
 func (s *MistifyAgentTestSuite) TearDownSuite() {
 	s.api.Close()
-	s.CommonTestSuite.TearDownSuite()
+	s.Suite.TearDownSuite()
 }
 
 func TestMistifyAgentTestSuite(t *testing.T) {

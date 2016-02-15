@@ -13,7 +13,7 @@ import (
 )
 
 type FWGroupTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 }
 
 func TestFWGroupTestSuite(t *testing.T) {

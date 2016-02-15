@@ -16,7 +16,7 @@ import (
 )
 
 type GuestTestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 }
 
 func TestGuestTestSuite(t *testing.T) {
