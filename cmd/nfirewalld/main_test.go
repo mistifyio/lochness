@@ -50,6 +50,7 @@ func (s *NFirewalldTestSuite) TearDownTest() {
 }
 
 func TestNFirewalldTestSuite(t *testing.T) {
+	t.SkipNow()
 	suite.Run(t, new(NFirewalldTestSuite))
 }
 
