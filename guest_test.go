@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type GuestTestSuite struct {
-	CommonTestSuite
+	ct.CommonTestSuite
 }
 
 func TestGuestTestSuite(t *testing.T) {
@@ -23,7 +24,7 @@ func TestGuestTestSuite(t *testing.T) {
 }
 
 func (s *GuestTestSuite) TestJSON() {
-	guest := s.newGuest()
+	guest := s.NewGuest()
 
 	guestBytes, err := json.Marshal(guest)
 	s.NoError(err)
@@ -40,7 +41,7 @@ func (s *GuestTestSuite) TestNewGuest() {
 }
 
 func (s *GuestTestSuite) TestGuest() {
-	guest := s.newGuest()
+	guest := s.NewGuest()
 
 	tests := []struct {
 		description string
@@ -67,7 +68,7 @@ func (s *GuestTestSuite) TestGuest() {
 }
 
 func (s *GuestTestSuite) TestRefresh() {
-	guest := s.newGuest()
+	guest := s.NewGuest()
 	guestCopy := &lochness.Guest{}
 	*guestCopy = *guest
 
@@ -75,8 +76,8 @@ func (s *GuestTestSuite) TestRefresh() {
 	s.NoError(guestCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(guest, guestCopy), "refresh should pull new data")
 
-	newGuest := s.Context.NewGuest()
-	s.Error(newGuest.Refresh(), "unsaved guest refresh should fail")
+	NewGuest := s.Context.NewGuest()
+	s.Error(NewGuest.Refresh(), "unsaved guest refresh should fail")
 }
 
 func (s *GuestTestSuite) TestValidate() {
@@ -118,8 +119,8 @@ func (s *GuestTestSuite) TestValidate() {
 
 func (s *GuestTestSuite) TestSave() {
 	goodGuest := s.Context.NewGuest()
-	flavor := s.newFlavor()
-	network := s.newNetwork()
+	flavor := s.NewFlavor()
+	network := s.NewNetwork()
 	mac, _ := net.ParseMAC("4C:3F:B1:7E:54:64")
 	goodGuest.FlavorID = flavor.ID
 	goodGuest.NetworkID = network.ID
@@ -154,14 +155,14 @@ func (s *GuestTestSuite) TestDestroy() {
 	blank := s.Context.NewGuest()
 	blank.ID = ""
 
-	hypervisor, guest := s.newHypervisorWithGuest()
+	hypervisor, guest := s.NewHypervisorWithGuest()
 	tests := []struct {
 		description string
 		g           *lochness.Guest
 		expectedErr bool
 	}{
 		{"invalid guest", blank, true},
-		{"existing guest not on hypervisor", s.newGuest(), false},
+		{"existing guest not on hypervisor", s.NewGuest(), false},
 		{"existing guest on hypervisor", guest, false},
 		{"nonexistant guest", s.Context.NewGuest(), true},
 	}
@@ -182,16 +183,16 @@ func (s *GuestTestSuite) TestDestroy() {
 }
 
 func (s *GuestTestSuite) TestCandidates() {
-	guest := s.newGuest()
-	subnet := s.newSubnet()
+	guest := s.NewGuest()
+	subnet := s.NewSubnet()
 	network, _ := s.Context.Network(guest.NetworkID)
 	_ = network.AddSubnet(subnet)
 
 	hypervisors := lochness.Hypervisors{
-		s.newHypervisor(), // Not alive
-		s.newHypervisor(), // No correct subnet
-		s.newHypervisor(), // Not enough resources
-		s.newHypervisor(), // Everything
+		s.NewHypervisor(), // Not alive
+		s.NewHypervisor(), // No correct subnet
+		s.NewHypervisor(), // Not enough resources
+		s.NewHypervisor(), // Everything
 	}
 	for i := 0; i < len(hypervisors); i++ {
 		if i != 0 {
@@ -218,10 +219,10 @@ func (s *GuestTestSuite) TestCandidates() {
 }
 
 func (s *GuestTestSuite) TestCandidateIsAlive() {
-	guest := s.newGuest()
+	guest := s.NewGuest()
 	hypervisors := lochness.Hypervisors{
-		s.newHypervisor(),
-		s.newHypervisor(),
+		s.NewHypervisor(),
+		s.NewHypervisor(),
 	}
 	_, _ = lochness.SetHypervisorID(hypervisors[1].ID)
 	_ = hypervisors[1].Heartbeat(60 * time.Second)
@@ -233,10 +234,10 @@ func (s *GuestTestSuite) TestCandidateIsAlive() {
 }
 
 func (s *GuestTestSuite) TestCandidateHasResources() {
-	guest := s.newGuest()
+	guest := s.NewGuest()
 	hypervisors := lochness.Hypervisors{
-		s.newHypervisor(),
-		s.newHypervisor(),
+		s.NewHypervisor(),
+		s.NewHypervisor(),
 	}
 	hypervisors[0].AvailableResources = lochness.Resources{}
 
@@ -247,9 +248,9 @@ func (s *GuestTestSuite) TestCandidateHasResources() {
 }
 
 func (s *GuestTestSuite) TestCandidateHasSubnet() {
-	hypervisor, guest := s.newHypervisorWithGuest()
+	hypervisor, guest := s.NewHypervisorWithGuest()
 	hypervisors := lochness.Hypervisors{
-		s.newHypervisor(),
+		s.NewHypervisor(),
 		hypervisor,
 	}
 
@@ -295,8 +296,8 @@ func (s *GuestTestSuite) TestCandidateRandomize() {
 }
 
 func (s *GuestTestSuite) TestForEachGuest() {
-	guest := s.newGuest()
-	guest2 := s.newGuest()
+	guest := s.NewGuest()
+	guest2 := s.NewGuest()
 	expectedFound := map[string]bool{
 		guest.ID:  true,
 		guest2.ID: true,
