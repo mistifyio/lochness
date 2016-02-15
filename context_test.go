@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/stretchr/testify/suite"
 )
 
 type ContextTestSuite struct {
-	CommonTestSuite
+	ct.CommonTestSuite
 }
 
 func TestContextTestSuite(t *testing.T) {
@@ -21,7 +22,7 @@ func (s *ContextTestSuite) TestNewContext() {
 }
 
 func (s *ContextTestSuite) TestIsKeyNotFound() {
-	_, err := s.EtcdClient.Get(s.prefixKey("some-randon-non-existent-key"), false, false)
+	_, err := s.EtcdClient.Get(s.PrefixKey("some-randon-non-existent-key"), false, false)
 
 	s.Error(err)
 	s.True(lochness.IsKeyNotFound(err))

@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type VLANTestSuite struct {
-	CommonTestSuite
+	ct.CommonTestSuite
 }
 
 func TestVLANTestSuite(t *testing.T) {
@@ -23,7 +24,7 @@ func (s *VLANTestSuite) TestNewVLAN() {
 }
 
 func (s *VLANTestSuite) TestVLAN() {
-	vlan := s.newVLAN()
+	vlan := s.NewVLAN()
 
 	tests := []struct {
 		description string
@@ -49,7 +50,7 @@ func (s *VLANTestSuite) TestVLAN() {
 }
 
 func (s *VLANTestSuite) TestRefresh() {
-	vlan := s.newVLAN()
+	vlan := s.NewVLAN()
 	vlanCopy := &lochness.VLAN{}
 	*vlanCopy = *vlan
 
@@ -57,9 +58,9 @@ func (s *VLANTestSuite) TestRefresh() {
 	s.NoError(vlanCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(vlan, vlanCopy), "refresh should pull new data")
 
-	newVLAN := s.Context.NewVLAN()
-	newVLAN.Tag = 50
-	s.Error(newVLAN.Refresh(), "unsaved vlan refresh should fail")
+	NewVLAN := s.Context.NewVLAN()
+	NewVLAN.Tag = 50
+	s.Error(NewVLAN.Refresh(), "unsaved vlan refresh should fail")
 }
 
 func (s *VLANTestSuite) TestValidate() {
@@ -116,8 +117,8 @@ func (s *VLANTestSuite) TestSave() {
 }
 
 func (s *VLANTestSuite) TestDestroy() {
-	vlan := s.newVLAN()
-	vlangroup := s.newVLANGroup()
+	vlan := s.NewVLAN()
+	vlangroup := s.NewVLANGroup()
 	_ = vlangroup.AddVLAN(vlan)
 
 	invalidV := s.Context.NewVLAN()
@@ -147,8 +148,8 @@ func (s *VLANTestSuite) TestDestroy() {
 }
 
 func (s *VLANTestSuite) TestForEachVLAN() {
-	vlan := s.newVLAN()
-	vlan2 := s.newVLAN()
+	vlan := s.NewVLAN()
+	vlan2 := s.NewVLAN()
 	expectedFound := map[int]bool{
 		vlan.Tag:  true,
 		vlan2.Tag: true,
@@ -172,8 +173,8 @@ func (s *VLANTestSuite) TestForEachVLAN() {
 }
 
 func (s *VLANTestSuite) TestVLANGroups() {
-	vlanGroup := s.newVLANGroup()
-	vlan := s.newVLAN()
+	vlanGroup := s.NewVLANGroup()
+	vlan := s.NewVLAN()
 	_ = vlanGroup.AddVLAN(vlan)
 	s.Len(vlan.VLANGroups(), 1)
 }
