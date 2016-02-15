@@ -83,6 +83,7 @@ func (s *NConfigdTestSuite) TearDownSuite() {
 }
 
 func TestNConfigdTestSuite(t *testing.T) {
+	t.SkipNow()
 	suite.Run(t, new(NConfigdTestSuite))
 }
 
