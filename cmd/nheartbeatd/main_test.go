@@ -13,19 +13,19 @@ import (
 )
 
 type TestSuite struct {
-	ct.CommonTestSuite
+	ct.Suite
 	Hypervisor *lochness.Hypervisor
 	BinName    string
 }
 
 func (s *TestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+	s.Suite.SetupSuite()
 	s.Require().NoError(ct.Build())
 	s.BinName = "nheartbeatd"
 }
 
 func (s *TestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
 	s.Require().NoError(s.Hypervisor.SetConfig("guestDiskDir", "/dev/null"))
 }

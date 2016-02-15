@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type NFirewalldTestSuite struct {
-	ct.CommonTestSuite
+type NFirewalld struct {
+	ct.Suite
 	ConfigPath string
 	BinName    string
 	Hypervisor *lochness.Hypervisor
@@ -22,15 +22,15 @@ type NFirewalldTestSuite struct {
 	FWGroup    *lochness.FWGroup
 }
 
-func (s *NFirewalldTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *NFirewalld) SetupSuite() {
+	s.Suite.SetupSuite()
 
 	s.Require().NoError(ct.Build(), "failed to build nfirewalld")
 	s.BinName = "nfirewalld"
 }
 
-func (s *NFirewalldTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *NFirewalld) SetupTest() {
+	s.Suite.SetupTest()
 
 	configFile, err := ioutil.TempFile("", "nfirewalldTest-")
 	s.Require().NoError(err, "failed to create config file")
@@ -43,17 +43,17 @@ func (s *NFirewalldTestSuite) SetupTest() {
 	s.Require().NoError(s.Guest.Save(), "failed to save guest with FWGroup ID")
 }
 
-func (s *NFirewalldTestSuite) TearDownTest() {
+func (s *NFirewalld) TearDownTest() {
 	//	os.Remove(s.ConfigPath)
 
-	s.CommonTestSuite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
-func TestNFirewalldTestSuite(t *testing.T) {
-	suite.Run(t, new(NFirewalldTestSuite))
+func TestNFirewalld(t *testing.T) {
+	suite.Run(t, new(NFirewalld))
 }
 
-func (s *NFirewalldTestSuite) TestCmd() {
+func (s *NFirewalld) TestCmd() {
 	args := []string{
 		"-e", s.EtcdURL,
 		"-f", s.ConfigPath,

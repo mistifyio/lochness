@@ -13,8 +13,8 @@ import (
 	"github.com/tylerb/graceful"
 )
 
-type APITestSuite struct {
-	ct.CommonTestSuite
+type API struct {
+	ct.Suite
 	Port      uint
 	APIServer *graceful.Server
 	VLAN      *lochness.VLAN
@@ -22,8 +22,8 @@ type APITestSuite struct {
 	APIURL    string
 }
 
-func (s *APITestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *API) SetupSuite() {
+	s.Suite.SetupSuite()
 
 	log.SetLevel(log.FatalLevel)
 	s.Port = 51123
@@ -33,25 +33,25 @@ func (s *APITestSuite) SetupSuite() {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func (s *APITestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *API) SetupTest() {
+	s.Suite.SetupTest()
 	s.VLAN = s.NewVLAN()
 	s.VLANGroup = s.NewVLANGroup()
 }
 
-func (s *APITestSuite) TearDownSuite() {
+func (s *API) TearDownSuite() {
 	stopChan := s.APIServer.StopChan()
 	s.APIServer.Stop(5 * time.Second)
 	<-stopChan
 
-	s.CommonTestSuite.TearDownSuite()
+	s.Suite.TearDownSuite()
 }
 
-func TestAPITestSuite(t *testing.T) {
-	suite.Run(t, new(APITestSuite))
+func TestAPI(t *testing.T) {
+	suite.Run(t, new(API))
 }
 
-func (s *APITestSuite) TestVLANList() {
+func (s *API) TestVLANList() {
 	var vlans lochness.VLANs
 	s.DoRequest("GET", fmt.Sprintf("%s/tags", s.APIURL), http.StatusOK, nil, &vlans)
 
@@ -59,7 +59,7 @@ func (s *APITestSuite) TestVLANList() {
 	s.Equal(s.VLAN.Tag, vlans[0].Tag)
 }
 
-func (s *APITestSuite) TestVLANAdd() {
+func (s *API) TestVLANAdd() {
 	vlan := s.Context.NewVLAN()
 	vlan.Tag = 2
 
@@ -74,14 +74,14 @@ func (s *APITestSuite) TestVLANAdd() {
 	s.Equal(vlan.Tag, v.Tag)
 }
 
-func (s *APITestSuite) TestVLANGet() {
+func (s *API) TestVLANGet() {
 	var vlan lochness.VLAN
 	s.DoRequest("GET", fmt.Sprintf("%s/tags/%d", s.APIURL, s.VLAN.Tag), http.StatusOK, nil, &vlan)
 
 	s.Equal(s.VLAN.Tag, vlan.Tag)
 }
 
-func (s *APITestSuite) TestVLANUpdate() {
+func (s *API) TestVLANUpdate() {
 	s.VLAN.Description = "foobar"
 
 	var vlanResp lochness.VLAN
@@ -95,7 +95,7 @@ func (s *APITestSuite) TestVLANUpdate() {
 	s.Equal(s.VLAN.Description, v.Description)
 }
 
-func (s *APITestSuite) TestVLANDestroy() {
+func (s *API) TestVLANDestroy() {
 	var vlanResp lochness.VLAN
 	s.DoRequest("DELETE", fmt.Sprintf("%s/tags/%d", s.APIURL, s.VLAN.Tag), http.StatusOK, nil, &vlanResp)
 
@@ -106,7 +106,7 @@ func (s *APITestSuite) TestVLANDestroy() {
 	s.Error(err)
 }
 
-func (s *APITestSuite) TestVLANGroupList() {
+func (s *API) TestVLANGroupList() {
 	var vlanGroups lochness.VLANGroups
 	s.DoRequest("GET", fmt.Sprintf("%s/groups", s.APIURL), http.StatusOK, nil, &vlanGroups)
 
@@ -114,7 +114,7 @@ func (s *APITestSuite) TestVLANGroupList() {
 	s.Equal(s.VLANGroup.ID, vlanGroups[0].ID)
 }
 
-func (s *APITestSuite) TestVLANGroupAdd() {
+func (s *API) TestVLANGroupAdd() {
 	vlanGroup := s.Context.NewVLANGroup()
 
 	var vlanGroupResp lochness.VLANGroup
@@ -128,14 +128,14 @@ func (s *APITestSuite) TestVLANGroupAdd() {
 	s.Equal(vlanGroup.ID, v.ID)
 }
 
-func (s *APITestSuite) TestVLANGroupGet() {
+func (s *API) TestVLANGroupGet() {
 	var vlanGroup lochness.VLANGroup
 	s.DoRequest("GET", fmt.Sprintf("%s/groups/%s", s.APIURL, s.VLANGroup.ID), http.StatusOK, nil, &vlanGroup)
 
 	s.Equal(s.VLANGroup.ID, vlanGroup.ID)
 }
 
-func (s *APITestSuite) TestVLANGroupUpdate() {
+func (s *API) TestVLANGroupUpdate() {
 	s.VLANGroup.Description = "foobar"
 
 	var vlanGroupResp lochness.VLANGroup
@@ -149,7 +149,7 @@ func (s *APITestSuite) TestVLANGroupUpdate() {
 	s.Equal(s.VLANGroup.Description, v.Description)
 }
 
-func (s *APITestSuite) TestVLANGroupDestroy() {
+func (s *API) TestVLANGroupDestroy() {
 	var vlanGroupResp lochness.VLANGroup
 	s.DoRequest("DELETE", fmt.Sprintf("%s/groups/%s", s.APIURL, s.VLANGroup.ID), http.StatusOK, nil, &vlanGroupResp)
 
@@ -160,7 +160,7 @@ func (s *APITestSuite) TestVLANGroupDestroy() {
 	s.Error(err)
 }
 
-func (s *APITestSuite) TestGetGroupsForVLAN() {
+func (s *API) TestGetGroupsForVLAN() {
 	_ = s.VLANGroup.AddVLAN(s.VLAN)
 
 	var vlanGroups []string
@@ -169,7 +169,7 @@ func (s *APITestSuite) TestGetGroupsForVLAN() {
 	s.Equal(s.VLANGroup.ID, vlanGroups[0])
 }
 
-func (s *APITestSuite) TestSetGroupsForVLAN() {
+func (s *API) TestSetGroupsForVLAN() {
 	newVLANGroups := []string{s.VLANGroup.ID}
 	var vlanGroups []string
 	s.DoRequest("POST", fmt.Sprintf("%s/tags/%d/groups", s.APIURL, s.VLAN.Tag), http.StatusOK, newVLANGroups, &vlanGroups)
@@ -180,7 +180,7 @@ func (s *APITestSuite) TestSetGroupsForVLAN() {
 	s.Equal(s.VLANGroup.ID, s.VLAN.VLANGroups()[0])
 }
 
-func (s *APITestSuite) TestGetVLANsForGroup() {
+func (s *API) TestGetVLANsForGroup() {
 	_ = s.VLANGroup.AddVLAN(s.VLAN)
 
 	var vlans []int
@@ -189,7 +189,7 @@ func (s *APITestSuite) TestGetVLANsForGroup() {
 	s.Equal(s.VLAN.Tag, vlans[0])
 }
 
-func (s *APITestSuite) TestSetVLANsForGroup() {
+func (s *API) TestSetVLANsForGroup() {
 	newVLANs := []int{s.VLAN.Tag}
 	var vlans []int
 	s.DoRequest("POST", fmt.Sprintf("%s/groups/%s/tags", s.APIURL, s.VLANGroup.ID), http.StatusOK, newVLANs, &vlans)

@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type NConfigdTestSuite struct {
-	ct.CommonTestSuite
+type NConfigd struct {
+	ct.Suite
 	BinName        string
 	WorkPath       string
 	ConfigPath     string
@@ -27,8 +27,8 @@ type NConfigdTestSuite struct {
 	Hypervisor     *lochness.Hypervisor
 }
 
-func (s *NConfigdTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *NConfigd) SetupSuite() {
+	s.Suite.SetupSuite()
 
 	log.SetLevel(log.FatalLevel)
 
@@ -52,8 +52,8 @@ func (s *NConfigdTestSuite) SetupSuite() {
 	s.BinName = "nconfigd"
 }
 
-func (s *NConfigdTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *NConfigd) SetupTest() {
+	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
 
 	configFile, err := ioutil.TempFile(s.WorkPath, "config-")
@@ -76,14 +76,14 @@ func (s *NConfigdTestSuite) SetupTest() {
 	s.Config = config
 }
 
-func (s *NConfigdTestSuite) TearDownSuite() {
+func (s *NConfigd) TearDownSuite() {
 	_ = os.RemoveAll(s.WorkPath)
 
-	s.CommonTestSuite.TearDownSuite()
+	s.Suite.TearDownSuite()
 }
 
-func TestNConfigdTestSuite(t *testing.T) {
-	suite.Run(t, new(NConfigdTestSuite))
+func TestNConfigd(t *testing.T) {
+	suite.Run(t, new(NConfigd))
 }
 
 type testCase struct {
@@ -94,7 +94,7 @@ type testCase struct {
 	expectedRoles []string
 }
 
-func (s *NConfigdTestSuite) TestCmd() {
+func (s *NConfigd) TestCmd() {
 	args := []string{
 		"-a", s.WorkPath,
 		"-c", s.ConfigPath,

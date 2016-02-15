@@ -17,22 +17,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type LockerTestSuite struct {
-	ct.CommonTestSuite
+type Locker struct {
+	ct.Suite
 	BinName string
 }
 
-func (s *LockerTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *Locker) SetupSuite() {
+	s.Suite.SetupSuite()
 	s.Require().NoError(ct.Build())
 	s.BinName = "locker"
 }
 
-func TestLockerTestSuite(t *testing.T) {
-	suite.Run(t, new(LockerTestSuite))
+func TestLocker(t *testing.T) {
+	suite.Run(t, new(Locker))
 }
 
-func (s *LockerTestSuite) TestCmd() {
+func (s *Locker) TestCmd() {
 	shCmd := `set -e; sleep 1; echo -n "%s" > "%s"`
 
 	tests := []struct {

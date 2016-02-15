@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CWorkerdTestSuite struct {
-	ct.CommonTestSuite
+type CWorkerd struct {
+	ct.Suite
 	BinName        string
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string
@@ -36,8 +36,8 @@ type CWorkerdTestSuite struct {
 	AgentPort      string
 }
 
-func (s *CWorkerdTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *CWorkerd) SetupSuite() {
+	s.Suite.SetupSuite()
 	s.Require().NoError(ct.Build())
 	s.BinName = "cworkerd"
 	s.Port = "45363"
@@ -61,8 +61,8 @@ func (s *CWorkerdTestSuite) SetupSuite() {
 	s.JobQueue = jobQueue
 }
 
-func (s *CWorkerdTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *CWorkerd) SetupTest() {
+	s.Suite.SetupTest()
 
 	s.Agent = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "guest") {
@@ -86,18 +86,18 @@ func (s *CWorkerdTestSuite) SetupTest() {
 	_ = s.Hypervisor.Save()
 }
 
-func (s *CWorkerdTestSuite) TearDownTest() {
+func (s *CWorkerd) TearDownTest() {
 	_ = s.BeanstalkdCmd.Process.Kill()
 	_ = s.BeanstalkdCmd.Wait()
 	s.Agent.Close()
-	s.CommonTestSuite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
-func TestCWorkerdTestSuite(t *testing.T) {
-	suite.Run(t, new(CWorkerdTestSuite))
+func TestCWorkerd(t *testing.T) {
+	suite.Run(t, new(CWorkerd))
 }
 
-func (s *CWorkerdTestSuite) TestCmd() {
+func (s *CWorkerd) TestCmd() {
 
 	tests := []struct {
 		description string

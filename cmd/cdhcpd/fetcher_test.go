@@ -12,28 +12,28 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type FetcherTestSuite struct {
-	ct.CommonTestSuite
+type Fetcher struct {
+	ct.Suite
 	Fetcher *main.Fetcher
 }
 
-func (s *FetcherTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *Fetcher) SetupSuite() {
+	s.Suite.SetupSuite()
 	log.SetLevel(log.ErrorLevel)
 }
 
-func (s *FetcherTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *Fetcher) SetupTest() {
+	s.Suite.SetupTest()
 	s.Fetcher = main.NewFetcher(s.EtcdURL)
 
 	log.SetLevel(log.FatalLevel)
 }
 
-func TestFetcherTestSuite(t *testing.T) {
-	suite.Run(t, new(FetcherTestSuite))
+func TestFetcher(t *testing.T) {
+	suite.Run(t, new(Fetcher))
 }
 
-func (s *FetcherTestSuite) TestHypervisors() {
+func (s *Fetcher) TestHypervisors() {
 	hypervisor, _ := s.NewHypervisorWithGuest()
 	hypervisors, err := s.Fetcher.Hypervisors()
 	s.NoError(err)
@@ -45,7 +45,7 @@ func (s *FetcherTestSuite) TestHypervisors() {
 	s.Equal(hypervisor.MAC, h.MAC)
 }
 
-func (s *FetcherTestSuite) TestGuests() {
+func (s *Fetcher) TestGuests() {
 	_, guest := s.NewHypervisorWithGuest()
 	guests, err := s.Fetcher.Guests()
 	s.NoError(err)
@@ -56,7 +56,7 @@ func (s *FetcherTestSuite) TestGuests() {
 	s.Equal(guest.MAC, g.MAC)
 }
 
-func (s *FetcherTestSuite) TestSubnets() {
+func (s *Fetcher) TestSubnets() {
 	subnet := s.NewSubnet()
 	network := s.NewNetwork()
 	_ = network.AddSubnet(subnet)
@@ -70,7 +70,7 @@ func (s *FetcherTestSuite) TestSubnets() {
 	s.Equal(subnet.StartRange, sub.StartRange)
 }
 
-func (s *FetcherTestSuite) TestFetchAll() {
+func (s *Fetcher) TestFetchAll() {
 	s.NoError(s.Fetcher.FetchAll())
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	s.NoError(s.Fetcher.FetchAll())
@@ -93,7 +93,7 @@ func (s *FetcherTestSuite) TestFetchAll() {
 
 func getResp(resp *etcd.Response, err error) *etcd.Response { return resp }
 
-func (s *FetcherTestSuite) TestIntegrateResponse() {
+func (s *Fetcher) TestIntegrateResponse() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	subnet, _ := s.Context.Subnet(guest.SubnetID)
 

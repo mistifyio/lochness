@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CPlacerdTestSuite struct {
-	ct.CommonTestSuite
+type CPlacerd struct {
+	ct.Suite
 	BinName        string
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string
@@ -23,8 +23,8 @@ type CPlacerdTestSuite struct {
 	Port           string
 }
 
-func (s *CPlacerdTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *CPlacerd) SetupSuite() {
+	s.Suite.SetupSuite()
 	s.Require().NoError(ct.Build())
 	s.BinName = "cplacerd"
 	s.Port = "45362"
@@ -48,17 +48,17 @@ func (s *CPlacerdTestSuite) SetupSuite() {
 	s.JobQueue = jobQueue
 }
 
-func (s *CPlacerdTestSuite) TearDownTest() {
+func (s *CPlacerd) TearDownTest() {
 	_ = s.BeanstalkdCmd.Process.Kill()
 	_ = s.BeanstalkdCmd.Wait()
-	s.CommonTestSuite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
-func TestCPlacerdTestSuite(t *testing.T) {
-	suite.Run(t, new(CPlacerdTestSuite))
+func TestCPlacerd(t *testing.T) {
+	suite.Run(t, new(CPlacerd))
 }
 
-func (s *CPlacerdTestSuite) TestCmd() {
+func (s *CPlacerd) TestCmd() {
 	hypervisor := s.NewHypervisor()
 	_, _ = lochness.SetHypervisorID(hypervisor.ID)
 	subnet := s.NewSubnet()
