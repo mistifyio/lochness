@@ -96,8 +96,7 @@ func (s *FWGroupTestSuite) TestValidate() {
 func (s *FWGroupTestSuite) TestSave() {
 	goodFWGroup := s.Context.NewFWGroup()
 
-	clobberFWGroup := &lochness.FWGroup{}
-	*clobberFWGroup = *goodFWGroup
+	clobberFWGroup := *goodFWGroup
 
 	tests := []struct {
 		description string
@@ -106,7 +105,7 @@ func (s *FWGroupTestSuite) TestSave() {
 	}{
 		{"valid fwgroup", goodFWGroup, false},
 		{"existing fwgroup", goodFWGroup, false},
-		{"existing fwgroup clobber changes", clobberFWGroup, true},
+		{"existing fwgroup clobber changes", &clobberFWGroup, true},
 	}
 
 	for _, test := range tests {

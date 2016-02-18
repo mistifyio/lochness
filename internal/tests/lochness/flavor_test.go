@@ -93,8 +93,7 @@ func (s *FlavorTestSuite) TestSave() {
 	goodFlavor := s.Context.NewFlavor()
 	goodFlavor.Image = uuid.New()
 
-	clobberFlavor := &lochness.Flavor{}
-	*clobberFlavor = *goodFlavor
+	clobberFlavor := *goodFlavor
 	clobberFlavor.Image = uuid.New()
 
 	tests := []struct {
@@ -105,7 +104,7 @@ func (s *FlavorTestSuite) TestSave() {
 		{"invalid flavor", s.Context.NewFlavor(), true},
 		{"valid flavor", goodFlavor, false},
 		{"existing flavor", goodFlavor, false},
-		{"existing flavor clobber changes", clobberFlavor, true},
+		{"existing flavor clobber changes", &clobberFlavor, true},
 	}
 
 	for _, test := range tests {

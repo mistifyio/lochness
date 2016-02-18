@@ -91,8 +91,7 @@ func (s *VLANTestSuite) TestValidate() {
 func (s *VLANTestSuite) TestSave() {
 	goodVLAN := s.Context.NewVLAN()
 
-	clobberVLAN := &lochness.VLAN{}
-	*clobberVLAN = *goodVLAN
+	clobberVLAN := *goodVLAN
 
 	tests := []struct {
 		description string
@@ -102,7 +101,7 @@ func (s *VLANTestSuite) TestSave() {
 		{"invalid vlan", &lochness.VLAN{}, true},
 		{"valid vlan", goodVLAN, false},
 		{"existing vlan", goodVLAN, false},
-		{"existing vlan clobber", clobberVLAN, true},
+		{"existing vlan clobber", &clobberVLAN, true},
 	}
 
 	for _, test := range tests {

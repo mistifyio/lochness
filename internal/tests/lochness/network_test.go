@@ -90,8 +90,7 @@ func (s *NetworkTestSuite) TestValidate() {
 func (s *NetworkTestSuite) TestSave() {
 	goodNetwork := s.Context.NewNetwork()
 
-	clobberNetwork := &lochness.Network{}
-	*clobberNetwork = *goodNetwork
+	clobberNetwork := *goodNetwork
 
 	tests := []struct {
 		description string
@@ -101,7 +100,7 @@ func (s *NetworkTestSuite) TestSave() {
 		{"invalid network", &lochness.Network{}, true},
 		{"valid network", goodNetwork, false},
 		{"existing network", goodNetwork, false},
-		{"existing network clobber", clobberNetwork, true},
+		{"existing network clobber", &clobberNetwork, true},
 	}
 
 	for _, test := range tests {

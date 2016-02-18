@@ -126,8 +126,7 @@ func (s *GuestTestSuite) TestSave() {
 	goodGuest.NetworkID = network.ID
 	goodGuest.MAC = mac
 
-	clobberGuest := &lochness.Guest{}
-	*clobberGuest = *goodGuest
+	clobberGuest := *goodGuest
 
 	tests := []struct {
 		description string
@@ -137,7 +136,7 @@ func (s *GuestTestSuite) TestSave() {
 		{"invalid guest", &lochness.Guest{}, true},
 		{"valid guest", goodGuest, false},
 		{"existing guest", goodGuest, false},
-		{"existing guest clobber", clobberGuest, true},
+		{"existing guest clobber", &clobberGuest, true},
 	}
 
 	for _, test := range tests {
