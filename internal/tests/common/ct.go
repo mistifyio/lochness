@@ -34,8 +34,6 @@ type Suite struct {
 
 // SetupSuite runs a new etcd insance.
 func (s *Suite) SetupSuite() {
-	//	log.SetLevel(log.ErrorLevel)
-
 	// Start up a test etcd
 	s.EtcdDir, _ = ioutil.TempDir("", "lochnessTest-"+uuid.New())
 	port := 54321
@@ -63,7 +61,6 @@ func (s *Suite) SetupSuite() {
 
 	s.Context = lochness.NewContext(s.EtcdClient)
 
-	// s.EtcdPrefix = uuid.New()
 	s.EtcdPrefix = "/lochness"
 }
 
@@ -115,7 +112,7 @@ func (s *Suite) NewFWGroup() *lochness.FWGroup {
 // NewVLAN creates and saves a new VLAN.
 func (s *Suite) NewVLAN() *lochness.VLAN {
 	v := s.Context.NewVLAN()
-	v.Tag = rand.Intn(4066)
+	v.Tag = rand.Intn(4096)
 	_ = v.Save()
 	return v
 }
