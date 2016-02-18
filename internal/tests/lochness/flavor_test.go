@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type FlavorTestSuite struct {
-	CommonTestSuite
+	common.Suite
 }
 
 func TestFlavorTestSuite(t *testing.T) {
@@ -23,7 +24,7 @@ func (s *FlavorTestSuite) TestNewFlavor() {
 }
 
 func (s *FlavorTestSuite) TestFlavor() {
-	flavor := s.newFlavor()
+	flavor := s.NewFlavor()
 
 	tests := []struct {
 		description string
@@ -51,7 +52,7 @@ func (s *FlavorTestSuite) TestFlavor() {
 }
 
 func (s *FlavorTestSuite) TestRefresh() {
-	flavor := s.newFlavor()
+	flavor := s.NewFlavor()
 	flavorCopy := &lochness.Flavor{}
 	*flavorCopy = *flavor
 	flavor.Image = uuid.New()

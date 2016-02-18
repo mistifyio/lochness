@@ -7,34 +7,34 @@ import (
 	"time"
 
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
-type TestSuite struct {
-	ct.CommonTestSuite
+type CmdSuite struct {
+	common.Suite
 	Hypervisor *lochness.Hypervisor
 	BinName    string
 }
 
-func (s *TestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
-	s.Require().NoError(ct.Build())
+func (s *CmdSuite) SetupSuite() {
+	s.Suite.SetupSuite()
+	s.Require().NoError(common.Build())
 	s.BinName = "nheartbeatd"
 }
 
-func (s *TestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *CmdSuite) SetupTest() {
+	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
 	s.Require().NoError(s.Hypervisor.SetConfig("guestDiskDir", "/dev/null"))
 }
 
-func TestTestSuite(t *testing.T) {
-	suite.Run(t, new(TestSuite))
+func TestNHeartbeatd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
 }
 
-func (s *TestSuite) TestCmd() {
+func (s *CmdSuite) TestCmd() {
 	tests := []struct {
 		description string
 		id          string
@@ -50,7 +50,7 @@ func (s *TestSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 		args := []string{
 			"-e", s.EtcdClient.GetCluster()[0],
 			"-d", test.id,
@@ -58,7 +58,7 @@ func (s *TestSuite) TestCmd() {
 			"-t", strconv.Itoa(test.ttl),
 			"-l", test.loglevel,
 		}
-		cmd, err := ct.Exec("./"+s.BinName, args...)
+		cmd, err := common.Exec("./"+s.BinName, args...)
 		if !s.NoError(err, msg("command exec should not error")) {
 			continue
 		}

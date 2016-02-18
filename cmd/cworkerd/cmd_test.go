@@ -15,7 +15,7 @@ import (
 
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/mistifyio/mistify-agent"
 	mnet "github.com/mistifyio/util/net"
@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CWorkerdTestSuite struct {
-	ct.CommonTestSuite
+type CmdSuite struct {
+	common.Suite
 	BinName        string
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string
@@ -36,9 +36,9 @@ type CWorkerdTestSuite struct {
 	AgentPort      string
 }
 
-func (s *CWorkerdTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
-	s.Require().NoError(ct.Build())
+func (s *CmdSuite) SetupSuite() {
+	s.Suite.SetupSuite()
+	s.Require().NoError(common.Build())
 	s.BinName = "cworkerd"
 	s.Port = "45363"
 
@@ -61,8 +61,8 @@ func (s *CWorkerdTestSuite) SetupSuite() {
 	s.JobQueue = jobQueue
 }
 
-func (s *CWorkerdTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *CmdSuite) SetupTest() {
+	s.Suite.SetupTest()
 
 	s.Agent = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "guest") {
@@ -86,18 +86,18 @@ func (s *CWorkerdTestSuite) SetupTest() {
 	_ = s.Hypervisor.Save()
 }
 
-func (s *CWorkerdTestSuite) TearDownTest() {
+func (s *CmdSuite) TearDownTest() {
 	_ = s.BeanstalkdCmd.Process.Kill()
 	_ = s.BeanstalkdCmd.Wait()
 	s.Agent.Close()
-	s.CommonTestSuite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
-func TestCWorkerdTestSuite(t *testing.T) {
-	suite.Run(t, new(CWorkerdTestSuite))
+func TestCWorkerd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
 }
 
-func (s *CWorkerdTestSuite) TestCmd() {
+func (s *CmdSuite) TestCmd() {
 
 	tests := []struct {
 		description string
@@ -115,7 +115,7 @@ func (s *CWorkerdTestSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 
 		job, _ := s.JobQueue.AddJob(test.guestID, test.jobAction)
 		if test.jobStatus != jobqueue.JobStatusNew {
@@ -131,7 +131,7 @@ func (s *CWorkerdTestSuite) TestCmd() {
 			"-a", s.AgentPort,
 			"-l", "fatal",
 		}
-		cmd, err := ct.Exec("./"+s.BinName, args...)
+		cmd, err := common.Exec("./"+s.BinName, args...)
 		s.Require().NoError(err, msg("failed to execute daemon"))
 
 		// Wait for processing

@@ -4,12 +4,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type ConfigTestSuite struct {
-	CommonTestSuite
+	common.Suite
 }
 
 func TestConfigTestSuite(t *testing.T) {

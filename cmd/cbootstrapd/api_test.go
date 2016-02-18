@@ -14,13 +14,13 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	"github.com/stretchr/testify/suite"
 )
 
-type APITestSuite struct {
-	ct.CommonTestSuite
+type APISuite struct {
+	common.Suite
 	Port           uint
 	APIURL         string
 	Opts           string
@@ -31,11 +31,11 @@ type APITestSuite struct {
 	ImageNames     []string
 	Hypervisor     *lochness.Hypervisor
 	BinName        string
-	Cmd            *ct.Cmd
+	Cmd            *common.Cmd
 }
 
-func (s *APITestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *APISuite) SetupSuite() {
+	s.Suite.SetupSuite()
 
 	log.SetLevel(log.FatalLevel)
 	s.Port = 51423
@@ -76,7 +76,7 @@ func (s *APITestSuite) SetupSuite() {
 	}
 
 	// Run API
-	s.Require().NoError(ct.Build())
+	s.Require().NoError(common.Build())
 	s.BinName = "cbootstrapd"
 	args := []string{
 		"-b", s.APIURL,
@@ -88,12 +88,12 @@ func (s *APITestSuite) SetupSuite() {
 	}
 
 	var err error
-	s.Cmd, err = ct.Exec("./"+s.BinName, args...)
+	s.Cmd, err = common.Exec("./"+s.BinName, args...)
 	s.Require().NoError(err)
 	time.Sleep(1 * time.Second)
 }
 
-func (s *APITestSuite) SetupTest() {
+func (s *APISuite) SetupTest() {
 	// Add Hypervisor
 	s.Hypervisor = s.NewHypervisor()
 	_ = s.Hypervisor.SetConfig("version", "0.3.0")
@@ -101,18 +101,18 @@ func (s *APITestSuite) SetupTest() {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func (s *APITestSuite) TearDownSuite() {
+func (s *APISuite) TearDownSuite() {
 	_ = s.Cmd.Stop()
 	_ = os.RemoveAll(s.ImageDir)
 
-	s.CommonTestSuite.TearDownSuite()
+	s.Suite.TearDownSuite()
 }
 
-func TestAPITestSuite(t *testing.T) {
-	suite.Run(t, new(APITestSuite))
+func TestCBootstrapdAPI(t *testing.T) {
+	suite.Run(t, new(APISuite))
 }
 
-func (s *APITestSuite) TestIPXEGet() {
+func (s *APISuite) TestIPXEGet() {
 	defaultVersion := "0.1.0"
 	_ = s.Context.SetConfig("defaultVersion", defaultVersion)
 
@@ -126,8 +126,8 @@ func (s *APITestSuite) TestIPXEGet() {
 	s.checkIPXE("command flag defined default version", hypervisor, s.DefaultVersion)
 }
 
-func (s *APITestSuite) checkIPXE(description string, h *lochness.Hypervisor, expectedVersion string) {
-	msg := ct.TestMsgFunc(description)
+func (s *APISuite) checkIPXE(description string, h *lochness.Hypervisor, expectedVersion string) {
+	msg := common.TestMsgFunc(description)
 	resp, err := http.Get(fmt.Sprintf("%s/ipxe/%s", s.APIURL, h.IP))
 	s.NoError(err)
 	defer logx.LogReturnedErr(resp.Body.Close, nil, "failed to close resp body")
@@ -142,7 +142,7 @@ boot
 	s.Equal(expected, string(bodyB), msg("should return correct template"))
 }
 
-func (s *APITestSuite) TestImageGet() {
+func (s *APISuite) TestImageGet() {
 	for _, version := range s.Versions {
 		for _, filename := range s.ImageNames {
 			resp, err := http.Get(fmt.Sprintf("%s/images/%s/%s", s.APIURL, version, filename))
@@ -155,7 +155,7 @@ func (s *APITestSuite) TestImageGet() {
 	}
 }
 
-func (s *APITestSuite) TestConfigGet() {
+func (s *APISuite) TestConfigGet() {
 	h := s.NewHypervisor()
 	h.IP = net.ParseIP("192.168.1.90")
 	_ = h.Save()

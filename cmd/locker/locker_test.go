@@ -6,39 +6,34 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/mistifyio/lochness/cmd/common_test"
 	"github.com/mistifyio/lochness/cmd/locker"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/lock"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
-type LockerTestSuite struct {
-	ct.CommonTestSuite
+type CmdSuite struct {
+	common.Suite
 	BinName string
 }
 
-func (s *LockerTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
-	s.Require().NoError(ct.Build())
+func (s *CmdSuite) SetupSuite() {
+	s.Suite.SetupSuite()
+	s.Require().NoError(common.Build())
 	s.BinName = "locker"
 }
 
-func TestLockerTestSuite(t *testing.T) {
-	suite.Run(t, new(LockerTestSuite))
+func TestLocker(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
 }
 
-func (s *LockerTestSuite) TestCmd() {
-	perlCmd := `sleep 1; open(my $fh,">","%s"); print $fh "%s"; close $fh;`
-	perlPath, err := exec.LookPath("perl")
-	if !s.NoError(err, "perl not found") {
-		return
-	}
+func (s *CmdSuite) TestCmd() {
+	shCmd := `set -e; sleep 1; echo -n "%s" > "%s"`
 
 	tests := []struct {
 		description  string
@@ -57,7 +52,7 @@ func (s *LockerTestSuite) TestCmd() {
 		file, _ := ioutil.TempFile("", "lockerTest-")
 		defer func() { _ = os.Remove(file.Name()) }()
 
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 		params := &main.Params{
 			Interval: 1,
 			TTL:      2,
@@ -66,7 +61,7 @@ func (s *LockerTestSuite) TestCmd() {
 			Blocking: false,
 			ID:       id,
 		}
-		params.Args = []string{perlPath, "-e", fmt.Sprintf(perlCmd, file.Name(), test.fileOut)}
+		params.Args = []string{"/bin/sh", "-c", fmt.Sprintf(shCmd, test.fileOut, file.Name())}
 		params.Lock, _ = lock.Acquire(s.EtcdClient, params.Key, uuid.New(), params.TTL, params.Blocking)
 		defer func() { _ = params.Lock.Release() }()
 
@@ -75,7 +70,7 @@ func (s *LockerTestSuite) TestCmd() {
 
 		args, _ := json.Marshal(&params)
 		arg := base64.StdEncoding.EncodeToString(args)
-		cmd, err := ct.Exec("./"+s.BinName, arg)
+		cmd, err := common.Exec("./"+s.BinName, arg)
 		if !s.NoError(err, msg("should not have errored execing command")) {
 			continue
 		}

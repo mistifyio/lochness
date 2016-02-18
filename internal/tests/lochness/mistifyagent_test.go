@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	magent "github.com/mistifyio/mistify-agent"
 	mnet "github.com/mistifyio/util/net"
 	"github.com/pborman/uuid"
@@ -19,7 +20,7 @@ import (
 )
 
 type MistifyAgentTestSuite struct {
-	CommonTestSuite
+	common.Suite
 	agent      *lochness.MistifyAgent
 	api        *httptest.Server
 	guest      *lochness.Guest
@@ -27,7 +28,7 @@ type MistifyAgentTestSuite struct {
 }
 
 func (s *MistifyAgentTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+	s.Suite.SetupSuite()
 
 	s.api = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.String()
@@ -51,19 +52,19 @@ func (s *MistifyAgentTestSuite) SetupSuite() {
 }
 
 func (s *MistifyAgentTestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+	s.Suite.SetupTest()
 	u, _ := url.Parse(s.api.URL)
 	host, sPort, _ := mnet.SplitHostPort(u.Host)
 	port, _ := strconv.Atoi(sPort)
 	s.agent = s.Context.NewMistifyAgent(port)
-	s.hypervisor, s.guest = s.newHypervisorWithGuest()
+	s.hypervisor, s.guest = s.NewHypervisorWithGuest()
 	s.hypervisor.IP = net.ParseIP(host)
 	_ = s.hypervisor.Save()
 }
 
 func (s *MistifyAgentTestSuite) TearDownSuite() {
 	s.api.Close()
-	s.CommonTestSuite.TearDownSuite()
+	s.Suite.TearDownSuite()
 }
 
 func TestMistifyAgentTestSuite(t *testing.T) {

@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type NetworkTestSuite struct {
-	CommonTestSuite
+	common.Suite
 }
 
 func TestNetworkTestSuite(t *testing.T) {
@@ -23,7 +24,7 @@ func (s *NetworkTestSuite) TestNewNetwork() {
 }
 
 func (s *NetworkTestSuite) TestNework() {
-	network := s.newNetwork()
+	network := s.NewNetwork()
 
 	tests := []struct {
 		description string
@@ -50,17 +51,17 @@ func (s *NetworkTestSuite) TestNework() {
 }
 
 func (s *NetworkTestSuite) TestRefresh() {
-	network := s.newNetwork()
+	network := s.NewNetwork()
 	networkCopy := &lochness.Network{}
 	*networkCopy = *network
-	_ = network.AddSubnet(s.newSubnet())
+	_ = network.AddSubnet(s.NewSubnet())
 
 	_ = network.Save()
 	s.NoError(networkCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(network, networkCopy), "refresh should pull new data")
 
-	newNetwork := s.Context.NewNetwork()
-	s.Error(newNetwork.Refresh(), "unsaved network refresh should fail")
+	NewNetwork := s.Context.NewNetwork()
+	s.Error(NewNetwork.Refresh(), "unsaved network refresh should fail")
 }
 
 func (s *NetworkTestSuite) TestValidate() {
@@ -122,9 +123,9 @@ func (s *NetworkTestSuite) TestAddSubnet() {
 		expectedErr bool
 	}{
 		{"nonexisting network, nonexisting subnet", s.Context.NewNetwork(), s.Context.NewSubnet(), true},
-		{"existing network, nonexisting subnet", s.newNetwork(), s.Context.NewSubnet(), true},
-		{"nonexisting network, existing subnet", s.Context.NewNetwork(), s.newSubnet(), true},
-		{"existing network and subnet", s.newNetwork(), s.newSubnet(), false},
+		{"existing network, nonexisting subnet", s.NewNetwork(), s.Context.NewSubnet(), true},
+		{"nonexisting network, existing subnet", s.Context.NewNetwork(), s.NewSubnet(), true},
+		{"existing network and subnet", s.NewNetwork(), s.NewSubnet(), false},
 	}
 
 	for _, test := range tests {
@@ -143,8 +144,8 @@ func (s *NetworkTestSuite) TestAddSubnet() {
 }
 
 func (s *NetworkTestSuite) TestSubnets() {
-	network := s.newNetwork()
-	_ = network.AddSubnet(s.newSubnet())
+	network := s.NewNetwork()
+	_ = network.AddSubnet(s.NewSubnet())
 
 	s.Len(network.Subnets(), 1)
 }

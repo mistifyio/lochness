@@ -9,21 +9,21 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/stretchr/testify/suite"
 	"github.com/tylerb/graceful"
 )
 
-type APITestSuite struct {
-	ct.CommonTestSuite
+type APISuite struct {
+	common.Suite
 	Port       uint
 	APIServer  *graceful.Server
 	Hypervisor *lochness.Hypervisor
 	APIURL     string
 }
 
-func (s *APITestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
+func (s *APISuite) SetupSuite() {
+	s.Suite.SetupSuite()
 
 	log.SetLevel(log.FatalLevel)
 	s.Port = 51123
@@ -33,25 +33,25 @@ func (s *APITestSuite) SetupSuite() {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func (s *APITestSuite) SetupTest() {
-	s.CommonTestSuite.SetupTest()
+func (s *APISuite) SetupTest() {
+	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
 	_ = s.Hypervisor.SetConfig("foo", "bar")
 }
 
-func (s *APITestSuite) TearDownSuite() {
+func (s *APISuite) TearDownSuite() {
 	stopChan := s.APIServer.StopChan()
 	s.APIServer.Stop(5 * time.Second)
 	<-stopChan
 
-	s.CommonTestSuite.TearDownSuite()
+	s.Suite.TearDownSuite()
 }
 
-func TestAPITestSuite(t *testing.T) {
-	suite.Run(t, new(APITestSuite))
+func TestCHypervisordAPI(t *testing.T) {
+	suite.Run(t, new(APISuite))
 }
 
-func (s *APITestSuite) TestHypervisorsList() {
+func (s *APISuite) TestHypervisorsList() {
 	var hypervisors lochness.Hypervisors
 	s.DoRequest("GET", s.APIURL, http.StatusOK, nil, &hypervisors)
 
@@ -59,7 +59,7 @@ func (s *APITestSuite) TestHypervisorsList() {
 	s.Equal(s.Hypervisor.ID, hypervisors[0].ID)
 }
 
-func (s *APITestSuite) TestHypervisorAdd() {
+func (s *APISuite) TestHypervisorAdd() {
 	hypervisor := s.Context.NewHypervisor()
 	hypervisor.IP = net.ParseIP("192.168.100.12")
 	hypervisor.Netmask = net.ParseIP("225.225.225.225")
@@ -83,14 +83,14 @@ func (s *APITestSuite) TestHypervisorAdd() {
 	s.Equal(hypervisor.ID, h.ID)
 }
 
-func (s *APITestSuite) TestHypervisorGet() {
+func (s *APISuite) TestHypervisorGet() {
 	var hypervisor lochness.Hypervisor
 	s.DoRequest("GET", fmt.Sprintf("%s/%s", s.APIURL, s.Hypervisor.ID), http.StatusOK, nil, &hypervisor)
 
 	s.Equal(s.Hypervisor.ID, hypervisor.ID)
 }
 
-func (s *APITestSuite) TestHypervisorUpdate() {
+func (s *APISuite) TestHypervisorUpdate() {
 	s.Hypervisor.IP = net.ParseIP("192.168.100.13")
 
 	var hypervisorResp lochness.Hypervisor
@@ -104,7 +104,7 @@ func (s *APITestSuite) TestHypervisorUpdate() {
 	s.Equal(s.Hypervisor.IP, h.IP)
 }
 
-func (s *APITestSuite) TestHypervisorDestroy() {
+func (s *APISuite) TestHypervisorDestroy() {
 	var hypervisorResp lochness.Hypervisor
 	s.DoRequest("DELETE", fmt.Sprintf("%s/%s", s.APIURL, s.Hypervisor.ID), http.StatusOK, nil, &hypervisorResp)
 
@@ -115,14 +115,14 @@ func (s *APITestSuite) TestHypervisorDestroy() {
 	s.Error(err)
 }
 
-func (s *APITestSuite) TestHypervisorGetConfig() {
+func (s *APISuite) TestHypervisorGetConfig() {
 	var config map[string]string
 	s.DoRequest("GET", fmt.Sprintf("%s/%s/config", s.APIURL, s.Hypervisor.ID), http.StatusOK, nil, &config)
 
 	s.Equal(s.Hypervisor.Config, config)
 }
 
-func (s *APITestSuite) TestHypervisorUpdateConfig() {
+func (s *APISuite) TestHypervisorUpdateConfig() {
 	configChanges := map[string]string{"asdf": "qwer"}
 	var config map[string]string
 	s.DoRequest("PATCH", fmt.Sprintf("%s/%s/config", s.APIURL, s.Hypervisor.ID), http.StatusOK, configChanges, &config)
@@ -135,7 +135,7 @@ func (s *APITestSuite) TestHypervisorUpdateConfig() {
 	s.Equal(configChanges["asdf"], hypervisor.Config["asdf"])
 }
 
-func (s *APITestSuite) TestHypervisorSubnetList() {
+func (s *APISuite) TestHypervisorSubnetList() {
 	hypervisor, _ := s.NewHypervisorWithGuest()
 	var subnets map[string]string
 	s.DoRequest("GET", fmt.Sprintf("%s/%s/subnets", s.APIURL, hypervisor.ID), http.StatusOK, nil, &subnets)
@@ -144,7 +144,7 @@ func (s *APITestSuite) TestHypervisorSubnetList() {
 	s.Equal(hypervisor.Subnets(), subnets)
 }
 
-func (s *APITestSuite) TestHypervisorSubnetUpdate() {
+func (s *APISuite) TestHypervisorSubnetUpdate() {
 	subnet := s.NewSubnet()
 	_ = s.Hypervisor.AddSubnet(subnet, "foobar")
 
@@ -154,7 +154,7 @@ func (s *APITestSuite) TestHypervisorSubnetUpdate() {
 	s.Equal(s.Hypervisor.Subnets(), subnets)
 }
 
-func (s *APITestSuite) TestHypervisorSubnetRemove() {
+func (s *APISuite) TestHypervisorSubnetRemove() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	var subnets map[string]string
 	s.DoRequest("DELETE", fmt.Sprintf("%s/%s/subnets/%s", s.APIURL, hypervisor.ID, guest.SubnetID), http.StatusOK, nil, &subnets)
@@ -166,7 +166,7 @@ func (s *APITestSuite) TestHypervisorSubnetRemove() {
 	s.Len(h.Subnets(), 0)
 }
 
-func (s *APITestSuite) TestHypervisorGuestList() {
+func (s *APISuite) TestHypervisorGuestList() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	var guests []string
 	s.DoRequest("GET", fmt.Sprintf("%s/%s/guests", s.APIURL, hypervisor.ID), http.StatusOK, nil, &guests)

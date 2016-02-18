@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type HypervisorTestSuite struct {
-	CommonTestSuite
+	common.Suite
 }
 
 func TestHypervisorTestSuite(t *testing.T) {
@@ -22,7 +23,7 @@ func TestHypervisorTestSuite(t *testing.T) {
 }
 
 func (s *HypervisorTestSuite) TestJSON() {
-	hypervisor, _ := s.newHypervisorWithGuest()
+	hypervisor, _ := s.NewHypervisorWithGuest()
 
 	hypervisorBytes, err := json.Marshal(hypervisor)
 	s.NoError(err)
@@ -46,7 +47,7 @@ func (s *HypervisorTestSuite) TestNewHypervisor() {
 }
 
 func (s *HypervisorTestSuite) TestHypervisor() {
-	hypervisor := s.newHypervisor()
+	hypervisor := s.NewHypervisor()
 
 	tests := []struct {
 		description string
@@ -73,7 +74,7 @@ func (s *HypervisorTestSuite) TestHypervisor() {
 }
 
 func (s *HypervisorTestSuite) TestRefresh() {
-	hypervisor, _ := s.newHypervisorWithGuest()
+	hypervisor, _ := s.NewHypervisorWithGuest()
 	hypervisorCopy := &lochness.Hypervisor{}
 	*hypervisorCopy = *hypervisor
 	_, _ = lochness.SetHypervisorID(hypervisor.ID)
@@ -83,8 +84,8 @@ func (s *HypervisorTestSuite) TestRefresh() {
 	s.NoError(hypervisorCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(hypervisor, hypervisorCopy), "refresh should pull new data")
 
-	newHypervisor := s.Context.NewHypervisor()
-	s.Error(newHypervisor.Refresh(), "unsaved hypervisor refresh should fail")
+	NewHypervisor := s.Context.NewHypervisor()
+	s.Error(NewHypervisor.Refresh(), "unsaved hypervisor refresh should fail")
 }
 
 func (s *HypervisorTestSuite) TestGetAndSetHypervisorID() {
@@ -135,7 +136,7 @@ func (s *HypervisorTestSuite) TestGetAndSetHypervisorID() {
 }
 
 func (s *HypervisorTestSuite) TestVerifyOnHV() {
-	hypervisor := s.newHypervisor()
+	hypervisor := s.NewHypervisor()
 
 	s.Error(hypervisor.VerifyOnHV())
 	_, _ = lochness.SetHypervisorID(hypervisor.ID)
@@ -143,7 +144,7 @@ func (s *HypervisorTestSuite) TestVerifyOnHV() {
 }
 
 func (s *HypervisorTestSuite) TestUpdateResources() {
-	hypervisor, guest := s.newHypervisorWithGuest()
+	hypervisor, guest := s.NewHypervisorWithGuest()
 	_ = hypervisor.SetConfig("guestDiskDir", "/")
 
 	flavor, _ := s.Context.Flavor(guest.FlavorID)
@@ -229,9 +230,9 @@ func (s *HypervisorTestSuite) TestAddSubnet() {
 		expectedErr bool
 	}{
 		{"nonexisting Hypervisor, nonexisting subnet", s.Context.NewHypervisor(), s.Context.NewSubnet(), true},
-		{"existing Hypervisor, nonexisting subnet", s.newHypervisor(), s.Context.NewSubnet(), true},
-		{"nonexisting Hypervisor, existing subnet", s.Context.NewHypervisor(), s.newSubnet(), true},
-		{"existing Hypervisor and subnet", s.newHypervisor(), s.newSubnet(), false},
+		{"existing Hypervisor, nonexisting subnet", s.NewHypervisor(), s.Context.NewSubnet(), true},
+		{"nonexisting Hypervisor, existing subnet", s.Context.NewHypervisor(), s.NewSubnet(), true},
+		{"existing Hypervisor and subnet", s.NewHypervisor(), s.NewSubnet(), false},
 	}
 
 	for _, test := range tests {
@@ -248,8 +249,8 @@ func (s *HypervisorTestSuite) TestAddSubnet() {
 }
 
 func (s *HypervisorTestSuite) TestRemoveSubnet() {
-	subnet := s.newSubnet()
-	hypervisor := s.newHypervisor()
+	subnet := s.NewSubnet()
+	hypervisor := s.NewHypervisor()
 	_ = hypervisor.AddSubnet(subnet, "mistify0")
 
 	tests := []struct {
@@ -280,14 +281,14 @@ func (s *HypervisorTestSuite) TestRemoveSubnet() {
 }
 
 func (s *HypervisorTestSuite) TestSubnets() {
-	hypervisor := s.newHypervisor()
-	_ = hypervisor.AddSubnet(s.newSubnet(), "mistify0")
+	hypervisor := s.NewHypervisor()
+	_ = hypervisor.AddSubnet(s.NewSubnet(), "mistify0")
 
 	s.Len(hypervisor.Subnets(), 1)
 }
 
 func (s *HypervisorTestSuite) TestHeartbeatAndIsAlive() {
-	hypervisor := s.newHypervisor()
+	hypervisor := s.NewHypervisor()
 	s.Error(hypervisor.Heartbeat(60 * time.Second))
 	s.False(hypervisor.IsAlive())
 	_, _ = lochness.SetHypervisorID(hypervisor.ID)
@@ -296,9 +297,9 @@ func (s *HypervisorTestSuite) TestHeartbeatAndIsAlive() {
 }
 
 func (s *HypervisorTestSuite) TestAddGuest() {
-	guest := s.newGuest()
-	hypervisor := s.newHypervisor()
-	subnet := s.newSubnet()
+	guest := s.NewGuest()
+	hypervisor := s.NewHypervisor()
+	subnet := s.NewSubnet()
 	network, _ := s.Context.Network(guest.NetworkID)
 	_ = network.AddSubnet(subnet)
 	_ = hypervisor.AddSubnet(subnet, "mistify0")
@@ -310,9 +311,9 @@ func (s *HypervisorTestSuite) TestAddGuest() {
 		expectedErr bool
 	}{
 		{"neither exist", s.Context.NewGuest(), s.Context.NewHypervisor(), true},
-		{"guest exist", s.newGuest(), s.Context.NewHypervisor(), true},
-		{"hypervisor exist", s.Context.NewGuest(), s.newHypervisor(), true},
-		{"both exist, wrong network", s.newGuest(), s.newHypervisor(), true},
+		{"guest exist", s.NewGuest(), s.Context.NewHypervisor(), true},
+		{"hypervisor exist", s.Context.NewGuest(), s.NewHypervisor(), true},
+		{"both exist, wrong network", s.NewGuest(), s.NewHypervisor(), true},
 		{"both exist, right network", guest, hypervisor, false},
 	}
 
@@ -332,9 +333,9 @@ func (s *HypervisorTestSuite) TestAddGuest() {
 }
 
 func (s *HypervisorTestSuite) TestRemoveGuest() {
-	hypervisor, guest := s.newHypervisorWithGuest()
+	hypervisor, guest := s.NewHypervisorWithGuest()
 
-	s.Error(hypervisor.RemoveGuest(s.newGuest()))
+	s.Error(hypervisor.RemoveGuest(s.NewGuest()))
 	s.Equal(hypervisor.ID, guest.HypervisorID)
 	s.Len(hypervisor.Guests(), 1)
 
@@ -344,15 +345,15 @@ func (s *HypervisorTestSuite) TestRemoveGuest() {
 }
 
 func (s *HypervisorTestSuite) TestGuests() {
-	hypervisor, guest := s.newHypervisorWithGuest()
+	hypervisor, guest := s.NewHypervisorWithGuest()
 	guests := hypervisor.Guests()
 	s.Len(guests, 1)
 	s.Equal(guest.ID, guests[0])
 }
 
 func (s *HypervisorTestSuite) TestForEachGuest() {
-	hypervisor, guest := s.newHypervisorWithGuest()
-	guest2 := s.newGuest()
+	hypervisor, guest := s.NewHypervisorWithGuest()
+	guest2 := s.NewGuest()
 	guest2.NetworkID = guest.NetworkID
 	_ = hypervisor.AddGuest(guest2)
 
@@ -379,8 +380,8 @@ func (s *HypervisorTestSuite) TestForEachGuest() {
 }
 
 func (s *HypervisorTestSuite) TestFirstHypervisor() {
-	_ = s.newHypervisor()
-	_ = s.newHypervisor()
+	_ = s.NewHypervisor()
+	_ = s.NewHypervisor()
 	h, err := s.Context.FirstHypervisor(func(h *lochness.Hypervisor) bool {
 		return true
 	})
@@ -389,8 +390,8 @@ func (s *HypervisorTestSuite) TestFirstHypervisor() {
 }
 
 func (s *HypervisorTestSuite) TestForEachHypervisor() {
-	hypervisor := s.newHypervisor()
-	hypervisor2 := s.newHypervisor()
+	hypervisor := s.NewHypervisor()
+	hypervisor2 := s.NewHypervisor()
 	expectedFound := map[string]bool{
 		hypervisor.ID:  true,
 		hypervisor2.ID: true,
@@ -414,7 +415,7 @@ func (s *HypervisorTestSuite) TestForEachHypervisor() {
 }
 
 func (s *HypervisorTestSuite) TestSetConfig() {
-	hypervisor := s.newHypervisor()
+	hypervisor := s.NewHypervisor()
 
 	tests := []struct {
 		description string
@@ -442,7 +443,7 @@ func (s *HypervisorTestSuite) TestSetConfig() {
 func (s *HypervisorTestSuite) TestDestroy() {
 	blank := s.Context.NewHypervisor()
 	blank.ID = ""
-	hypervisorWithGuest, _ := s.newHypervisorWithGuest()
+	hypervisorWithGuest, _ := s.NewHypervisorWithGuest()
 
 	tests := []struct {
 		description string
@@ -450,7 +451,7 @@ func (s *HypervisorTestSuite) TestDestroy() {
 		expectedErr bool
 	}{
 		{"invalid hypervisor", blank, true},
-		{"existing hypervisor", s.newHypervisor(), false},
+		{"existing hypervisor", s.NewHypervisor(), false},
 		{"nonexistant hypervisor", s.Context.NewHypervisor(), true},
 		{"hypervisor with guest", hypervisorWithGuest, true},
 	}

@@ -9,13 +9,13 @@ import (
 
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
-	"github.com/mistifyio/lochness/cmd/common_test"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/stretchr/testify/suite"
 )
 
-type CPlacerdTestSuite struct {
-	ct.CommonTestSuite
+type CmdSuite struct {
+	common.Suite
 	BinName        string
 	BeanstalkdCmd  *exec.Cmd
 	BeanstalkdPath string
@@ -23,9 +23,9 @@ type CPlacerdTestSuite struct {
 	Port           string
 }
 
-func (s *CPlacerdTestSuite) SetupSuite() {
-	s.CommonTestSuite.SetupSuite()
-	s.Require().NoError(ct.Build())
+func (s *CmdSuite) SetupSuite() {
+	s.Suite.SetupSuite()
+	s.Require().NoError(common.Build())
 	s.BinName = "cplacerd"
 	s.Port = "45362"
 
@@ -48,17 +48,17 @@ func (s *CPlacerdTestSuite) SetupSuite() {
 	s.JobQueue = jobQueue
 }
 
-func (s *CPlacerdTestSuite) TearDownTest() {
+func (s *CmdSuite) TearDownTest() {
 	_ = s.BeanstalkdCmd.Process.Kill()
 	_ = s.BeanstalkdCmd.Wait()
-	s.CommonTestSuite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
-func TestCPlacerdTestSuite(t *testing.T) {
-	suite.Run(t, new(CPlacerdTestSuite))
+func TestCPlacerd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
 }
 
-func (s *CPlacerdTestSuite) TestCmd() {
+func (s *CmdSuite) TestCmd() {
 	hypervisor := s.NewHypervisor()
 	_, _ = lochness.SetHypervisorID(hypervisor.ID)
 	subnet := s.NewSubnet()
@@ -86,7 +86,7 @@ func (s *CPlacerdTestSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := ct.TestMsgFunc(test.description)
+		msg := common.TestMsgFunc(test.description)
 		if test.description == "valid" {
 			s.NoError(hypervisor.Heartbeat(1 * time.Hour))
 		}
@@ -114,7 +114,7 @@ func (s *CPlacerdTestSuite) TestCmd() {
 			"-b", s.BeanstalkdPath,
 			"-l", "fatal",
 		}
-		cmd, err := ct.Exec("./"+s.BinName, args...)
+		cmd, err := common.Exec("./"+s.BinName, args...)
 		s.Require().NoError(err)
 
 		// Wait for processing
