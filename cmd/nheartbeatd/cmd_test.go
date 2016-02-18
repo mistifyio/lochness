@@ -58,7 +58,7 @@ func (s *CmdSuite) TestCmd() {
 			"-t", strconv.Itoa(test.ttl),
 			"-l", test.loglevel,
 		}
-		cmd, err := common.Exec("./"+s.BinName, args...)
+		cmd, err := common.Start("./"+s.BinName, args...)
 		if !s.NoError(err, msg("command exec should not error")) {
 			continue
 		}

@@ -16,7 +16,7 @@ type Cmd struct {
 }
 
 // Exec runs a command asynchronously.
-func Exec(cmdName string, args ...string) (*Cmd, error) {
+func Start(cmdName string, args ...string) (*Cmd, error) {
 	cmd := exec.Command(cmdName, args...)
 	out := &bytes.Buffer{}
 	cmd.Stdout = out

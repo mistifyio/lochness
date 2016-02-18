@@ -114,7 +114,7 @@ func (s *CmdSuite) TestCmd() {
 			"-b", s.BeanstalkdPath,
 			"-l", "fatal",
 		}
-		cmd, err := common.Exec("./"+s.BinName, args...)
+		cmd, err := common.Start("./"+s.BinName, args...)
 		s.Require().NoError(err)
 
 		// Wait for processing

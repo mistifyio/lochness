@@ -88,7 +88,7 @@ func (s *APISuite) SetupSuite() {
 	}
 
 	var err error
-	s.Cmd, err = common.Exec("./"+s.BinName, args...)
+	s.Cmd, err = common.Start("./"+s.BinName, args...)
 	s.Require().NoError(err)
 	time.Sleep(1 * time.Second)
 }

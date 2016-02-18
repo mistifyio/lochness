@@ -51,7 +51,7 @@ func (s *CmdSuite) TestCmd() {
 		"-c", s.ConfDir,
 		"-l", "fatal",
 	}
-	cmd, err := common.Exec("./"+s.BinName, args...)
+	cmd, err := common.Start("./"+s.BinName, args...)
 	s.Require().NoError(err)
 	time.Sleep(1 * time.Second)
 

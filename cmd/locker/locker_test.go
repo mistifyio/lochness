@@ -70,7 +70,7 @@ func (s *CmdSuite) TestCmd() {
 
 		args, _ := json.Marshal(&params)
 		arg := base64.StdEncoding.EncodeToString(args)
-		cmd, err := common.Exec("./"+s.BinName, arg)
+		cmd, err := common.Start("./"+s.BinName, arg)
 		if !s.NoError(err, msg("should not have errored execing command")) {
 			continue
 		}

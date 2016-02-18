@@ -60,7 +60,7 @@ func (s *CmdSuite) TestCmd() {
 		"-f", s.ConfigPath,
 		"-i", s.Hypervisor.ID,
 	}
-	cmd, err := common.Exec("./"+s.BinName, args...)
+	cmd, err := common.Start("./"+s.BinName, args...)
 	s.NoError(err)
 
 	time.Sleep(1 * time.Second)
