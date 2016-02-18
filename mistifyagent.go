@@ -16,6 +16,8 @@ import (
 	logx "github.com/mistifyio/mistify-logrus-ext"
 )
 
+const AgentPort int = 8080
+
 type (
 	// MistifyAgent is an Agent that communicates with a hypervisor agent to perform
 	// actions relating to guests
@@ -40,7 +42,7 @@ func (e ErrorHTTPCode) Error() string {
 // NewMistifyAgent creates a new MistifyAgent instance within the context
 func (context *Context) NewMistifyAgent(port int) *MistifyAgent {
 	if port <= 0 {
-		port = 8080
+		port = AgentPort
 	}
 	return &MistifyAgent{
 		context: context,

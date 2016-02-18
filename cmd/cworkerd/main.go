@@ -27,7 +27,7 @@ func main() {
 	flag.StringVarP(&bstalk, "beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.StringVarP(&etcdAddr, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
-	flag.UintVarP(&agentPort, "agent-port", "a", 0, "port on which agents listen. 0 uses default")
+	flag.UintVarP(&agentPort, "agent-port", "a", uint(lochness.AgentPort), "port on which agents listen")
 	flag.UintVarP(&port, "http", "p", 7544, "http port to publish metrics. set to 0 to disable")
 	flag.Parse()
 
