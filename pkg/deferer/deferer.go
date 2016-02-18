@@ -81,6 +81,5 @@ func NewDeferer(d *Deferer) *Deferer {
 	return &Deferer{
 		caller: d,
 		fns:    make([]func(), 0),
-		ran:    false,
 	}
 }
