@@ -351,13 +351,13 @@ func (s *HypervisorTestSuite) TestGuests() {
 }
 
 func (s *HypervisorTestSuite) TestForEachGuest() {
-	hypervisor, guest := s.NewHypervisorWithGuest()
+	hypervisor, guest1 := s.NewHypervisorWithGuest()
 	guest2 := s.NewGuest()
-	guest2.NetworkID = guest.NetworkID
+	guest2.NetworkID = guest1.NetworkID
 	_ = hypervisor.AddGuest(guest2)
 
 	expectedFound := map[string]bool{
-		guest.ID:  true,
+		guest1.ID: true,
 		guest2.ID: true,
 	}
 
