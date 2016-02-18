@@ -32,6 +32,11 @@ is required.
 ## Usage
 
 ```go
+const AgentPort int = 8080
+```
+AgentPort is the default port on which to attempt contacting an agent
+
+```go
 var (
 	// ConfigPath is the path in the config store.
 	ConfigPath = "/lochness/config/"

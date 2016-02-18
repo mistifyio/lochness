@@ -16,6 +16,7 @@ import (
 	logx "github.com/mistifyio/mistify-logrus-ext"
 )
 
+// AgentPort is the default port on which to attempt contacting an agent
 const AgentPort int = 8080
 
 type (

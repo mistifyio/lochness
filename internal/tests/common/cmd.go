@@ -15,7 +15,7 @@ type Cmd struct {
 	t   tomb.Tomb
 }
 
-// Exec runs a command asynchronously.
+// Start runs a command asynchronously.
 func Start(cmdName string, args ...string) (*Cmd, error) {
 	cmd := exec.Command(cmdName, args...)
 	out := &bytes.Buffer{}
