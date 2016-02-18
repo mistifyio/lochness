@@ -197,8 +197,7 @@ func (s *HypervisorTestSuite) TestValidate() {
 func (s *HypervisorTestSuite) TestSave() {
 	goodHypervisor := s.Context.NewHypervisor()
 
-	clobberHypervisor := &lochness.Hypervisor{}
-	*clobberHypervisor = *goodHypervisor
+	clobberHypervisor := *goodHypervisor
 
 	tests := []struct {
 		description string
@@ -208,7 +207,7 @@ func (s *HypervisorTestSuite) TestSave() {
 		{"invalid hypervisor", &lochness.Hypervisor{}, true},
 		{"valid hypervisor", goodHypervisor, false},
 		{"existing hypervisor", goodHypervisor, false},
-		{"existing hypervisor clobber", clobberHypervisor, true},
+		{"existing hypervisor clobber", &clobberHypervisor, true},
 	}
 
 	for _, test := range tests {
