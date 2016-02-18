@@ -94,7 +94,7 @@ NextWorkTask returns the next task from the work tube
 ```go
 func (c *Client) StatsCreate() (map[string]string, error)
 ```
-StatsCreate returns the stats for the create create queue
+StatsCreate returns the stats for the create queue
 
 #### func (*Client) StatsWork
 

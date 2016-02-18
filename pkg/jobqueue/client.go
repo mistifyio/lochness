@@ -126,7 +126,7 @@ func tubeStats(tube *tubeSet) (map[string]string, error) {
 	return stats, err
 }
 
-// StatsCreate returns the stats for the create create queue
+// StatsCreate returns the stats for the create queue
 func (c *Client) StatsCreate() (map[string]string, error) {
 	return tubeStats(c.tubes.create)
 }
