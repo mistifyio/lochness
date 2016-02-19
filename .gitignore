@@ -2,3 +2,4 @@
 *.test.out
 .*
 !.gitignore
+!.travis.yml
