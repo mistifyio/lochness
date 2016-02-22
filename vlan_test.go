@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type VLANSuite struct {
-	common.Suite
-}
-
 func TestVLAN(t *testing.T) {
 	suite.Run(t, new(VLANSuite))
+}
+
+type VLANSuite struct {
+	common.Suite
 }
 
 func (s *VLANSuite) TestNewVLAN() {

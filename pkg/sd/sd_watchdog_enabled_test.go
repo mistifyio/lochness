@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type SDWatchdogEnabledSuite struct {
-	suite.Suite
-}
-
 func TestSDWatchdogEnabled(t *testing.T) {
 	suite.Run(t, new(SDWatchdogEnabledSuite))
+}
+
+type SDWatchdogEnabledSuite struct {
+	suite.Suite
 }
 
 func (s *SDWatchdogEnabledSuite) TestWatchdogEnabled() {

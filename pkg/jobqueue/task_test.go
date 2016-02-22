@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type TaskSuite struct {
-	JobQCommonSuite
-}
-
 func TestTask(t *testing.T) {
 	suite.Run(t, new(TaskSuite))
+}
+
+type TaskSuite struct {
+	JobQCommonSuite
 }
 
 func (s *TaskSuite) TestDelete() {

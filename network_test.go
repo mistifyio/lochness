@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type NetworkSuite struct {
-	common.Suite
-}
-
 func TestNetwork(t *testing.T) {
 	suite.Run(t, new(NetworkSuite))
+}
+
+type NetworkSuite struct {
+	common.Suite
 }
 
 func (s *NetworkSuite) TestNewNetwork() {

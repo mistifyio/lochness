@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CLISuite struct {
-	suite.Suite
-}
-
 func TestCLI(t *testing.T) {
 	suite.Run(t, new(CLISuite))
+}
+
+type CLISuite struct {
+	suite.Suite
 }
 
 func (s *CLISuite) TestRead() {

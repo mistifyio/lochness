@@ -8,34 +8,17 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// log.Fatal(msg) will log the msg and end with a call to os.Exit(). There's no
-// way to handle an os.Exit, which means the tests will exit. To get around
-// this, use a log hook, which runs first, that panics. The panic will break
-// the code flow that normally leads to an exit, allowing recovery in the test,
-// assertions to be made, and testing to continue.
-var logHook *FatalTestHook
-
-type FatalTestHook struct {
-	lastEntry *log.Entry
-}
-
-func (fth *FatalTestHook) Levels() []log.Level {
-	return []log.Level{
-		log.FatalLevel,
-	}
-}
-
-func (fth *FatalTestHook) Fire(e *log.Entry) error {
-	fth.lastEntry = e
-	panic("avoid fatal")
-}
-
-type DefererSuite struct {
-	suite.Suite
+func init() {
+	logHook = new(FatalTestHook)
+	log.AddHook(logHook)
 }
 
 func TestDeferer(t *testing.T) {
 	suite.Run(t, new(DefererSuite))
+}
+
+type DefererSuite struct {
+	suite.Suite
 }
 
 func (s *DefererSuite) TestNewDeferer() {
@@ -123,7 +106,24 @@ func (s *DefererSuite) TestFatalWithFields() {
 	}()
 }
 
-func init() {
-	logHook = new(FatalTestHook)
-	log.AddHook(logHook)
+// log.Fatal(msg) will log the msg and end with a call to os.Exit(). There's no
+// way to handle an os.Exit, which means the tests will exit. To get around
+// this, use a log hook, which runs first, that panics. The panic will break
+// the code flow that normally leads to an exit, allowing recovery in the test,
+// assertions to be made, and testing to continue.
+var logHook *FatalTestHook
+
+type FatalTestHook struct {
+	lastEntry *log.Entry
+}
+
+func (fth *FatalTestHook) Levels() []log.Level {
+	return []log.Level{
+		log.FatalLevel,
+	}
+}
+
+func (fth *FatalTestHook) Fire(e *log.Entry) error {
+	fth.lastEntry = e
+	panic("avoid fatal")
 }

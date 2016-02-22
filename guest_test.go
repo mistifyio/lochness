@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type GuestSuite struct {
-	common.Suite
-}
-
 func TestGuest(t *testing.T) {
 	suite.Run(t, new(GuestSuite))
+}
+
+type GuestSuite struct {
+	common.Suite
 }
 
 func (s *GuestSuite) TestJSON() {

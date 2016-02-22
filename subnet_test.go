@@ -13,12 +13,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type SubnetSuite struct {
-	common.Suite
-}
-
 func TestSubnet(t *testing.T) {
 	suite.Run(t, new(SubnetSuite))
+}
+
+type SubnetSuite struct {
+	common.Suite
 }
 
 func (s *SubnetSuite) TestNewSubnet() {

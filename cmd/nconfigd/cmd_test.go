@@ -17,6 +17,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestNConfigd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
+}
+
 type CmdSuite struct {
 	common.Suite
 	BinName        string
@@ -80,10 +84,6 @@ func (s *CmdSuite) TearDownSuite() {
 	_ = os.RemoveAll(s.WorkPath)
 
 	s.Suite.TearDownSuite()
-}
-
-func TestNConfigd(t *testing.T) {
-	suite.Run(t, new(CmdSuite))
 }
 
 type testCase struct {

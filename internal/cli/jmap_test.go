@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type JMapSuite struct {
-	suite.Suite
-}
-
 func TestJMap(t *testing.T) {
 	suite.Run(t, new(JMapSuite))
+}
+
+type JMapSuite struct {
+	suite.Suite
 }
 
 func (s *JMapSuite) TestID() {

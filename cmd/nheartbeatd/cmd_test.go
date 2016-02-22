@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestNHeartbeatd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
+}
+
 type CmdSuite struct {
 	common.Suite
 	Hypervisor *lochness.Hypervisor
@@ -28,10 +32,6 @@ func (s *CmdSuite) SetupTest() {
 	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
 	s.Require().NoError(s.Hypervisor.SetConfig("guestDiskDir", "/dev/null"))
-}
-
-func TestNHeartbeatd(t *testing.T) {
-	suite.Run(t, new(CmdSuite))
 }
 
 func (s *CmdSuite) TestCmd() {

@@ -14,12 +14,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type HypervisorSuite struct {
-	common.Suite
-}
-
 func TestHypervisor(t *testing.T) {
 	suite.Run(t, new(HypervisorSuite))
+}
+
+type HypervisorSuite struct {
+	common.Suite
 }
 
 func (s *HypervisorSuite) TestJSON() {

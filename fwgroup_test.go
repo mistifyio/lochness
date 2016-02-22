@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type FWGroupSuite struct {
-	common.Suite
-}
-
 func TestFWGroup(t *testing.T) {
 	suite.Run(t, new(FWGroupSuite))
+}
+
+type FWGroupSuite struct {
+	common.Suite
 }
 
 func (s *FWGroupSuite) TestNewFWGroup() {

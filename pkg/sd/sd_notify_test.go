@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestSDNotify(t *testing.T) {
+	suite.Run(t, new(SDNotifySuite))
+}
+
 type SDNotifySuite struct {
 	suite.Suite
 	SocketDir string
-}
-
-func TestSDNotify(t *testing.T) {
-	suite.Run(t, new(SDNotifySuite))
 }
 
 func (s *SDNotifySuite) SetupTest() {

@@ -15,15 +15,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestLock(t *testing.T) {
+	suite.Run(t, new(LockSuite))
+}
+
 type LockSuite struct {
 	suite.Suite
 	EtcdDir    string
 	EtcdClient *etcd.Client
 	EtcdCmd    *exec.Cmd
-}
-
-func TestLock(t *testing.T) {
-	suite.Run(t, new(LockSuite))
 }
 
 func (s *LockSuite) SetupSuite() {

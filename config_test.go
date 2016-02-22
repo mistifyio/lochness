@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ConfigSuite struct {
-	common.Suite
-}
-
 func TestConfig(t *testing.T) {
 	suite.Run(t, new(ConfigSuite))
+}
+
+type ConfigSuite struct {
+	common.Suite
 }
 
 func (s *ConfigSuite) TestGetConfig() {

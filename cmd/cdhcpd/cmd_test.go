@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestCDhcpd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
+}
+
 type CmdSuite struct {
 	common.Suite
 	BinName          string
@@ -36,10 +40,6 @@ func (s *CmdSuite) SetupTest() {
 func (s *CmdSuite) TearDownTest() {
 	s.Suite.TearDownTest()
 	_ = os.RemoveAll(s.ConfDir)
-}
-
-func TestCDhcpd(t *testing.T) {
-	suite.Run(t, new(CmdSuite))
 }
 
 func (s *CmdSuite) TestCmd() {

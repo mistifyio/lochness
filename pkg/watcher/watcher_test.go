@@ -15,6 +15,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestWatcher(t *testing.T) {
+	suite.Run(t, new(WatcherSuite))
+}
+
 type WatcherSuite struct {
 	suite.Suite
 	EtcdDir    string
@@ -22,10 +26,6 @@ type WatcherSuite struct {
 	EtcdClient *etcd.Client
 	EtcdCmd    *exec.Cmd
 	Watcher    *watcher.Watcher
-}
-
-func TestWatcher(t *testing.T) {
-	suite.Run(t, new(WatcherSuite))
 }
 
 func (s *WatcherSuite) SetupSuite() {

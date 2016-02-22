@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ContextSuite struct {
-	common.Suite
-}
-
 func TestContext(t *testing.T) {
 	suite.Run(t, new(ContextSuite))
+}
+
+type ContextSuite struct {
+	common.Suite
 }
 
 func (s *ContextSuite) TestNewContext() {

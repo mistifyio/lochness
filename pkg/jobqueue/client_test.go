@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ClientSuite struct {
-	JobQCommonSuite
-}
-
 func TestJobQClient(t *testing.T) {
 	suite.Run(t, new(ClientSuite))
+}
+
+type ClientSuite struct {
+	JobQCommonSuite
 }
 
 func (s *ClientSuite) TestNewClient() {

@@ -19,6 +19,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestCBootstrapdAPI(t *testing.T) {
+	suite.Run(t, new(APISuite))
+}
+
 type APISuite struct {
 	common.Suite
 	Port           uint
@@ -106,10 +110,6 @@ func (s *APISuite) TearDownSuite() {
 	_ = os.RemoveAll(s.ImageDir)
 
 	s.Suite.TearDownSuite()
-}
-
-func TestCBootstrapdAPI(t *testing.T) {
-	suite.Run(t, new(APISuite))
 }
 
 func (s *APISuite) TestIPXEGet() {

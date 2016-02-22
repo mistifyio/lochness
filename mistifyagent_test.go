@@ -19,16 +19,16 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestMistifyAgent(t *testing.T) {
+	suite.Run(t, new(MistifyAgentSuite))
+}
+
 type MistifyAgentSuite struct {
 	common.Suite
 	agent      *lochness.MistifyAgent
 	api        *httptest.Server
 	guest      *lochness.Guest
 	hypervisor *lochness.Hypervisor
-}
-
-func TestMistifyAgent(t *testing.T) {
-	suite.Run(t, new(MistifyAgentSuite))
 }
 
 func (s *MistifyAgentSuite) SetupSuite() {

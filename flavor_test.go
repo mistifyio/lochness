@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type FlavorSuite struct {
-	common.Suite
-}
-
 func TestFlavor(t *testing.T) {
 	suite.Run(t, new(FlavorSuite))
+}
+
+type FlavorSuite struct {
+	common.Suite
 }
 
 func (s *FlavorSuite) TestNewFlavor() {
