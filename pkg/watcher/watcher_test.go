@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type WatcherTestSuite struct {
+type WatcherSuite struct {
 	suite.Suite
 	EtcdDir    string
 	EtcdPrefix string
@@ -24,7 +24,11 @@ type WatcherTestSuite struct {
 	Watcher    *watcher.Watcher
 }
 
-func (s *WatcherTestSuite) SetupSuite() {
+func TestWatcher(t *testing.T) {
+	suite.Run(t, new(WatcherSuite))
+}
+
+func (s *WatcherSuite) SetupSuite() {
 	// Start up a test etcd
 	s.EtcdDir, _ = ioutil.TempDir("", "watcherTestEtcd-"+uuid.New())
 	port := 54444
@@ -53,26 +57,22 @@ func (s *WatcherTestSuite) SetupSuite() {
 	s.EtcdPrefix = "/lochness"
 }
 
-func (s *WatcherTestSuite) SetupTest() {
+func (s *WatcherSuite) SetupTest() {
 	s.Watcher, _ = watcher.New(s.EtcdClient)
 }
 
-func (s *WatcherTestSuite) TearDownTest() {
+func (s *WatcherSuite) TearDownTest() {
 	s.NoError(s.Watcher.Close())
 	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
 }
 
-func (s *WatcherTestSuite) TearDownSuite() {
+func (s *WatcherSuite) TearDownSuite() {
 	_ = s.EtcdCmd.Process.Kill()
 	_ = s.EtcdCmd.Wait()
 	_ = os.RemoveAll(s.EtcdDir)
 }
 
-func TestWatcherTestSuite(t *testing.T) {
-	suite.Run(t, new(WatcherTestSuite))
-}
-
-func (s *WatcherTestSuite) prefixKey(key string) string {
+func (s *WatcherSuite) prefixKey(key string) string {
 	return filepath.Join(s.EtcdPrefix, key)
 }
 
@@ -90,14 +90,14 @@ func testMsgFunc(prefix string) func(...interface{}) string {
 	}
 }
 
-func (s *WatcherTestSuite) TestNew() {
+func (s *WatcherSuite) TestNew() {
 	s.NotNil(s.Watcher)
 	watcher, err := watcher.New(nil)
 	s.Error(err)
 	s.Nil(watcher)
 }
 
-func (s *WatcherTestSuite) TestAdd() {
+func (s *WatcherSuite) TestAdd() {
 	tests := []struct {
 		description string
 		prefix      string
@@ -116,7 +116,7 @@ func (s *WatcherTestSuite) TestAdd() {
 	s.Error(s.Watcher.Add(uuid.New()), "after close should fail")
 }
 
-func (s *WatcherTestSuite) TestNextResponse() {
+func (s *WatcherSuite) TestNextResponse() {
 
 	prefixes := make([]string, 5)
 	for i := 0; i < 5; i++ {
@@ -147,14 +147,14 @@ func (s *WatcherTestSuite) TestNextResponse() {
 
 }
 
-func (s *WatcherTestSuite) TestRemove() {
+func (s *WatcherSuite) TestRemove() {
 	prefix := uuid.New()
 	s.Error(s.Watcher.Remove(prefix), "not watched prefix should fail")
 	_ = s.Watcher.Add(prefix)
 	s.NoError(s.Watcher.Remove(prefix), "watched prefix should succeed")
 }
 
-func (s *WatcherTestSuite) TestClose() {
+func (s *WatcherSuite) TestClose() {
 	_ = s.Watcher.Add(uuid.New())
 	s.NoError(s.Watcher.Close())
 	s.NoError(s.Watcher.Close())

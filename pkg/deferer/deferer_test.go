@@ -30,19 +30,19 @@ func (fth *FatalTestHook) Fire(e *log.Entry) error {
 	panic("avoid fatal")
 }
 
-type DefererTestSuite struct {
+type DefererSuite struct {
 	suite.Suite
 }
 
-func TestDefererTestSuite(t *testing.T) {
-	suite.Run(t, new(DefererTestSuite))
+func TestDeferer(t *testing.T) {
+	suite.Run(t, new(DefererSuite))
 }
 
-func (s *DefererTestSuite) TestNewDeferer() {
+func (s *DefererSuite) TestNewDeferer() {
 	s.NotNil(deferer.NewDeferer(nil))
 }
 
-func (s *DefererTestSuite) TestDeferAndRun() {
+func (s *DefererSuite) TestDeferAndRun() {
 
 	results := []int{}
 	expectedResults := []int{4, 3, 7, 6, 5, 2, 1}
@@ -69,7 +69,7 @@ func (s *DefererTestSuite) TestDeferAndRun() {
 	s.Equal(expectedResults, results)
 }
 
-func (s *DefererTestSuite) TestFatal() {
+func (s *DefererSuite) TestFatal() {
 	fatalMsg := "fatal message"
 	results := make([]int, 0)
 	expectedResults := []int{2, 1}
@@ -95,7 +95,7 @@ func (s *DefererTestSuite) TestFatal() {
 	}()
 }
 
-func (s *DefererTestSuite) TestFatalWithFields() {
+func (s *DefererSuite) TestFatalWithFields() {
 	fatalMsg := "fatal message"
 	fatalFields := log.Fields{"foo": "bar"}
 	results := make([]int, 0)

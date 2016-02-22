@@ -8,15 +8,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ReadTestSuite struct {
+type CLISuite struct {
 	suite.Suite
 }
 
-func TestReadTestSuite(t *testing.T) {
-	suite.Run(t, new(ReadTestSuite))
+func TestCLI(t *testing.T) {
+	suite.Run(t, new(CLISuite))
 }
 
-func (s *ReadTestSuite) TestRead() {
+func (s *CLISuite) TestRead() {
 	reader := strings.NewReader("")
 	s.Len(cli.Read(reader), 0)
 	reader = strings.NewReader("foo\nbar\nbaz\nbang")

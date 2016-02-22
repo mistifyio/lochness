@@ -13,20 +13,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type SubnetTestSuite struct {
+type SubnetSuite struct {
 	common.Suite
 }
 
-func TestSubnetTestSuite(t *testing.T) {
-	suite.Run(t, new(SubnetTestSuite))
+func TestSubnet(t *testing.T) {
+	suite.Run(t, new(SubnetSuite))
 }
 
-func (s *SubnetTestSuite) TestNewSubnet() {
+func (s *SubnetSuite) TestNewSubnet() {
 	subnet := s.Context.NewSubnet()
 	s.NotNil(uuid.Parse(subnet.ID))
 }
 
-func (s *SubnetTestSuite) TestSubnet() {
+func (s *SubnetSuite) TestSubnet() {
 	subnet := s.NewSubnet()
 
 	tests := []struct {
@@ -53,7 +53,7 @@ func (s *SubnetTestSuite) TestSubnet() {
 	}
 }
 
-func (s *SubnetTestSuite) TestRefresh() {
+func (s *SubnetSuite) TestRefresh() {
 	subnet := s.NewSubnet()
 	subnetCopy := &lochness.Subnet{}
 	*subnetCopy = *subnet
@@ -70,7 +70,7 @@ func (s *SubnetTestSuite) TestRefresh() {
 	s.Error(NewSubnet.Refresh(), "unsaved subnet refresh should fail")
 }
 
-func (s *SubnetTestSuite) TestJSON() {
+func (s *SubnetSuite) TestJSON() {
 	subnet := s.NewSubnet()
 
 	subnetBytes, err := json.Marshal(subnet)
@@ -83,7 +83,7 @@ func (s *SubnetTestSuite) TestJSON() {
 	s.Equal(subnet.StartRange, subnetFromJSON.StartRange)
 }
 
-func (s *SubnetTestSuite) TestValidate() {
+func (s *SubnetSuite) TestValidate() {
 	tests := []struct {
 		description string
 		id          string
@@ -121,7 +121,7 @@ func (s *SubnetTestSuite) TestValidate() {
 	}
 }
 
-func (s *SubnetTestSuite) TestSave() {
+func (s *SubnetSuite) TestSave() {
 	subnet := s.NewSubnet()
 	subnetCopy := &lochness.Subnet{}
 	*subnetCopy = *subnet
@@ -136,7 +136,7 @@ func (s *SubnetTestSuite) TestSave() {
 	s.Error(NewSubnet.Refresh(), "unsaved subnet refresh should fail")
 }
 
-func (s *SubnetTestSuite) TestDelete() {
+func (s *SubnetSuite) TestDelete() {
 	subnet := s.NewSubnet()
 	network := s.NewNetwork()
 	_ = network.AddSubnet(subnet)
@@ -167,7 +167,7 @@ func (s *SubnetTestSuite) TestDelete() {
 	}
 }
 
-func (s *SubnetTestSuite) TestAvailableAddresses() {
+func (s *SubnetSuite) TestAvailableAddresses() {
 	subnet := s.NewSubnet()
 	addresses := subnet.AvailableAddresses()
 	s.Len(addresses, 9, "all addresses should be available")
@@ -175,7 +175,7 @@ func (s *SubnetTestSuite) TestAvailableAddresses() {
 	s.Equal(subnet.EndRange, addresses[len(addresses)-1], "should end at the end of the array")
 }
 
-func (s *SubnetTestSuite) TestReserveAddress() {
+func (s *SubnetSuite) TestReserveAddress() {
 	subnet := s.NewSubnet()
 	n := len(subnet.AvailableAddresses())
 	for i := 0; i <= n; i++ {
@@ -193,7 +193,7 @@ func (s *SubnetTestSuite) TestReserveAddress() {
 	}
 }
 
-func (s *SubnetTestSuite) TestReleaseAddress() {
+func (s *SubnetSuite) TestReleaseAddress() {
 	subnet := s.NewSubnet()
 	ip, _ := subnet.ReserveAddress("foobar")
 	n := len(subnet.AvailableAddresses())
@@ -205,7 +205,7 @@ func (s *SubnetTestSuite) TestReleaseAddress() {
 	s.Len(subnet.AvailableAddresses(), n+1)
 }
 
-func (s *SubnetTestSuite) TestAddresses() {
+func (s *SubnetSuite) TestAddresses() {
 	subnet := s.NewSubnet()
 	addresses := subnet.AvailableAddresses()
 
@@ -223,7 +223,7 @@ func (s *SubnetTestSuite) TestAddresses() {
 	}
 }
 
-func (s *SubnetTestSuite) TestForEachSubnet() {
+func (s *SubnetSuite) TestForEachSubnet() {
 	subnet := s.NewSubnet()
 	subnet2 := s.NewSubnet()
 	expectedFound := map[string]bool{

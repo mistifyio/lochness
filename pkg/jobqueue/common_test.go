@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CommonTestSuite struct {
+type JobQCommonSuite struct {
 	suite.Suite
 	EtcdDir    string
 	EtcdPrefix string
@@ -26,7 +26,7 @@ type CommonTestSuite struct {
 	Client     *jobqueue.Client
 }
 
-func (s *CommonTestSuite) SetupSuite() {
+func (s *JobQCommonSuite) SetupSuite() {
 	// Start up a test etcd
 	s.EtcdDir, _ = ioutil.TempDir("", "jobqueueTestEtcd-"+uuid.New())
 	port := 54333
@@ -55,7 +55,7 @@ func (s *CommonTestSuite) SetupSuite() {
 	s.EtcdPrefix = "/lochness"
 }
 
-func (s *CommonTestSuite) SetupTest() {
+func (s *JobQCommonSuite) SetupTest() {
 	// Start up a test beanstalk
 	bPort := "4321"
 	s.BStalkCmd = exec.Command("beanstalkd", "-p", bPort)
@@ -68,24 +68,24 @@ func (s *CommonTestSuite) SetupTest() {
 	s.Client = client
 }
 
-func (s *CommonTestSuite) TearDownTest() {
+func (s *JobQCommonSuite) TearDownTest() {
 	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
 
 	_ = s.BStalkCmd.Process.Kill()
 	_ = s.BStalkCmd.Wait()
 }
 
-func (s *CommonTestSuite) TearDownSuite() {
+func (s *JobQCommonSuite) TearDownSuite() {
 	_ = s.EtcdCmd.Process.Kill()
 	_ = s.EtcdCmd.Wait()
 	_ = os.RemoveAll(s.EtcdDir)
 }
 
-func (s *CommonTestSuite) prefixKey(key string) string {
+func (s *JobQCommonSuite) prefixKey(key string) string {
 	return filepath.Join(s.EtcdPrefix, key)
 }
 
-func (s *CommonTestSuite) newJob(action string) *jobqueue.Job {
+func (s *JobQCommonSuite) newJob(action string) *jobqueue.Job {
 	if action == "" {
 		action = "restart"
 	}

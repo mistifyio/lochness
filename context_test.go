@@ -9,19 +9,19 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ContextTestSuite struct {
+type ContextSuite struct {
 	common.Suite
 }
 
-func TestContextTestSuite(t *testing.T) {
-	suite.Run(t, new(ContextTestSuite))
+func TestContext(t *testing.T) {
+	suite.Run(t, new(ContextSuite))
 }
 
-func (s *ContextTestSuite) TestNewContext() {
+func (s *ContextSuite) TestNewContext() {
 	s.NotNil(s.Context)
 }
 
-func (s *ContextTestSuite) TestIsKeyNotFound() {
+func (s *ContextSuite) TestIsKeyNotFound() {
 	_, err := s.EtcdClient.Get(s.PrefixKey("some-randon-non-existent-key"), false, false)
 
 	s.Error(err)

@@ -11,20 +11,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type VLANGroupTestSuite struct {
+type VLANGroupSuite struct {
 	common.Suite
 }
 
-func TestVLANGroupTestSuite(t *testing.T) {
-	suite.Run(t, new(VLANGroupTestSuite))
+func TestVLANGroup(t *testing.T) {
+	suite.Run(t, new(VLANGroupSuite))
 }
 
-func (s *VLANGroupTestSuite) TestNewVLANGroup() {
+func (s *VLANGroupSuite) TestNewVLANGroup() {
 	vlangroup := s.Context.NewVLANGroup()
 	s.NotNil(uuid.Parse(vlangroup.ID))
 }
 
-func (s *VLANGroupTestSuite) TestVLANGroup() {
+func (s *VLANGroupSuite) TestVLANGroup() {
 	vlangroup := s.NewVLANGroup()
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func (s *VLANGroupTestSuite) TestVLANGroup() {
 	}
 }
 
-func (s *VLANGroupTestSuite) TestRefresh() {
+func (s *VLANGroupSuite) TestRefresh() {
 	vlangroup := s.NewVLANGroup()
 	vlangroupCopy := &lochness.VLANGroup{}
 	*vlangroupCopy = *vlangroup
@@ -65,7 +65,7 @@ func (s *VLANGroupTestSuite) TestRefresh() {
 	s.Error(NewVLANGroup.Refresh(), "unsaved vlangroup refresh should fail")
 }
 
-func (s *VLANGroupTestSuite) TestValidate() {
+func (s *VLANGroupSuite) TestValidate() {
 	tests := []struct {
 		description string
 		ID          string
@@ -88,7 +88,7 @@ func (s *VLANGroupTestSuite) TestValidate() {
 	}
 }
 
-func (s *VLANGroupTestSuite) TestSave() {
+func (s *VLANGroupSuite) TestSave() {
 	goodVLANGroup := s.Context.NewVLANGroup()
 
 	clobberVLANGroup := *goodVLANGroup
@@ -115,7 +115,7 @@ func (s *VLANGroupTestSuite) TestSave() {
 	}
 }
 
-func (s *VLANGroupTestSuite) TestDestroy() {
+func (s *VLANGroupSuite) TestDestroy() {
 	vlangroup := s.NewVLANGroup()
 	vlan := s.NewVLAN()
 	_ = vlangroup.AddVLAN(vlan)
@@ -147,7 +147,7 @@ func (s *VLANGroupTestSuite) TestDestroy() {
 
 }
 
-func (s *VLANGroupTestSuite) TestForEachVLANGroup() {
+func (s *VLANGroupSuite) TestForEachVLANGroup() {
 	vlangroup := s.NewVLANGroup()
 	vlangroup2 := s.NewVLANGroup()
 	expectedFound := map[string]bool{
@@ -172,7 +172,7 @@ func (s *VLANGroupTestSuite) TestForEachVLANGroup() {
 	s.Equal(returnErr, err)
 }
 
-func (s *VLANGroupTestSuite) TestAddVLAN() {
+func (s *VLANGroupSuite) TestAddVLAN() {
 	tests := []struct {
 		description string
 		vg          *lochness.VLANGroup
@@ -200,7 +200,7 @@ func (s *VLANGroupTestSuite) TestAddVLAN() {
 	}
 }
 
-func (s *VLANGroupTestSuite) TestRemoveVLAN() {
+func (s *VLANGroupSuite) TestRemoveVLAN() {
 	vlan := s.NewVLAN()
 	vlanGroup := s.NewVLANGroup()
 	_ = vlanGroup.AddVLAN(vlan)
@@ -235,7 +235,7 @@ func (s *VLANGroupTestSuite) TestRemoveVLAN() {
 	}
 }
 
-func (s *VLANGroupTestSuite) TestVLANs() {
+func (s *VLANGroupSuite) TestVLANs() {
 	vlanGroup := s.NewVLANGroup()
 	_ = vlanGroup.AddVLAN(s.NewVLAN())
 

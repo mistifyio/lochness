@@ -9,21 +9,21 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type JobTestSuite struct {
-	CommonTestSuite
+type JobSuite struct {
+	JobQCommonSuite
 }
 
-func TestJobTestSuite(t *testing.T) {
-	suite.Run(t, new(JobTestSuite))
+func TestJobSuite(t *testing.T) {
+	suite.Run(t, new(JobSuite))
 }
 
-func (s *JobTestSuite) TestNewJob() {
+func (s *JobSuite) TestNewJob() {
 	j := s.Client.NewJob()
 	s.NotNil(uuid.Parse(j.ID))
 	s.Equal(jobqueue.JobStatusNew, j.Status)
 }
 
-func (s *JobTestSuite) TestValidate() {
+func (s *JobSuite) TestValidate() {
 	tests := []struct {
 		description string
 		id          string
@@ -56,7 +56,7 @@ func (s *JobTestSuite) TestValidate() {
 	}
 }
 
-func (s *JobTestSuite) TestSave() {
+func (s *JobSuite) TestSave() {
 	goodJob := s.Client.NewJob()
 	goodJob.Action = "restart"
 	goodJob.Guest = uuid.New()
@@ -87,7 +87,7 @@ func (s *JobTestSuite) TestSave() {
 	}
 }
 
-func (s *JobTestSuite) TestRefresh() {
+func (s *JobSuite) TestRefresh() {
 	job := s.Client.NewJob()
 	jobCopy := &jobqueue.Job{}
 	*jobCopy = *job
@@ -104,7 +104,7 @@ func (s *JobTestSuite) TestRefresh() {
 	s.Error(newJob.Refresh(), "unsaved job refresh should fail")
 }
 
-func (s *JobTestSuite) TestJob() {
+func (s *JobSuite) TestJob() {
 	job := s.newJob("")
 
 	tests := []struct {

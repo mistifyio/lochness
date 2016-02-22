@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type MistifyAgentTestSuite struct {
+type MistifyAgentSuite struct {
 	common.Suite
 	agent      *lochness.MistifyAgent
 	api        *httptest.Server
@@ -27,7 +27,11 @@ type MistifyAgentTestSuite struct {
 	hypervisor *lochness.Hypervisor
 }
 
-func (s *MistifyAgentTestSuite) SetupSuite() {
+func TestMistifyAgent(t *testing.T) {
+	suite.Run(t, new(MistifyAgentSuite))
+}
+
+func (s *MistifyAgentSuite) SetupSuite() {
 	s.Suite.SetupSuite()
 
 	s.api = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +55,7 @@ func (s *MistifyAgentTestSuite) SetupSuite() {
 	}))
 }
 
-func (s *MistifyAgentTestSuite) SetupTest() {
+func (s *MistifyAgentSuite) SetupTest() {
 	s.Suite.SetupTest()
 	u, _ := url.Parse(s.api.URL)
 	host, sPort, _ := mnet.SplitHostPort(u.Host)
@@ -62,20 +66,16 @@ func (s *MistifyAgentTestSuite) SetupTest() {
 	_ = s.hypervisor.Save()
 }
 
-func (s *MistifyAgentTestSuite) TearDownSuite() {
+func (s *MistifyAgentSuite) TearDownSuite() {
 	s.api.Close()
 	s.Suite.TearDownSuite()
 }
 
-func TestMistifyAgentTestSuite(t *testing.T) {
-	suite.Run(t, new(MistifyAgentTestSuite))
-}
-
-func (s *MistifyAgentTestSuite) TestNewMistifyAgent() {
+func (s *MistifyAgentSuite) TestNewMistifyAgent() {
 	s.NotNil(s.agent)
 }
 
-func (s *MistifyAgentTestSuite) TestGetGuest() {
+func (s *MistifyAgentSuite) TestGetGuest() {
 	tests := []struct {
 		description string
 		id          string
@@ -100,7 +100,7 @@ func (s *MistifyAgentTestSuite) TestGetGuest() {
 	}
 }
 
-func (s *MistifyAgentTestSuite) TestCreateGuest() {
+func (s *MistifyAgentSuite) TestCreateGuest() {
 	tests := []struct {
 		description string
 		id          string
@@ -125,7 +125,7 @@ func (s *MistifyAgentTestSuite) TestCreateGuest() {
 	}
 }
 
-func (s *MistifyAgentTestSuite) TestDeleteGuest() {
+func (s *MistifyAgentSuite) TestDeleteGuest() {
 	tests := []struct {
 		description string
 		id          string
@@ -150,7 +150,7 @@ func (s *MistifyAgentTestSuite) TestDeleteGuest() {
 	}
 }
 
-func (s *MistifyAgentTestSuite) TestGuestAction() {
+func (s *MistifyAgentSuite) TestGuestAction() {
 	tests := []struct {
 		description string
 		id          string
@@ -175,7 +175,7 @@ func (s *MistifyAgentTestSuite) TestGuestAction() {
 	}
 }
 
-func (s *MistifyAgentTestSuite) TestCheckJobStatus() {
+func (s *MistifyAgentSuite) TestCheckJobStatus() {
 	tests := []struct {
 		description string
 		guestID     string
@@ -202,7 +202,7 @@ func (s *MistifyAgentTestSuite) TestCheckJobStatus() {
 	}
 }
 
-func (s *MistifyAgentTestSuite) TestFetchImage() {
+func (s *MistifyAgentSuite) TestFetchImage() {
 	tests := []struct {
 		description string
 		id          string
