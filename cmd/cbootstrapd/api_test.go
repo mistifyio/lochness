@@ -102,7 +102,6 @@ func (s *APISuite) SetupTest() {
 	s.Hypervisor = s.NewHypervisor()
 	_ = s.Hypervisor.SetConfig("version", "0.3.0")
 	_ = s.Hypervisor.SetConfig("ASDF", "qwerty")
-	time.Sleep(100 * time.Millisecond)
 }
 
 func (s *APISuite) TearDownSuite() {
@@ -146,7 +145,9 @@ func (s *APISuite) TestImageGet() {
 	for _, version := range s.Versions {
 		for _, filename := range s.ImageNames {
 			resp, err := http.Get(fmt.Sprintf("%s/images/%s/%s", s.APIURL, version, filename))
-			s.NoError(err)
+			if !s.NoError(err) {
+				continue
+			}
 			defer logx.LogReturnedErr(resp.Body.Close, nil, "failed to close resp body")
 
 			bodyB, _ := ioutil.ReadAll(resp.Body)

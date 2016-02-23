@@ -118,7 +118,9 @@ func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 		h.MAC = a
 	}
 
-	h.Config = make(map[string]string)
+	if h.Config == nil {
+		h.Config = make(map[string]string)
+	}
 
 	return nil
 
