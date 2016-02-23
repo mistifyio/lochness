@@ -1,146 +1,249 @@
 package lochness_test
 
 import (
+	"encoding/json"
+	"errors"
 	"net"
-	"strings"
 	"testing"
 
-	h "github.com/bakins/test-helpers"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNewSubnet(t *testing.T) {
-	c := newContext(t)
-	s := c.NewSubnet()
-	h.Equals(t, 36, len(s.ID))
+func TestSubnet(t *testing.T) {
+	suite.Run(t, new(SubnetSuite))
 }
 
-func newSubnet(t *testing.T) *lochness.Subnet {
-	c := newContext(t)
-	s := c.NewSubnet()
-
-	var err error
-	_, s.CIDR, err = net.ParseCIDR("10.10.10.0/24")
-	h.Ok(t, err)
-
-	s.StartRange = net.IPv4(10, 10, 10, 10)
-	s.EndRange = net.IPv4(10, 10, 10, 100)
-
-	err = s.Save()
-	h.Ok(t, err)
-
-	return s
+type SubnetSuite struct {
+	common.Suite
 }
 
-func removeSubnet(t *testing.T, s *lochness.Subnet) {
-	err := s.Delete()
-	h.Ok(t, err)
+func (s *SubnetSuite) TestNewSubnet() {
+	subnet := s.Context.NewSubnet()
+	s.NotNil(uuid.Parse(subnet.ID))
 }
 
-func TestSubnetSaveFail(t *testing.T) {
-	s := newSubnet(t)
-	defer removeSubnet(t, s)
+func (s *SubnetSuite) TestSubnet() {
+	subnet := s.NewSubnet()
 
-	s.CIDR = nil
-	err := s.Save()
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "CIDR cannot be nil"), "unexpected error message")
+	tests := []struct {
+		description string
+		ID          string
+		expectedErr bool
+	}{
+		{"missing id", "", true},
+		{"invalid ID", "adf", true},
+		{"nonexistant ID", uuid.New(), true},
+		{"real ID", subnet.ID, false},
+	}
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		n, err := s.Context.Subnet(test.ID)
+		if test.expectedErr {
+			s.Error(err, msg("lookup should fail"))
+			s.Nil(n, msg("failure shouldn't return a subnet"))
+		} else {
+			s.NoError(err, msg("lookup should succeed"))
+			s.True(assert.ObjectsAreEqual(subnet, n), msg("success should return correct data"))
+		}
+	}
 }
 
-func TestSubnetSave(t *testing.T) {
-	s := newSubnet(t)
-	defer removeSubnet(t, s)
+func (s *SubnetSuite) TestRefresh() {
+	subnet := s.NewSubnet()
+	subnetCopy := &lochness.Subnet{}
+	*subnetCopy = *subnet
 
-	s.Metadata["foo"] = "bar"
-	err := s.Save()
-	h.Ok(t, err)
+	network := s.NewNetwork()
+	_ = network.AddSubnet(subnet)
+	_, _ = subnet.ReserveAddress("foobar")
+
+	_ = subnet.Save()
+	s.NoError(subnetCopy.Refresh(), "refresh existing should succeed")
+	s.True(assert.ObjectsAreEqual(subnet, subnetCopy), "refresh should pull new data")
+
+	NewSubnet := s.Context.NewSubnet()
+	s.Error(NewSubnet.Refresh(), "unsaved subnet refresh should fail")
 }
 
-func TestSubnetSaveInvalidRange(t *testing.T) {
-	s := newSubnet(t)
-	defer removeSubnet(t, s)
+func (s *SubnetSuite) TestJSON() {
+	subnet := s.NewSubnet()
 
-	s.StartRange = net.IPv4(10, 10, 11, 10)
-	err := s.Save()
+	subnetBytes, err := json.Marshal(subnet)
+	s.NoError(err)
 
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "does not contain"), "unexpected error message")
-
+	subnetFromJSON := &lochness.Subnet{}
+	s.NoError(json.Unmarshal(subnetBytes, subnetFromJSON))
+	s.Equal(subnet.ID, subnetFromJSON.ID)
+	s.Equal(subnet.CIDR, subnetFromJSON.CIDR)
+	s.Equal(subnet.StartRange, subnetFromJSON.StartRange)
 }
 
-func TestSubnetAddresses(t *testing.T) {
-	s := newSubnet(t)
-	defer removeSubnet(t, s)
+func (s *SubnetSuite) TestValidate() {
+	tests := []struct {
+		description string
+		id          string
+		cidr        string
+		start       string
+		end         string
+		expectedErr bool
+	}{
+		{"missing ID", "", "192.168.100.1/24", "192.168.100.2", "192.168.100.3", true},
+		{"invalid ID", "asdf", "192.168.100.1/24", "192.168.100.2", "192.168.100.3", true},
+		{"missing cidr ", uuid.New(), "", "192.168.100.2", "192.168.100.3", true},
+		{"missing start", uuid.New(), "192.168.100.1/24", "", "192.168.100.3", true},
+		{"outside range start", uuid.New(), "192.168.100.1/24", "192.168.200.2", "192.168.100.3", true},
+		{"missing end", uuid.New(), "192.168.100.1/24", "192.168.100.2", "", true},
+		{"outside range end", uuid.New(), "192.168.100.1/24", "192.168.100.2", "192.168.200.3", true},
+		{"end before start", uuid.New(), "192.168.100.1/24", "192.168.100.3", "192.168.100.2", true},
+		{"all fields", uuid.New(), "192.168.100.1/24", "192.168.100.2", "192.168.100.3", false},
+	}
 
-	h.Equals(t, 0, len(s.Addresses()))
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		sub := &lochness.Subnet{
+			ID:         test.id,
+			StartRange: net.ParseIP(test.start),
+			EndRange:   net.ParseIP(test.end),
+		}
+		_, sub.CIDR, _ = net.ParseCIDR(test.cidr)
+
+		err := sub.Validate()
+		if test.expectedErr {
+			s.Error(err, msg("should be invalid"))
+		} else {
+			s.NoError(err, msg("should be valid"))
+		}
+	}
 }
 
-func TestSubnetAvailibleAddresses(t *testing.T) {
-	s := newSubnet(t)
-	defer removeSubnet(t, s)
-	avail := s.AvailibleAddresses()
-	h.Equals(t, 91, len(avail))
+func (s *SubnetSuite) TestSave() {
+	subnet := s.NewSubnet()
+	subnetCopy := &lochness.Subnet{}
+	*subnetCopy = *subnet
+	network := s.NewNetwork()
+	_ = network.AddSubnet(subnet)
+
+	_ = subnet.Save()
+	s.NoError(subnetCopy.Refresh(), "refresh existing should succeed")
+	s.True(assert.ObjectsAreEqual(subnet, subnetCopy), "refresh should pull new data")
+
+	NewSubnet := s.Context.NewSubnet()
+	s.Error(NewSubnet.Refresh(), "unsaved subnet refresh should fail")
 }
 
-func reserveAddress(t *testing.T, s *lochness.Subnet) net.IP {
-	ip, err := s.ReserveAddress("fake")
-	h.Ok(t, err)
+func (s *SubnetSuite) TestDelete() {
+	subnet := s.NewSubnet()
+	network := s.NewNetwork()
+	_ = network.AddSubnet(subnet)
 
-	h.Assert(t, strings.Contains(ip.String(), "10.10.10."), "unexpected ip address")
+	invalidSub := s.Context.NewSubnet()
+	invalidSub.ID = "asdf"
 
-	h.Equals(t, 90, len(s.AvailibleAddresses()))
+	tests := []struct {
+		description string
+		sub         *lochness.Subnet
+		expectedErr bool
+	}{
+		{"invalid subnet", invalidSub, true},
+		{"existing subnet", subnet, false},
+		{"nonexistant subnet", s.Context.NewSubnet(), true},
+	}
 
-	h.Equals(t, 1, len(s.Addresses()))
-
-	// make sure change persists
-	err = s.Refresh()
-	h.Ok(t, err)
-
-	h.Equals(t, 90, len(s.AvailibleAddresses()))
-
-	return ip
-
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		err := test.sub.Delete()
+		if test.expectedErr {
+			s.Error(err, msg("should be invalid"))
+		} else {
+			s.NoError(err, msg("should be valid"))
+			_ = network.Refresh()
+			s.Len(network.Subnets(), 0, msg("should remove subnet link"))
+		}
+	}
 }
 
-func TestSubnetReserveAddress(t *testing.T) {
-	s := newSubnet(t)
-	defer removeSubnet(t, s)
-
-	_ = reserveAddress(t, s)
+func (s *SubnetSuite) TestAvailableAddresses() {
+	subnet := s.NewSubnet()
+	addresses := subnet.AvailableAddresses()
+	s.Len(addresses, 9, "all addresses should be available")
+	s.Equal(subnet.StartRange, addresses[0], "should start at the beginning of the range")
+	s.Equal(subnet.EndRange, addresses[len(addresses)-1], "should end at the end of the array")
 }
 
-func TestSubnetReleaseAddress(t *testing.T) {
-	s := newSubnet(t)
-	defer removeSubnet(t, s)
-
-	ip := reserveAddress(t, s)
-	err := s.ReleaseAddress(ip)
-	h.Ok(t, err)
-
-	h.Equals(t, 91, len(s.AvailibleAddresses()))
-
-	// make sure change persists
-	err = s.Refresh()
-	h.Ok(t, err)
-
-	h.Equals(t, 91, len(s.AvailibleAddresses()))
-
-	h.Equals(t, 0, len(s.Addresses()))
-
+func (s *SubnetSuite) TestReserveAddress() {
+	subnet := s.NewSubnet()
+	n := len(subnet.AvailableAddresses())
+	for i := 0; i <= n; i++ {
+		msg := testMsgFunc("attempt " + string(i))
+		ip, err := subnet.ReserveAddress("foo")
+		if i < n {
+			s.NoError(err, msg("should succeed when addresses available"))
+			s.NotNil(ip, msg("should return ip when addresses available"))
+			s.Len(subnet.AvailableAddresses(), n-i-1, msg("should update available addresses"))
+		} else {
+			s.Error(err, msg("should fail when no addresses available"))
+			s.Nil(ip, msg("should not return ip when no addresses available"))
+			s.Len(subnet.AvailableAddresses(), 0, msg("should have no available addresses"))
+		}
+	}
 }
 
-func TestSubnetsAlias(t *testing.T) {
-	_ = lochness.Subnets([]*lochness.Subnet{})
+func (s *SubnetSuite) TestReleaseAddress() {
+	subnet := s.NewSubnet()
+	ip, _ := subnet.ReserveAddress("foobar")
+	n := len(subnet.AvailableAddresses())
+
+	s.Error(subnet.ReleaseAddress(net.ParseIP("192.168.0.1")))
+	s.Len(subnet.AvailableAddresses(), n)
+
+	s.NoError(subnet.ReleaseAddress(ip))
+	s.Len(subnet.AvailableAddresses(), n+1)
 }
 
-func TestSubnetWithBadID(t *testing.T) {
-	c := newContext(t)
-	_, err := c.Subnet("")
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+func (s *SubnetSuite) TestAddresses() {
+	subnet := s.NewSubnet()
+	addresses := subnet.AvailableAddresses()
 
-	_, err = c.Subnet("foo")
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
+	ip, _ := subnet.ReserveAddress("foobar")
 
+	addressMap := subnet.Addresses()
+	for _, address := range addresses {
+		val, ok := addressMap[address.String()]
+		if ip.Equal(address) {
+			s.True(ok)
+			s.Equal("foobar", val)
+		} else {
+			s.False(ok)
+		}
+	}
+}
+
+func (s *SubnetSuite) TestForEachSubnet() {
+	subnet := s.NewSubnet()
+	subnet2 := s.NewSubnet()
+	expectedFound := map[string]bool{
+		subnet.ID:  true,
+		subnet2.ID: true,
+	}
+
+	resultFound := make(map[string]bool)
+
+	err := s.Context.ForEachSubnet(func(sub *lochness.Subnet) error {
+		resultFound[sub.ID] = true
+		return nil
+	})
+	s.NoError(err)
+	s.True(assert.ObjectsAreEqual(expectedFound, resultFound))
+
+	returnErr := errors.New("an error")
+	err = s.Context.ForEachSubnet(func(sub *lochness.Subnet) error {
+		return returnErr
+	})
+	s.Error(err)
+	s.Equal(returnErr, err)
 }

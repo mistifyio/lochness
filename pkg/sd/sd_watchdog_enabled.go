@@ -9,6 +9,7 @@ import (
 
 // WatchdogEnabled checks whether the service manager expects watchdog keep-alive notifications and
 // returns the timeout value in µs. A timeout value of 0 signifies no notifications are expected.
+// http://www.freedesktop.org/software/systemd/man/sd_watchdog_enabled.html
 func WatchdogEnabled() (time.Duration, error) {
 	spid := os.Getenv("WATCHDOG_PID")
 	if spid != "" {

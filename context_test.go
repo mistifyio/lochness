@@ -4,51 +4,29 @@ import (
 	"errors"
 	"testing"
 
-	h "github.com/bakins/test-helpers"
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
+	"github.com/stretchr/testify/suite"
 )
 
-func newContext(t *testing.T) *lochness.Context {
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
-	if !e.SyncCluster() {
-		t.Fatal("cannot sync cluster. make sure etcd is running at http://127.0.0.1:4001")
-	}
-
-	c := lochness.NewContext(e)
-
-	return c
+func TestContext(t *testing.T) {
+	suite.Run(t, new(ContextSuite))
 }
 
-func TestNewContext(t *testing.T) {
-	_ = newContext(t)
+type ContextSuite struct {
+	common.Suite
 }
 
-func contextCleanup(t *testing.T) {
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
-	if !e.SyncCluster() {
-		t.Fatal("cannot sync cluster. make sure etcd is running at http://127.0.0.1:4001")
-	}
-
-	_, err := e.Delete("lochness", true)
-	if !lochness.IsKeyNotFound(err) {
-		h.Ok(t, err)
-	}
+func (s *ContextSuite) TestNewContext() {
+	s.NotNil(s.Context)
 }
 
-func TestIsKeyNotFound(t *testing.T) {
-	e := etcd.NewClient([]string{"http://127.0.0.1:4001"})
-	newContext(t)
-	defer contextCleanup(t)
+func (s *ContextSuite) TestIsKeyNotFound() {
+	_, err := s.EtcdClient.Get(s.PrefixKey("some-randon-non-existent-key"), false, false)
 
-	_, err := e.Get("lochness/some-randon-non-existent-key", false, false)
+	s.Error(err)
+	s.True(lochness.IsKeyNotFound(err))
 
-	if !lochness.IsKeyNotFound(err) {
-		t.Fatalf("was expecting a KeyNotFound error, got: %#v\n", err)
-	}
-
-	err = errors.New("lochness/some-random-non-key-not-found-error")
-	if lochness.IsKeyNotFound(err) {
-		t.Fatal("got unexpected positive KeyNotFound error for err:", err)
-	}
+	err = errors.New("some-random-non-key-not-found-error")
+	s.False(lochness.IsKeyNotFound(err))
 }

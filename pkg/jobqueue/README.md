@@ -89,6 +89,20 @@ func (c *Client) NextWorkTask() (*Task, error)
 ```
 NextWorkTask returns the next task from the work tube
 
+#### func (*Client) StatsCreate
+
+```go
+func (c *Client) StatsCreate() (map[string]string, error)
+```
+StatsCreate returns the stats for the create queue
+
+#### func (*Client) StatsWork
+
+```go
+func (c *Client) StatsWork() (map[string]string, error)
+```
+StatsWork returns the stats for the work queue
+
 #### type Job
 
 ```go

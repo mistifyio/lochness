@@ -78,9 +78,7 @@ func main() {
 		mmw:     mmw.New(m),
 	}
 
-	if err := Run(port, ctx, jobQueue, mctx); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Fatal("failed to run server")
-	}
+	server := Run(port, ctx, jobQueue, mctx)
+	// Block until the server is stopped
+	<-server.StopChan()
 }

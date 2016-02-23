@@ -2,6 +2,7 @@ package lochness
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 
 	"github.com/coreos/go-etcd/etcd"
@@ -94,13 +95,24 @@ func (f *Flavor) Refresh() error {
 
 // Validate ensures a Flavor has reasonable data. It currently does nothing.
 func (f *Flavor) Validate() error {
-	// do validation stuff...
+	if f.ID == "" {
+		return errors.New("flavor ID required")
+	}
+	if uuid.Parse(f.ID) == nil {
+		return errors.New("flavor ID must be uuid")
+	}
+
+	if f.Image == "" {
+		return errors.New("flavor image required")
+	}
+	if uuid.Parse(f.Image) == nil {
+		return errors.New("flavor image must be uuid")
+	}
 	return nil
 }
 
 // Save persists a Flavor.  It will call Validate.
 func (f *Flavor) Save() error {
-
 	if err := f.Validate(); err != nil {
 		return err
 	}

@@ -88,9 +88,11 @@ func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 	if data.ID != "" {
 		h.ID = data.ID
 	}
+
 	if data.Metadata != nil {
 		h.Metadata = data.Metadata
 	}
+
 	if data.IP != nil {
 		h.IP = data.IP
 	}
@@ -114,6 +116,10 @@ func (h *Hypervisor) UnmarshalJSON(input []byte) error {
 		}
 
 		h.MAC = a
+	}
+
+	if h.Config == nil {
+		h.Config = make(map[string]string)
 	}
 
 	return nil
@@ -226,9 +232,9 @@ func memory() (uint64, error) {
 }
 
 // TODO: parameterize this
-func disk() (uint64, error) {
+func disk(path string) (uint64, error) {
 	stat := &syscall.Statfs_t{}
-	err := syscall.Statfs("/mistify/guests", stat)
+	err := syscall.Statfs(path, stat)
 	return uint64(stat.Bsize) * stat.Bavail * 80 / 100 / 1024 / 1024, err
 }
 
@@ -308,7 +314,9 @@ func (h *Hypervisor) VerifyOnHV() error {
 	return nil
 }
 
-// calcGuestsUsage calculates gutes usage
+// calcGuestsUsage calculates total resource usage of managed guests. Note that
+// CPU "usage" is intentionally ignored as cores are not directly allocated to
+// guests.
 func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	usage := Resources{}
 	err := h.ForEachGuest(func(guest *Guest) error {
@@ -338,7 +346,11 @@ func (h *Hypervisor) UpdateResources() error {
 	if err != nil {
 		return err
 	}
-	d, err := disk()
+	guestDiskDir, ok := h.Config["guestDiskDir"]
+	if !ok {
+		guestDiskDir = "/mistify/guests"
+	}
+	d, err := disk(guestDiskDir)
 	if err != nil {
 		return err
 	}
@@ -416,6 +428,20 @@ func (h *Hypervisor) subnetKey(s *Subnet) string {
 
 // AddSubnet adds a subnet to a Hypervisor.
 func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
+	// Make sure the hypervisor exists
+	if h.modifiedIndex == 0 {
+		if err := h.Refresh(); err != nil {
+			return err
+		}
+	}
+
+	// Make sure the subnet exists
+	if s.modifiedIndex == 0 {
+		if err := s.Refresh(); err != nil {
+			return err
+		}
+	}
+
 	_, err := h.context.etcd.Set(filepath.Join(h.subnetKey(s)), bridge, 0)
 	if err == nil {
 		h.subnets[s.ID] = bridge
@@ -449,6 +475,7 @@ func (h *Hypervisor) Heartbeat(ttl time.Duration) error {
 		return err
 	}
 
+	h.alive = true
 	v := time.Now().String()
 	_, err := h.context.etcd.Set(h.heartbeatKey(), v, uint64(ttl.Seconds()))
 	return err
@@ -491,7 +518,7 @@ LOOP:
 				if err != nil {
 					return err
 				}
-				avail := subnet.AvailibleAddresses()
+				avail := subnet.AvailableAddresses()
 				if len(avail) > 0 {
 					s = subnet
 					bridge = br
@@ -536,6 +563,10 @@ LOOP:
 
 // RemoveGuest removes a guest from the hypervisor. Also releases the IP
 func (h *Hypervisor) RemoveGuest(g *Guest) error {
+	if g.HypervisorID != h.ID {
+		return errors.New("guest does not belong to hypervisor")
+	}
+
 	subnet, err := h.context.Subnet(g.SubnetID)
 	if err != nil {
 		return err
@@ -556,6 +587,15 @@ func (h *Hypervisor) RemoveGuest(g *Guest) error {
 	if err := g.Save(); err != nil {
 		return err
 	}
+
+	newGuests := make([]string, 0, len(h.guests)-1)
+	for i := 0; i < len(h.guests); i++ {
+		if h.guests[i] != g.ID {
+			newGuests = append(newGuests, h.guests[i])
+		}
+	}
+	h.guests = newGuests
+
 	return nil
 }
 
@@ -621,6 +661,9 @@ func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 
 // SetConfig sets a single Hypervisor Config value. Set value to "" to unset.
 func (h *Hypervisor) SetConfig(key, value string) error {
+	if key == "" {
+		return errors.New("empty config key")
+	}
 
 	if value != "" {
 		if _, err := h.context.etcd.Set(filepath.Join(HypervisorPath, h.ID, "config", key), value, 0); err != nil {
@@ -629,7 +672,7 @@ func (h *Hypervisor) SetConfig(key, value string) error {
 
 		h.Config[key] = value
 	} else {
-		if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID, "config", key), false); err != nil {
+		if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID, "config", key), false); err != nil && !IsKeyNotFound(err) {
 			return err
 		}
 		delete(h.Config, key)

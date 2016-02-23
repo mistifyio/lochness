@@ -38,5 +38,7 @@ func main() {
 
 	ctx := lochness.NewContext(etcdClient)
 
-	_ = Run(port, ctx)
+	server := Run(port, ctx)
+	// Block until the server is stopped
+	<-server.StopChan()
 }

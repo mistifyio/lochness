@@ -203,12 +203,19 @@ func (g *Guest) Refresh() error {
 	return g.fromResponse(resp)
 }
 
-// Validate ensures a Guest has reasonable data. It currently does nothing.
-// TODO: a guest needs a valid flavor, firewall group, and network
+// Validate ensures a Guest has reasonable data.
 func (g *Guest) Validate() error {
-	// do validation stuff...
-	if g.FlavorID == "" {
-		return errors.New("missing flavor id")
+	if _, err := canonicalizeUUID(g.ID); err != nil {
+		return errors.New("missing or invalid id")
+	}
+	if _, err := canonicalizeUUID(g.FlavorID); err != nil {
+		return errors.New("missing or invalid flavor")
+	}
+	if _, err := canonicalizeUUID(g.NetworkID); err != nil {
+		return errors.New("missing or invalid network")
+	}
+	if g.MAC == nil {
+		return errors.New("missing MAC")
 	}
 
 	return nil
@@ -291,7 +298,7 @@ func (g *Guest) Candidates(f ...CandidateFunction) (Hypervisors, error) {
 		}
 		hypervisors = hs
 		if len(hypervisors) == 0 {
-			return nil, errors.New("no hypervisors")
+			return nil, errors.New("no suitable hypervisors")
 		}
 	}
 
@@ -325,7 +332,7 @@ func CandidateIsAlive(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	return hypervisors, nil
 }
 
-// CandidateHasResources returns Hypervisors that have availible resources
+// CandidateHasResources returns Hypervisors that have available resources
 // based on the request Flavor of the Guest.
 func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	logFields := log.Fields{
@@ -370,7 +377,7 @@ func CandidateHasResources(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	return hypervisors, nil
 }
 
-// CandidateHasSubnet returns Hypervisors that have subnets with availible addresses
+// CandidateHasSubnet returns Hypervisors that have subnets with available addresses
 // in the request Network of the Guest.
 func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
 	logFields := log.Fields{
@@ -392,8 +399,8 @@ func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
 		if err != nil {
 			return nil, err
 		}
-		// only include subnets that have availible addresses
-		avail := subnet.AvailibleAddresses()
+		// only include subnets that have available addresses
+		avail := subnet.AvailableAddresses()
 		if len(avail) > 0 {
 			subnets[k] = true
 		}
@@ -420,7 +427,7 @@ func CandidateHasSubnet(g *Guest, hs Hypervisors) (Hypervisors, error) {
 		"in":      len(hs),
 		"out":     len(hypervisors),
 		"removed": len(hs) - len(hypervisors),
-	}).Info("hypervisor candidates removed")
+	}).Info("hypervisor candidates filtered")
 
 	return hypervisors, nil
 }
@@ -446,26 +453,6 @@ var DefaultCandidateFunctions = []CandidateFunction{
 	CandidateHasSubnet,
 	CandidateHasResources,
 	CandidateRandomize,
-}
-
-// FirstGuest will return the first guest for which the function returns true.
-func (c *Context) FirstGuest(f func(*Guest) bool) (*Guest, error) {
-	// we could get this recursively, but we may want to change how refresh works just a bit
-	resp, err := c.etcd.Get(GuestPath, false, false)
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range resp.Node.Nodes {
-		h, err := c.Guest(filepath.Base(n.Key))
-		if err != nil {
-			return nil, err
-		}
-
-		if f(h) {
-			return h, nil
-		}
-	}
-	return nil, nil
 }
 
 // ForEachGuest will run f on each Guest. It will stop iteration if f returns an error.

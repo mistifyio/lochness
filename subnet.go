@@ -1,6 +1,7 @@
 package lochness
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -161,12 +162,28 @@ func (s *Subnet) Refresh() error {
 
 // Delete removes a subnet. It does not ensure it is unused, so use with extreme caution.
 func (s *Subnet) Delete() error {
+	// Unlink network
+	if s.NetworkID != "" {
+		network, err := s.context.Network(s.NetworkID)
+		if err != nil {
+			return err
+		}
+		if err := network.RemoveSubnet(s); err != nil {
+			return err
+		}
+	}
+
+	// Delete the subnet
 	_, err := s.context.etcd.Delete(filepath.Join(SubnetPath, s.ID), true)
 	return err
 }
 
 // Validate ensures the values are reasonable.
 func (s *Subnet) Validate() error {
+	if _, err := canonicalizeUUID(s.ID); err != nil {
+		return errors.New("invalid ID")
+	}
+
 	if s.CIDR == nil {
 		return errors.New("CIDR cannot be nil")
 	}
@@ -183,6 +200,10 @@ func (s *Subnet) Validate() error {
 	}
 	if !s.CIDR.Contains(s.EndRange) {
 		return fmt.Errorf("%s does not contain %s", s.CIDR, s.EndRange)
+	}
+
+	if bytes.Compare(s.StartRange, s.EndRange) > 0 {
+		return errors.New("EndRange cannot be less than StartRange")
 	}
 	return nil
 }
@@ -248,9 +269,9 @@ func i32ToIP(a uint32) net.IP {
 	return net.IPv4(byte(a>>24), byte(a>>16), byte(a>>8), byte(a))
 }
 
-// AvailibleAddresses returns the availible ip addresses.
+// AvailableAddresses returns the available ip addresses.
 // this is probably a horrible idea for ipv6.
-func (s *Subnet) AvailibleAddresses() []net.IP {
+func (s *Subnet) AvailableAddresses() []net.IP {
 	addresses := make([]net.IP, 0, 0)
 	start := ipToI32(s.StartRange)
 	end := ipToI32(s.EndRange)
@@ -280,10 +301,10 @@ func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 	// hacky...
 	//should this lock?? or do we assume lock is held?
 
-	avail := s.AvailibleAddresses()
+	avail := s.AvailableAddresses()
 
 	if len(avail) == 0 {
-		return nil, errors.New("no availible addresses")
+		return nil, errors.New("no available addresses")
 	}
 
 	avail = randomizeAddresses(avail)
@@ -305,6 +326,7 @@ func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 
 // ReleaseAddress releases an address. This does not change any thing that may also be referring to this address.
 func (s *Subnet) ReleaseAddress(ip net.IP) error {
+
 	_, err := s.context.etcd.Delete(s.addressKey(ip.String()), false)
 	if err == nil {
 		delete(s.addresses, ipToI32(ip))

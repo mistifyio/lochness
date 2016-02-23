@@ -166,6 +166,7 @@ func main() {
 
 			fields := log.Fields{
 				"task": task,
+				"step": f.name,
 			}
 
 			log.WithFields(fields).Debug("running")

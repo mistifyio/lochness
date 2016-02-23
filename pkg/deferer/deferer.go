@@ -6,11 +6,10 @@ package deferer
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 	"runtime"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 )
 
 // Deferer holds a slice of deferred functions and an optional pointer to the
@@ -18,6 +17,7 @@ import (
 type Deferer struct {
 	caller *Deferer
 	fns    []func()
+	ran    bool
 }
 
 // Defer adds to the array of defered function calls
@@ -28,9 +28,14 @@ func (d *Deferer) Defer(f func()) {
 // Run calls each function in the defered array in reverse order. Common usage
 // is to call `defer d.Run()` after creating the Deferer instance
 func (d *Deferer) Run() {
+	if d.ran {
+		return
+	}
+
 	for i := len(d.fns) - 1; i >= 0; i-- {
 		d.fns[i]()
 	}
+	d.ran = true
 }
 
 // Fatal runs each set of deferred functions, walking up the call change if the
@@ -48,18 +53,18 @@ func (d *Deferer) Fatal(v ...interface{}) {
 	}
 }
 
-// FatalWithFields is a mash up of Fatal and logrus
-func (d *Deferer) FatalWithFields(fields logrus.Fields, v ...interface{}) {
+// FatalWithFields accepts additional logging fields for the fatal log
+func (d *Deferer) FatalWithFields(fields log.Fields, v ...interface{}) {
 	d.fatal()
 	// Need to grab the original caller file and line number
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {
-		logrus.WithFields(fields).Fatal(v...)
+		log.WithFields(fields).Fatal(v...)
 	} else {
 		base := filepath.Base(file)
 		fields["file"] = base
 		fields["line"] = line
-		logrus.WithFields(fields).Fatal(v...)
+		log.WithFields(fields).Fatal(v...)
 	}
 }
 

@@ -1,6 +1,6 @@
 # cli
 
-[![cli](https://godoc.org/github.com/mistifyio/lochness/pkg/internal/cli?status.png)](https://godoc.org/github.com/mistifyio/lochness/pkg/internal/cli)
+[![cli](https://godoc.org/github.com/mistifyio/lochness/internal/cli?status.png)](https://godoc.org/github.com/mistifyio/lochness/internal/cli)
 
 Package cli provides a client and utilities for lochness cli applications to
 interact with agents.

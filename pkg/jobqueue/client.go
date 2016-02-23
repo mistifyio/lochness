@@ -1,6 +1,8 @@
 package jobqueue
 
 import (
+	"errors"
+	"strconv"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
@@ -26,6 +28,10 @@ type Client struct {
 
 // NewClient creates a new Client and initializes the beanstalk connection + tubes
 func NewClient(bstalk string, e *etcd.Client) (*Client, error) {
+	if e == nil {
+		return nil, errors.New("missing etcd client")
+	}
+
 	conn, err := beanstalk.Dial("tcp", bstalk)
 	if err != nil {
 		return nil, err
@@ -41,6 +47,10 @@ func NewClient(bstalk string, e *etcd.Client) (*Client, error) {
 
 // AddTask creates a new task in the appropriate beanstalk queue
 func (c *Client) AddTask(j *Job) (uint64, error) {
+	if j == nil {
+		return 0, errors.New("missing job")
+	}
+
 	ts := c.tubes.work
 	if j.Action == "select-hypervisor" {
 		ts = c.tubes.create
@@ -101,4 +111,27 @@ func (c *Client) AddJob(guestID, action string) (*Job, error) {
 	}
 	_, err := c.AddTask(job)
 	return job, err
+}
+
+func tubeStats(tube *tubeSet) (map[string]string, error) {
+	stats, err := tube.publish.Stats()
+	if err != nil {
+		return nil, err
+	}
+	ready, _ := strconv.Atoi(stats["current-jobs-ready"])
+	reserved, _ := strconv.Atoi(stats["current-jobs-reserved"])
+	buried, _ := strconv.Atoi(stats["current-jobs-buried"])
+	delayed, _ := strconv.Atoi(stats["current-jobs-delayed"])
+	stats["current-jobs-total"] = strconv.Itoa(ready + reserved + buried + delayed)
+	return stats, err
+}
+
+// StatsCreate returns the stats for the create queue
+func (c *Client) StatsCreate() (map[string]string, error) {
+	return tubeStats(c.tubes.create)
+}
+
+// StatsWork returns the stats for the work queue
+func (c *Client) StatsWork() (map[string]string, error) {
+	return tubeStats(c.tubes.work)
 }

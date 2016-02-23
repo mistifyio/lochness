@@ -20,13 +20,14 @@ import (
 )
 
 func main() {
-	var port uint
+	var port, agentPort uint
 	var etcdAddr, bstalk, logLevel string
 
 	// Command line flags
 	flag.StringVarP(&bstalk, "beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.StringVarP(&etcdAddr, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	flag.UintVarP(&agentPort, "agent-port", "a", uint(lochness.AgentPort), "port on which agents listen")
 	flag.UintVarP(&port, "http", "p", 7544, "http port to publish metrics. set to 0 to disable")
 	flag.Parse()
 
@@ -62,7 +63,7 @@ func main() {
 	if m != nil {
 	}
 
-	agent := ctx.NewMistifyAgent()
+	agent := ctx.NewMistifyAgent(int(agentPort))
 
 	// Start consuming
 	consume(jobQueue, agent, m)
@@ -204,6 +205,10 @@ func processTask(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, error
 func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 	job := task.Job
 
+	if task.Guest == nil {
+		return errors.New("guest does not exist")
+	}
+
 	var err error
 	var jobID string
 	switch job.Action {
@@ -229,7 +234,7 @@ func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 }
 
 func checkWorkingJob(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, error) {
-	done, err := agent.CheckJobStatus(task.Job.Action, task.Guest.ID, task.Job.RemoteID)
+	done, err := agent.CheckJobStatus(task.Guest.ID, task.Job.RemoteID)
 	if err == nil && done && task.Job.Action == "fetch" {
 		task.Job.Action = "create"
 		task.Job.RemoteID = ""

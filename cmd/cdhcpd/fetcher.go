@@ -179,6 +179,9 @@ func (f *Fetcher) Subnets() (map[string]*lochness.Subnet, error) {
 // IntegrateResponse takes an etcd reponse and updates our list of hypervisors,
 // subnets, or guests, then returns whether a refresh should happen
 func (f *Fetcher) IntegrateResponse(r *etcd.Response) (bool, error) {
+	if r == nil {
+		return false, errors.New("nil etcd response")
+	}
 
 	// Parse the key
 	matches := matchKeys.FindStringSubmatch(r.Node.Key)

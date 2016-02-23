@@ -44,7 +44,7 @@ func newTubeSet(conn *beanstalk.Conn, name string) *tubeSet {
 // See http://godoc.org/github.com/kr/beanstalk#Tube.Put
 func (ts *tubeSet) Put(jobID string) (uint64, error) {
 	body := []byte(jobID)
-	id, err := ts.publish.Put(body, priority, delay, ttr)
+	id, err := ts.publish.Put(body, priority, 0, ttr)
 	return id, err
 }
 

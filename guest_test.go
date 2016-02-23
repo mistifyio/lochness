@@ -1,148 +1,320 @@
 package lochness_test
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net"
-	"strings"
 	"testing"
 	"time"
 
-	h "github.com/bakins/test-helpers"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func newGuest(t *testing.T) *lochness.Guest {
-	c := newContext(t)
-	g := c.NewGuest()
-
-	return g
+func TestGuest(t *testing.T) {
+	suite.Run(t, new(GuestSuite))
 }
 
-func TestNewGuest(t *testing.T) {
-	g := newGuest(t)
-	h.Equals(t, 36, len(g.ID))
+type GuestSuite struct {
+	common.Suite
 }
 
-// TODO: cleanup after test
+func (s *GuestSuite) TestJSON() {
+	guest := s.NewGuest()
 
-func TestGuestCandidates(t *testing.T) {
-	c := newContext(t)
-	defer contextCleanup(t)
+	guestBytes, err := json.Marshal(guest)
+	s.NoError(err)
 
-	s := newSubnet(t)
-	hv := newHypervisor(t)
+	guestFromJSON := &lochness.Guest{}
+	s.NoError(json.Unmarshal(guestBytes, guestFromJSON))
+	s.Equal(guest.MAC, guestFromJSON.MAC)
+	s.Equal(guest.IP, guestFromJSON.IP)
+}
 
-	n := c.NewNetwork()
-	err := n.Save()
-	h.Ok(t, err)
-	err = n.AddSubnet(s)
-	h.Ok(t, err)
+func (s *GuestSuite) TestNewGuest() {
+	guest := s.Context.NewGuest()
+	s.NotNil(uuid.Parse(guest.ID))
+}
 
-	err = hv.AddSubnet(s, "br0")
-	h.Ok(t, err)
+func (s *GuestSuite) TestGuest() {
+	guest := s.NewGuest()
 
-	f := c.NewFlavor()
-	f.Resources.Memory = 1024
-	f.Resources.CPU = 2
-	f.Resources.Disk = 8192
-	err = f.Save()
-	h.Ok(t, err)
-
-	// horrible hack for testing
-	hv, err = c.Hypervisor(hv.ID)
-	h.Ok(t, err)
-
-	hv.AvailableResources = lochness.Resources{
-		Memory: 8192,
-		CPU:    4,
-		Disk:   65536,
+	tests := []struct {
+		description string
+		ID          string
+		expectedErr bool
+	}{
+		{"missing id", "", true},
+		{"invalid ID", "adf", true},
+		{"nonexistant ID", uuid.New(), true},
+		{"real ID", guest.ID, false},
 	}
 
-	hv.TotalResources = hv.AvailableResources
-	err = hv.Save()
-	h.Ok(t, err)
-
-	// cheesy
-	_, err = lochness.SetHypervisorID(hv.ID)
-	h.Ok(t, err)
-
-	err = hv.Heartbeat(9999 * time.Second)
-	h.Ok(t, err)
-
-	g := c.NewGuest()
-	g.FlavorID = f.ID
-	g.NetworkID = n.ID
-
-	err = g.Save()
-	h.Ok(t, err)
-
-	candidates, err := g.Candidates(lochness.DefaultCandidateFunctions...)
-	h.Ok(t, err)
-
-	h.Equals(t, 1, len(candidates))
-
-	h.Equals(t, hv.ID, candidates[0].ID)
-
-	// umm what about IP?? we need to reserve an ip on this hv in proper subnet
-
-	err = hv.AddGuest(g)
-	h.Ok(t, err)
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		g, err := s.Context.Guest(test.ID)
+		if test.expectedErr {
+			s.Error(err, msg("lookup should fail"))
+			s.Nil(g, msg("failure shouldn't return a guest"))
+		} else {
+			s.NoError(err, msg("lookup should succeed"))
+			s.True(assert.ObjectsAreEqual(guest, g), msg("success should return correct data"))
+		}
+	}
 }
 
-func TestGuestsAlias(t *testing.T) {
-	_ = lochness.Guests([]*lochness.Guest{})
+func (s *GuestSuite) TestRefresh() {
+	guest := s.NewGuest()
+	guestCopy := &lochness.Guest{}
+	*guestCopy = *guest
+
+	_ = guest.Save()
+	s.NoError(guestCopy.Refresh(), "refresh existing should succeed")
+	s.True(assert.ObjectsAreEqual(guest, guestCopy), "refresh should pull new data")
+
+	NewGuest := s.Context.NewGuest()
+	s.Error(NewGuest.Refresh(), "unsaved guest refresh should fail")
 }
 
-func TestFirstGuest(t *testing.T) {
-	c := newContext(t)
-	defer contextCleanup(t)
+func (s *GuestSuite) TestValidate() {
+	mac, _ := net.ParseMAC("4C:3F:B1:7E:54:64")
+	tests := []struct {
+		description string
+		id          string
+		flavor      string
+		network     string
+		mac         net.HardwareAddr
+		expectedErr bool
+	}{
+		{"missing id", "", uuid.New(), uuid.New(), mac, true},
+		{"non uuid id", "asdf", uuid.New(), uuid.New(), mac, true},
+		{"missing flavor", uuid.New(), "", uuid.New(), mac, true},
+		{"non uuid flavor", uuid.New(), "asdf", uuid.New(), mac, true},
+		{"missing subnet", uuid.New(), uuid.New(), "", mac, true},
+		{"non uuid subnet", uuid.New(), uuid.New(), "", mac, true},
+		{"missing mac", uuid.New(), uuid.New(), uuid.New(), nil, true},
+		{"all uuid", uuid.New(), uuid.New(), uuid.New(), mac, false},
+	}
 
-	f := c.NewFlavor()
-	f.Resources.Memory = 1024
-	f.Resources.CPU = 2
-	f.Resources.Disk = 8192
-	h.Ok(t, f.Save())
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		g := &lochness.Guest{
+			ID:        test.id,
+			FlavorID:  test.flavor,
+			NetworkID: test.network,
+			MAC:       test.mac,
+		}
+		err := g.Validate()
+		if test.expectedErr {
+			s.Error(err, msg("should be invalid"))
+		} else {
+			s.NoError(err, msg("should be valid"))
+		}
+	}
+}
 
-	g := newGuest(t)
-	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e0")
-	g.FlavorID = f.ID
-	h.Ok(t, g.Save())
+func (s *GuestSuite) TestSave() {
+	goodGuest := s.Context.NewGuest()
+	flavor := s.NewFlavor()
+	network := s.NewNetwork()
+	mac, _ := net.ParseMAC("4C:3F:B1:7E:54:64")
+	goodGuest.FlavorID = flavor.ID
+	goodGuest.NetworkID = network.ID
+	goodGuest.MAC = mac
 
-	g = newGuest(t)
-	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e1")
-	g.FlavorID = f.ID
-	h.Ok(t, g.Save())
+	clobberGuest := *goodGuest
 
-	g = newGuest(t)
-	g.MAC, _ = net.ParseMAC("72:00:04:30:c9:e2")
-	g.FlavorID = f.ID
-	h.Ok(t, g.Save())
+	tests := []struct {
+		description string
+		guest       *lochness.Guest
+		expectedErr bool
+	}{
+		{"invalid guest", &lochness.Guest{}, true},
+		{"valid guest", goodGuest, false},
+		{"existing guest", goodGuest, false},
+		{"existing guest clobber", &clobberGuest, true},
+	}
 
-	found, err := c.FirstGuest(func(g *lochness.Guest) bool {
-		return g.ID == "foo"
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		err := test.guest.Save()
+		if test.expectedErr {
+			s.Error(err, msg("should fail"))
+		} else {
+			s.NoError(err, msg("should succeed"))
+		}
+	}
+}
+
+func (s *GuestSuite) TestDestroy() {
+	blank := s.Context.NewGuest()
+	blank.ID = ""
+
+	hypervisor, guest := s.NewHypervisorWithGuest()
+	tests := []struct {
+		description string
+		g           *lochness.Guest
+		expectedErr bool
+	}{
+		{"invalid guest", blank, true},
+		{"existing guest not on hypervisor", s.NewGuest(), false},
+		{"existing guest on hypervisor", guest, false},
+		{"nonexistant guest", s.Context.NewGuest(), true},
+	}
+
+	for _, test := range tests {
+		msg := testMsgFunc(test.description)
+		err := test.g.Destroy()
+		if test.expectedErr {
+			s.Error(err, msg("should fail"))
+		} else {
+			s.NoError(err, msg("should succeed"))
+			if test.g.HypervisorID != "" {
+				_ = hypervisor.Refresh()
+				s.Len(hypervisor.Guests(), 0, msg("should have been removed from hypervisor"))
+			}
+		}
+	}
+}
+
+func (s *GuestSuite) TestCandidates() {
+	guest := s.NewGuest()
+	subnet := s.NewSubnet()
+	network, _ := s.Context.Network(guest.NetworkID)
+	_ = network.AddSubnet(subnet)
+
+	hypervisors := lochness.Hypervisors{
+		s.NewHypervisor(), // Not alive
+		s.NewHypervisor(), // No correct subnet
+		s.NewHypervisor(), // Not enough resources
+		s.NewHypervisor(), // Everything
+	}
+	for i := 0; i < len(hypervisors); i++ {
+		if i != 0 {
+			_, _ = lochness.SetHypervisorID(hypervisors[i].ID)
+			_ = hypervisors[i].Heartbeat(60 * time.Second)
+		}
+		if i != 1 {
+			_ = hypervisors[i].AddSubnet(subnet, "mistify0")
+		}
+		if i == 2 {
+			hypervisors[i].AvailableResources = lochness.Resources{}
+			_ = hypervisors[i].Save()
+		}
+	}
+
+	candidates, err := guest.Candidates(
+		lochness.CandidateIsAlive,
+		lochness.CandidateHasResources,
+		lochness.CandidateHasSubnet,
+	)
+	s.NoError(err)
+	s.Len(candidates, 1)
+	s.Equal(hypervisors[3].ID, candidates[0].ID)
+}
+
+func (s *GuestSuite) TestCandidateIsAlive() {
+	guest := s.NewGuest()
+	hypervisors := lochness.Hypervisors{
+		s.NewHypervisor(),
+		s.NewHypervisor(),
+	}
+	_, _ = lochness.SetHypervisorID(hypervisors[1].ID)
+	_ = hypervisors[1].Heartbeat(60 * time.Second)
+
+	candidates, err := lochness.CandidateIsAlive(guest, hypervisors)
+	s.NoError(err)
+	s.Len(candidates, 1)
+	s.Equal(hypervisors[1].ID, candidates[0].ID)
+}
+
+func (s *GuestSuite) TestCandidateHasResources() {
+	guest := s.NewGuest()
+	hypervisors := lochness.Hypervisors{
+		s.NewHypervisor(),
+		s.NewHypervisor(),
+	}
+	hypervisors[0].AvailableResources = lochness.Resources{}
+
+	candidates, err := lochness.CandidateHasResources(guest, hypervisors)
+	s.NoError(err)
+	s.Len(candidates, 1)
+	s.Equal(hypervisors[1].ID, candidates[0].ID)
+}
+
+func (s *GuestSuite) TestCandidateHasSubnet() {
+	hypervisor, guest := s.NewHypervisorWithGuest()
+	hypervisors := lochness.Hypervisors{
+		s.NewHypervisor(),
+		hypervisor,
+	}
+
+	candidates, err := lochness.CandidateHasSubnet(guest, hypervisors)
+	s.NoError(err)
+	s.Len(candidates, 1)
+	s.Equal(hypervisors[1].ID, candidates[0].ID)
+
+}
+
+func (s *GuestSuite) TestCandidateRandomize() {
+	guest := s.Context.NewGuest()
+	candidates := make(lochness.Hypervisors, 10)
+	for i := 0; i < cap(candidates); i++ {
+		candidates[i] = s.Context.NewHypervisor()
+	}
+
+	randCandidates, err := lochness.CandidateRandomize(guest, candidates)
+	if !s.NoError(err) {
+		return
+	}
+	if !s.Len(randCandidates, len(candidates)) {
+		return
+	}
+	different := 0
+	for i, candidate := range candidates {
+		var found bool
+		for j, randCandidate := range randCandidates {
+			if candidate.ID == randCandidate.ID {
+				found = true
+				break
+			}
+			if i != j {
+				different++
+			}
+		}
+		s.True(found, "original entry should be in randomized list")
+	}
+	if different < len(candidates)/2 {
+		fmt.Printf("TestCandidateRandomize: Only %d of %d elements were in different location", different, len(candidates))
+	}
+
+}
+
+func (s *GuestSuite) TestForEachGuest() {
+	guest := s.NewGuest()
+	guest2 := s.NewGuest()
+	expectedFound := map[string]bool{
+		guest.ID:  true,
+		guest2.ID: true,
+	}
+
+	resultFound := make(map[string]bool)
+
+	err := s.Context.ForEachGuest(func(g *lochness.Guest) error {
+		resultFound[g.ID] = true
+		return nil
 	})
+	s.NoError(err)
+	s.True(assert.ObjectsAreEqual(expectedFound, resultFound))
 
-	h.Ok(t, err)
-
-	h.Assert(t, found == nil, "unexpected value")
-
-	found, err = c.FirstGuest(func(g2 *lochness.Guest) bool {
-		return g.ID == g2.ID
+	returnErr := errors.New("an error")
+	err = s.Context.ForEachGuest(func(g *lochness.Guest) error {
+		return returnErr
 	})
-
-	h.Ok(t, err)
-
-	h.Assert(t, found != nil, "unexpected nil")
-
-}
-
-func TestGuestWithBadID(t *testing.T) {
-	c := newContext(t)
-	_, err := c.Guest("")
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
-
-	_, err = c.Guest("foo")
-	h.Assert(t, err != nil, "should have got an error")
-	h.Assert(t, strings.Contains(err.Error(), "invalid UUID"), "unexpected error")
-
+	s.Error(err)
+	s.Equal(returnErr, err)
 }

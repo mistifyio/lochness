@@ -85,8 +85,9 @@ func (v *VLAN) Refresh() error {
 			}
 			v.modifiedIndex = node.ModifiedIndex
 		case "vlangroups":
-			for _, x := range node.Nodes {
-				v.vlanGroups = append(v.vlanGroups, filepath.Base(x.Key))
+			v.vlanGroups = make([]string, len(node.Nodes))
+			for i, x := range node.Nodes {
+				v.vlanGroups[i] = filepath.Base(x.Key)
 			}
 		}
 	}

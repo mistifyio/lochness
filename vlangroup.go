@@ -94,9 +94,10 @@ func (vg *VLANGroup) Refresh() error {
 			}
 			vg.modifiedIndex = node.ModifiedIndex
 		case "vlans":
-			for _, x := range node.Nodes {
+			vg.vlans = make([]int, len(node.Nodes))
+			for i, x := range node.Nodes {
 				vlanTag, _ := strconv.Atoi(filepath.Base(x.Key))
-				vg.vlans = append(vg.vlans, vlanTag)
+				vg.vlans[i] = vlanTag
 			}
 		}
 	}
@@ -140,6 +141,9 @@ func (vg *VLANGroup) Save() error {
 
 // Destroy removes a VLANGroup
 func (vg *VLANGroup) Destroy() error {
+	if vg.ID == "" {
+		return errors.New("missing id")
+	}
 	// Unlink VLANs
 	for _, vlanTag := range vg.vlans {
 		vlan, err := vg.context.VLAN(vlanTag)
@@ -160,6 +164,20 @@ func (vg *VLANGroup) Destroy() error {
 
 // AddVLAN adds a VLAN to the VLANGroup
 func (vg *VLANGroup) AddVLAN(vlan *VLAN) error {
+	// Make sure the VLANGroup exists
+	if vg.modifiedIndex == 0 {
+		if err := vg.Refresh(); err != nil {
+			return err
+		}
+	}
+
+	// Make sure vlan exists
+	if vlan.modifiedIndex == 0 {
+		if err := vlan.Refresh(); err != nil {
+			return err
+		}
+	}
+
 	// VLANGroup side
 	if _, err := vg.context.etcd.Set(vg.vlanKey(vlan), "", 0); err != nil {
 		return err

@@ -16,6 +16,23 @@ var ErrStopped = errors.New("watcher has been stopped")
 ```
 ErrStopped is an error for attempting to add a prefix to a stopped watcher
 
+#### type Error
+
+```go
+type Error struct {
+	Prefix string
+	Err    error
+}
+```
+
+Error contains both the watched prefix and the error.
+
+#### func (*Error) Error
+
+```go
+func (e *Error) Error() string
+```
+
 #### type Watcher
 
 ```go
@@ -43,7 +60,7 @@ after Add returns when an event on prefix may be missed.
 #### func (*Watcher) Close
 
 ```go
-func (w *Watcher) Close() error
+func (w *Watcher) Close() *Error
 ```
 Close will stop all watches and disable any new watches from being started.
 Close may be called multiple times in case there is a transient error.
@@ -51,7 +68,7 @@ Close may be called multiple times in case there is a transient error.
 #### func (*Watcher) Err
 
 ```go
-func (w *Watcher) Err() error
+func (w *Watcher) Err() *Error
 ```
 Err returns the last error received
 
@@ -67,7 +84,7 @@ upon an error, the error can be retrieved via the Err method.
 #### func (*Watcher) Remove
 
 ```go
-func (w *Watcher) Remove(prefix string) error
+func (w *Watcher) Remove(prefix string) *Error
 ```
 Remove will remove said prefix from the watch list, it will return an error if
 the prefix is not being watched.
