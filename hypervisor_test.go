@@ -14,15 +14,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type HypervisorTestSuite struct {
+func TestHypervisor(t *testing.T) {
+	suite.Run(t, new(HypervisorSuite))
+}
+
+type HypervisorSuite struct {
 	common.Suite
 }
 
-func TestHypervisorTestSuite(t *testing.T) {
-	suite.Run(t, new(HypervisorTestSuite))
-}
-
-func (s *HypervisorTestSuite) TestJSON() {
+func (s *HypervisorSuite) TestJSON() {
 	hypervisor, _ := s.NewHypervisorWithGuest()
 
 	hypervisorBytes, err := json.Marshal(hypervisor)
@@ -41,12 +41,12 @@ func (s *HypervisorTestSuite) TestJSON() {
 	s.Equal(hypervisor.Config, hypervisorFromJSON.Config)
 }
 
-func (s *HypervisorTestSuite) TestNewHypervisor() {
+func (s *HypervisorSuite) TestNewHypervisor() {
 	hypervisor := s.Context.NewHypervisor()
 	s.NotNil(uuid.Parse(hypervisor.ID))
 }
 
-func (s *HypervisorTestSuite) TestHypervisor() {
+func (s *HypervisorSuite) TestHypervisor() {
 	hypervisor := s.NewHypervisor()
 
 	tests := []struct {
@@ -73,7 +73,7 @@ func (s *HypervisorTestSuite) TestHypervisor() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestRefresh() {
+func (s *HypervisorSuite) TestRefresh() {
 	hypervisor, _ := s.NewHypervisorWithGuest()
 	hypervisorCopy := &lochness.Hypervisor{}
 	*hypervisorCopy = *hypervisor
@@ -88,7 +88,7 @@ func (s *HypervisorTestSuite) TestRefresh() {
 	s.Error(NewHypervisor.Refresh(), "unsaved hypervisor refresh should fail")
 }
 
-func (s *HypervisorTestSuite) TestGetAndSetHypervisorID() {
+func (s *HypervisorSuite) TestGetAndSetHypervisorID() {
 	// hostname only case will only pass if it's a uuid. Determine if this
 	// machine's hostname will pass.
 	hostname, _ := os.Hostname()
@@ -135,7 +135,7 @@ func (s *HypervisorTestSuite) TestGetAndSetHypervisorID() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestVerifyOnHV() {
+func (s *HypervisorSuite) TestVerifyOnHV() {
 	hypervisor := s.NewHypervisor()
 
 	s.Error(hypervisor.VerifyOnHV())
@@ -143,7 +143,7 @@ func (s *HypervisorTestSuite) TestVerifyOnHV() {
 	s.NoError(hypervisor.VerifyOnHV())
 }
 
-func (s *HypervisorTestSuite) TestUpdateResources() {
+func (s *HypervisorSuite) TestUpdateResources() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	_ = hypervisor.SetConfig("guestDiskDir", "/")
 
@@ -171,7 +171,7 @@ func (s *HypervisorTestSuite) TestUpdateResources() {
 	s.True(assert.ObjectsAreEqual(hypervisor.AvailableResources, loadedHypervisor.AvailableResources))
 }
 
-func (s *HypervisorTestSuite) TestValidate() {
+func (s *HypervisorSuite) TestValidate() {
 	tests := []struct {
 		description string
 		ID          string
@@ -194,7 +194,7 @@ func (s *HypervisorTestSuite) TestValidate() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestSave() {
+func (s *HypervisorSuite) TestSave() {
 	goodHypervisor := s.Context.NewHypervisor()
 
 	clobberHypervisor := *goodHypervisor
@@ -221,7 +221,7 @@ func (s *HypervisorTestSuite) TestSave() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestAddSubnet() {
+func (s *HypervisorSuite) TestAddSubnet() {
 	tests := []struct {
 		description string
 		Hypervisor  *lochness.Hypervisor
@@ -247,7 +247,7 @@ func (s *HypervisorTestSuite) TestAddSubnet() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestRemoveSubnet() {
+func (s *HypervisorSuite) TestRemoveSubnet() {
 	subnet := s.NewSubnet()
 	hypervisor := s.NewHypervisor()
 	_ = hypervisor.AddSubnet(subnet, "mistify0")
@@ -279,14 +279,14 @@ func (s *HypervisorTestSuite) TestRemoveSubnet() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestSubnets() {
+func (s *HypervisorSuite) TestSubnets() {
 	hypervisor := s.NewHypervisor()
 	_ = hypervisor.AddSubnet(s.NewSubnet(), "mistify0")
 
 	s.Len(hypervisor.Subnets(), 1)
 }
 
-func (s *HypervisorTestSuite) TestHeartbeatAndIsAlive() {
+func (s *HypervisorSuite) TestHeartbeatAndIsAlive() {
 	hypervisor := s.NewHypervisor()
 	s.Error(hypervisor.Heartbeat(60 * time.Second))
 	s.False(hypervisor.IsAlive())
@@ -295,7 +295,7 @@ func (s *HypervisorTestSuite) TestHeartbeatAndIsAlive() {
 	s.True(hypervisor.IsAlive())
 }
 
-func (s *HypervisorTestSuite) TestAddGuest() {
+func (s *HypervisorSuite) TestAddGuest() {
 	guest := s.NewGuest()
 	hypervisor := s.NewHypervisor()
 	subnet := s.NewSubnet()
@@ -331,7 +331,7 @@ func (s *HypervisorTestSuite) TestAddGuest() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestRemoveGuest() {
+func (s *HypervisorSuite) TestRemoveGuest() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 
 	s.Error(hypervisor.RemoveGuest(s.NewGuest()))
@@ -343,14 +343,14 @@ func (s *HypervisorTestSuite) TestRemoveGuest() {
 	s.Len(hypervisor.Guests(), 0)
 }
 
-func (s *HypervisorTestSuite) TestGuests() {
+func (s *HypervisorSuite) TestGuests() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	guests := hypervisor.Guests()
 	s.Len(guests, 1)
 	s.Equal(guest.ID, guests[0])
 }
 
-func (s *HypervisorTestSuite) TestForEachGuest() {
+func (s *HypervisorSuite) TestForEachGuest() {
 	hypervisor, guest1 := s.NewHypervisorWithGuest()
 	guest2 := s.NewGuest()
 	guest2.NetworkID = guest1.NetworkID
@@ -378,7 +378,7 @@ func (s *HypervisorTestSuite) TestForEachGuest() {
 	s.Equal(returnErr, err)
 }
 
-func (s *HypervisorTestSuite) TestFirstHypervisor() {
+func (s *HypervisorSuite) TestFirstHypervisor() {
 	_ = s.NewHypervisor()
 	_ = s.NewHypervisor()
 	h, err := s.Context.FirstHypervisor(func(h *lochness.Hypervisor) bool {
@@ -388,7 +388,7 @@ func (s *HypervisorTestSuite) TestFirstHypervisor() {
 	s.NotNil(h)
 }
 
-func (s *HypervisorTestSuite) TestForEachHypervisor() {
+func (s *HypervisorSuite) TestForEachHypervisor() {
 	hypervisor := s.NewHypervisor()
 	hypervisor2 := s.NewHypervisor()
 	expectedFound := map[string]bool{
@@ -413,7 +413,7 @@ func (s *HypervisorTestSuite) TestForEachHypervisor() {
 	s.Equal(returnErr, err)
 }
 
-func (s *HypervisorTestSuite) TestSetConfig() {
+func (s *HypervisorSuite) TestSetConfig() {
 	hypervisor := s.NewHypervisor()
 
 	tests := []struct {
@@ -439,7 +439,7 @@ func (s *HypervisorTestSuite) TestSetConfig() {
 	}
 }
 
-func (s *HypervisorTestSuite) TestDestroy() {
+func (s *HypervisorSuite) TestDestroy() {
 	blank := s.Context.NewHypervisor()
 	blank.ID = ""
 	hypervisorWithGuest, _ := s.NewHypervisorWithGuest()

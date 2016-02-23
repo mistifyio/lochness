@@ -13,27 +13,28 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type SDNotifyTestSuite struct {
+func TestSDNotify(t *testing.T) {
+	suite.Run(t, new(SDNotifySuite))
+}
+
+type SDNotifySuite struct {
 	suite.Suite
 	SocketDir string
 }
 
-func (s *SDNotifyTestSuite) SetupTest() {
+func (s *SDNotifySuite) SetupTest() {
 	s.SocketDir, _ = ioutil.TempDir("", "sdTest-")
 }
 
-func (s *SDNotifyTestSuite) TearDownTest() {
+func (s *SDNotifySuite) TearDownTest() {
 	_ = os.RemoveAll(s.SocketDir)
 }
 
-func TestSDNotifyTestSuite(t *testing.T) {
-	suite.Run(t, new(SDNotifyTestSuite))
-}
-
-func (s *SDNotifyTestSuite) socketPath(name string) string {
+func (s *SDNotifySuite) socketPath(name string) string {
 	return filepath.Join(s.SocketDir, name)
 }
-func (s *SDNotifyTestSuite) TestNotify() {
+
+func (s *SDNotifySuite) TestNotify() {
 	tests := []struct {
 		description string
 		socket      string

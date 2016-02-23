@@ -10,20 +10,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type NetworkTestSuite struct {
+func TestNetwork(t *testing.T) {
+	suite.Run(t, new(NetworkSuite))
+}
+
+type NetworkSuite struct {
 	common.Suite
 }
 
-func TestNetworkTestSuite(t *testing.T) {
-	suite.Run(t, new(NetworkTestSuite))
-}
-
-func (s *NetworkTestSuite) TestNewNetwork() {
+func (s *NetworkSuite) TestNewNetwork() {
 	network := s.Context.NewNetwork()
 	s.NotNil(uuid.Parse(network.ID))
 }
 
-func (s *NetworkTestSuite) TestNework() {
+func (s *NetworkSuite) TestNework() {
 	network := s.NewNetwork()
 
 	tests := []struct {
@@ -50,7 +50,7 @@ func (s *NetworkTestSuite) TestNework() {
 	}
 }
 
-func (s *NetworkTestSuite) TestRefresh() {
+func (s *NetworkSuite) TestRefresh() {
 	network := s.NewNetwork()
 	networkCopy := &lochness.Network{}
 	*networkCopy = *network
@@ -64,7 +64,7 @@ func (s *NetworkTestSuite) TestRefresh() {
 	s.Error(NewNetwork.Refresh(), "unsaved network refresh should fail")
 }
 
-func (s *NetworkTestSuite) TestValidate() {
+func (s *NetworkSuite) TestValidate() {
 	tests := []struct {
 		description string
 		ID          string
@@ -87,7 +87,7 @@ func (s *NetworkTestSuite) TestValidate() {
 	}
 }
 
-func (s *NetworkTestSuite) TestSave() {
+func (s *NetworkSuite) TestSave() {
 	goodNetwork := s.Context.NewNetwork()
 
 	clobberNetwork := *goodNetwork
@@ -114,7 +114,7 @@ func (s *NetworkTestSuite) TestSave() {
 	}
 }
 
-func (s *NetworkTestSuite) TestAddSubnet() {
+func (s *NetworkSuite) TestAddSubnet() {
 	tests := []struct {
 		description string
 		network     *lochness.Network
@@ -142,7 +142,7 @@ func (s *NetworkTestSuite) TestAddSubnet() {
 	}
 }
 
-func (s *NetworkTestSuite) TestSubnets() {
+func (s *NetworkSuite) TestSubnets() {
 	network := s.NewNetwork()
 	_ = network.AddSubnet(s.NewSubnet())
 

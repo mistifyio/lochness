@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestFetcher(t *testing.T) {
+	suite.Run(t, new(FetcherSuite))
+}
+
 type FetcherSuite struct {
 	common.Suite
 	Fetcher *main.Fetcher
@@ -27,10 +31,6 @@ func (s *FetcherSuite) SetupTest() {
 	s.Fetcher = main.NewFetcher(s.EtcdURL)
 
 	log.SetLevel(log.FatalLevel)
-}
-
-func TestFetcher(t *testing.T) {
-	suite.Run(t, new(FetcherSuite))
 }
 
 func (s *FetcherSuite) TestHypervisors() {

@@ -13,6 +13,10 @@ import (
 	"github.com/tylerb/graceful"
 )
 
+func TestCNetworkdAPI(t *testing.T) {
+	suite.Run(t, new(APISuite))
+}
+
 type APISuite struct {
 	common.Suite
 	Port      uint
@@ -45,10 +49,6 @@ func (s *APISuite) TearDownSuite() {
 	<-stopChan
 
 	s.Suite.TearDownSuite()
-}
-
-func TestCNetworkdAPI(t *testing.T) {
-	suite.Run(t, new(APISuite))
 }
 
 func (s *APISuite) TestVLANList() {

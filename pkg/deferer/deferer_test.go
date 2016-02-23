@@ -8,41 +8,24 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// log.Fatal(msg) will log the msg and end with a call to os.Exit(). There's no
-// way to handle an os.Exit, which means the tests will exit. To get around
-// this, use a log hook, which runs first, that panics. The panic will break
-// the code flow that normally leads to an exit, allowing recovery in the test,
-// assertions to be made, and testing to continue.
-var logHook *FatalTestHook
-
-type FatalTestHook struct {
-	lastEntry *log.Entry
+func init() {
+	logHook = new(FatalTestHook)
+	log.AddHook(logHook)
 }
 
-func (fth *FatalTestHook) Levels() []log.Level {
-	return []log.Level{
-		log.FatalLevel,
-	}
+func TestDeferer(t *testing.T) {
+	suite.Run(t, new(DefererSuite))
 }
 
-func (fth *FatalTestHook) Fire(e *log.Entry) error {
-	fth.lastEntry = e
-	panic("avoid fatal")
-}
-
-type DefererTestSuite struct {
+type DefererSuite struct {
 	suite.Suite
 }
 
-func TestDefererTestSuite(t *testing.T) {
-	suite.Run(t, new(DefererTestSuite))
-}
-
-func (s *DefererTestSuite) TestNewDeferer() {
+func (s *DefererSuite) TestNewDeferer() {
 	s.NotNil(deferer.NewDeferer(nil))
 }
 
-func (s *DefererTestSuite) TestDeferAndRun() {
+func (s *DefererSuite) TestDeferAndRun() {
 
 	results := []int{}
 	expectedResults := []int{4, 3, 7, 6, 5, 2, 1}
@@ -69,7 +52,7 @@ func (s *DefererTestSuite) TestDeferAndRun() {
 	s.Equal(expectedResults, results)
 }
 
-func (s *DefererTestSuite) TestFatal() {
+func (s *DefererSuite) TestFatal() {
 	fatalMsg := "fatal message"
 	results := make([]int, 0)
 	expectedResults := []int{2, 1}
@@ -95,7 +78,7 @@ func (s *DefererTestSuite) TestFatal() {
 	}()
 }
 
-func (s *DefererTestSuite) TestFatalWithFields() {
+func (s *DefererSuite) TestFatalWithFields() {
 	fatalMsg := "fatal message"
 	fatalFields := log.Fields{"foo": "bar"}
 	results := make([]int, 0)
@@ -123,7 +106,24 @@ func (s *DefererTestSuite) TestFatalWithFields() {
 	}()
 }
 
-func init() {
-	logHook = new(FatalTestHook)
-	log.AddHook(logHook)
+// log.Fatal(msg) will log the msg and end with a call to os.Exit(). There's no
+// way to handle an os.Exit, which means the tests will exit. To get around
+// this, use a log hook, which runs first, that panics. The panic will break
+// the code flow that normally leads to an exit, allowing recovery in the test,
+// assertions to be made, and testing to continue.
+var logHook *FatalTestHook
+
+type FatalTestHook struct {
+	lastEntry *log.Entry
+}
+
+func (fth *FatalTestHook) Levels() []log.Level {
+	return []log.Level{
+		log.FatalLevel,
+	}
+}
+
+func (fth *FatalTestHook) Fire(e *log.Entry) error {
+	fth.lastEntry = e
+	panic("avoid fatal")
 }

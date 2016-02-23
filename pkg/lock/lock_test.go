@@ -15,14 +15,18 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type LockTestSuite struct {
+func TestLock(t *testing.T) {
+	suite.Run(t, new(LockSuite))
+}
+
+type LockSuite struct {
 	suite.Suite
 	EtcdDir    string
 	EtcdClient *etcd.Client
 	EtcdCmd    *exec.Cmd
 }
 
-func (s *LockTestSuite) SetupSuite() {
+func (s *LockSuite) SetupSuite() {
 	// Start up a test etcd
 	s.EtcdDir, _ = ioutil.TempDir("", "lockTestEtcd-"+uuid.New())
 	port := 54444
@@ -49,14 +53,10 @@ func (s *LockTestSuite) SetupSuite() {
 
 }
 
-func (s *LockTestSuite) TearDownSuite() {
+func (s *LockSuite) TearDownSuite() {
 	_ = s.EtcdCmd.Process.Kill()
 	_ = s.EtcdCmd.Wait()
 	_ = os.RemoveAll(s.EtcdDir)
-}
-
-func TestLockTestSuite(t *testing.T) {
-	suite.Run(t, new(LockTestSuite))
 }
 
 func testMsgFunc(prefix string) func(...interface{}) string {
@@ -73,7 +73,7 @@ func testMsgFunc(prefix string) func(...interface{}) string {
 	}
 }
 
-func (s *LockTestSuite) TestAcquire() {
+func (s *LockSuite) TestAcquire() {
 	// Key/Value to test conflicts
 	lockKey := uuid.New()
 	lockValue := uuid.New()
@@ -108,7 +108,7 @@ func (s *LockTestSuite) TestAcquire() {
 	}
 }
 
-func (s *LockTestSuite) TestRefresh() {
+func (s *LockSuite) TestRefresh() {
 	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 1, false)
 
 	// Refresh
@@ -122,7 +122,7 @@ func (s *LockTestSuite) TestRefresh() {
 	s.Error(l.Refresh(), "lock not held should fail")
 }
 
-func (s *LockTestSuite) TestRelease() {
+func (s *LockSuite) TestRelease() {
 	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 1, false)
 
 	// Release held lock
@@ -137,7 +137,7 @@ func (s *LockTestSuite) TestRelease() {
 	s.Error(l.Release(), "expired lock should fail")
 }
 
-func (s *LockTestSuite) TestJSON() {
+func (s *LockSuite) TestJSON() {
 	l, _ := lock.Acquire(s.EtcdClient, uuid.New(), uuid.New(), 5, false)
 	lockBytes, err := json.Marshal(l)
 	s.NoError(err)

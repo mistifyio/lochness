@@ -10,20 +10,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type VLANTestSuite struct {
+func TestVLAN(t *testing.T) {
+	suite.Run(t, new(VLANSuite))
+}
+
+type VLANSuite struct {
 	common.Suite
 }
 
-func TestVLANTestSuite(t *testing.T) {
-	suite.Run(t, new(VLANTestSuite))
-}
-
-func (s *VLANTestSuite) TestNewVLAN() {
+func (s *VLANSuite) TestNewVLAN() {
 	vlan := s.Context.NewVLAN()
 	s.Equal(1, vlan.Tag)
 }
 
-func (s *VLANTestSuite) TestVLAN() {
+func (s *VLANSuite) TestVLAN() {
 	vlan := s.NewVLAN()
 
 	tests := []struct {
@@ -49,7 +49,7 @@ func (s *VLANTestSuite) TestVLAN() {
 	}
 }
 
-func (s *VLANTestSuite) TestRefresh() {
+func (s *VLANSuite) TestRefresh() {
 	vlan := s.NewVLAN()
 	vlanCopy := &lochness.VLAN{}
 	*vlanCopy = *vlan
@@ -63,7 +63,7 @@ func (s *VLANTestSuite) TestRefresh() {
 	s.Error(NewVLAN.Refresh(), "unsaved vlan refresh should fail")
 }
 
-func (s *VLANTestSuite) TestValidate() {
+func (s *VLANSuite) TestValidate() {
 	tests := []struct {
 		description string
 		tag         int
@@ -88,7 +88,7 @@ func (s *VLANTestSuite) TestValidate() {
 	}
 }
 
-func (s *VLANTestSuite) TestSave() {
+func (s *VLANSuite) TestSave() {
 	goodVLAN := s.Context.NewVLAN()
 
 	clobberVLAN := *goodVLAN
@@ -115,7 +115,7 @@ func (s *VLANTestSuite) TestSave() {
 	}
 }
 
-func (s *VLANTestSuite) TestDestroy() {
+func (s *VLANSuite) TestDestroy() {
 	vlan := s.NewVLAN()
 	vlangroup := s.NewVLANGroup()
 	_ = vlangroup.AddVLAN(vlan)
@@ -146,7 +146,7 @@ func (s *VLANTestSuite) TestDestroy() {
 	}
 }
 
-func (s *VLANTestSuite) TestForEachVLAN() {
+func (s *VLANSuite) TestForEachVLAN() {
 	vlan := s.NewVLAN()
 	vlan2 := s.NewVLAN()
 	expectedFound := map[int]bool{
@@ -171,7 +171,7 @@ func (s *VLANTestSuite) TestForEachVLAN() {
 	s.Equal(returnErr, err)
 }
 
-func (s *VLANTestSuite) TestVLANGroups() {
+func (s *VLANSuite) TestVLANGroups() {
 	vlanGroup := s.NewVLANGroup()
 	vlan := s.NewVLAN()
 	_ = vlanGroup.AddVLAN(vlan)

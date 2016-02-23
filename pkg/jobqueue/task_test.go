@@ -8,15 +8,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type TaskTestSuite struct {
-	CommonTestSuite
+func TestTask(t *testing.T) {
+	suite.Run(t, new(TaskSuite))
 }
 
-func TestTaskTestSuite(t *testing.T) {
-	suite.Run(t, new(TaskTestSuite))
+type TaskSuite struct {
+	JobQCommonSuite
 }
 
-func (s *TaskTestSuite) TestDelete() {
+func (s *TaskSuite) TestDelete() {
 	job := s.newJob("")
 	_, _ = s.Client.AddTask(job)
 	task, _ := s.Client.NextWorkTask()
@@ -25,7 +25,7 @@ func (s *TaskTestSuite) TestDelete() {
 	s.NoError(task.Delete())
 }
 
-func (s *TaskTestSuite) TestRelease() {
+func (s *TaskSuite) TestRelease() {
 	job := s.newJob("")
 	_, _ = s.Client.AddTask(job)
 	task1, _ := s.Client.NextWorkTask()
@@ -34,7 +34,7 @@ func (s *TaskTestSuite) TestRelease() {
 	s.Equal(task1.ID, task2.ID)
 }
 
-func (s *TaskTestSuite) TestRefreshJob() {
+func (s *TaskSuite) TestRefreshJob() {
 	job := s.newJob("")
 	_, _ = s.Client.AddTask(job)
 	task, _ := s.Client.NextWorkTask()
@@ -46,7 +46,7 @@ func (s *TaskTestSuite) TestRefreshJob() {
 
 }
 
-func (s *TaskTestSuite) TestRefreshGuest() {
+func (s *TaskSuite) TestRefreshGuest() {
 	job := s.newJob("")
 	_, _ = s.Client.AddTask(job)
 	task, _ := s.Client.NextWorkTask()

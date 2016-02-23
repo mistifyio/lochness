@@ -15,15 +15,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type GuestTestSuite struct {
+func TestGuest(t *testing.T) {
+	suite.Run(t, new(GuestSuite))
+}
+
+type GuestSuite struct {
 	common.Suite
 }
 
-func TestGuestTestSuite(t *testing.T) {
-	suite.Run(t, new(GuestTestSuite))
-}
-
-func (s *GuestTestSuite) TestJSON() {
+func (s *GuestSuite) TestJSON() {
 	guest := s.NewGuest()
 
 	guestBytes, err := json.Marshal(guest)
@@ -35,12 +35,12 @@ func (s *GuestTestSuite) TestJSON() {
 	s.Equal(guest.IP, guestFromJSON.IP)
 }
 
-func (s *GuestTestSuite) TestNewGuest() {
+func (s *GuestSuite) TestNewGuest() {
 	guest := s.Context.NewGuest()
 	s.NotNil(uuid.Parse(guest.ID))
 }
 
-func (s *GuestTestSuite) TestGuest() {
+func (s *GuestSuite) TestGuest() {
 	guest := s.NewGuest()
 
 	tests := []struct {
@@ -67,7 +67,7 @@ func (s *GuestTestSuite) TestGuest() {
 	}
 }
 
-func (s *GuestTestSuite) TestRefresh() {
+func (s *GuestSuite) TestRefresh() {
 	guest := s.NewGuest()
 	guestCopy := &lochness.Guest{}
 	*guestCopy = *guest
@@ -80,7 +80,7 @@ func (s *GuestTestSuite) TestRefresh() {
 	s.Error(NewGuest.Refresh(), "unsaved guest refresh should fail")
 }
 
-func (s *GuestTestSuite) TestValidate() {
+func (s *GuestSuite) TestValidate() {
 	mac, _ := net.ParseMAC("4C:3F:B1:7E:54:64")
 	tests := []struct {
 		description string
@@ -117,7 +117,7 @@ func (s *GuestTestSuite) TestValidate() {
 	}
 }
 
-func (s *GuestTestSuite) TestSave() {
+func (s *GuestSuite) TestSave() {
 	goodGuest := s.Context.NewGuest()
 	flavor := s.NewFlavor()
 	network := s.NewNetwork()
@@ -150,7 +150,7 @@ func (s *GuestTestSuite) TestSave() {
 	}
 }
 
-func (s *GuestTestSuite) TestDestroy() {
+func (s *GuestSuite) TestDestroy() {
 	blank := s.Context.NewGuest()
 	blank.ID = ""
 
@@ -181,7 +181,7 @@ func (s *GuestTestSuite) TestDestroy() {
 	}
 }
 
-func (s *GuestTestSuite) TestCandidates() {
+func (s *GuestSuite) TestCandidates() {
 	guest := s.NewGuest()
 	subnet := s.NewSubnet()
 	network, _ := s.Context.Network(guest.NetworkID)
@@ -217,7 +217,7 @@ func (s *GuestTestSuite) TestCandidates() {
 	s.Equal(hypervisors[3].ID, candidates[0].ID)
 }
 
-func (s *GuestTestSuite) TestCandidateIsAlive() {
+func (s *GuestSuite) TestCandidateIsAlive() {
 	guest := s.NewGuest()
 	hypervisors := lochness.Hypervisors{
 		s.NewHypervisor(),
@@ -232,7 +232,7 @@ func (s *GuestTestSuite) TestCandidateIsAlive() {
 	s.Equal(hypervisors[1].ID, candidates[0].ID)
 }
 
-func (s *GuestTestSuite) TestCandidateHasResources() {
+func (s *GuestSuite) TestCandidateHasResources() {
 	guest := s.NewGuest()
 	hypervisors := lochness.Hypervisors{
 		s.NewHypervisor(),
@@ -246,7 +246,7 @@ func (s *GuestTestSuite) TestCandidateHasResources() {
 	s.Equal(hypervisors[1].ID, candidates[0].ID)
 }
 
-func (s *GuestTestSuite) TestCandidateHasSubnet() {
+func (s *GuestSuite) TestCandidateHasSubnet() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	hypervisors := lochness.Hypervisors{
 		s.NewHypervisor(),
@@ -260,7 +260,7 @@ func (s *GuestTestSuite) TestCandidateHasSubnet() {
 
 }
 
-func (s *GuestTestSuite) TestCandidateRandomize() {
+func (s *GuestSuite) TestCandidateRandomize() {
 	guest := s.Context.NewGuest()
 	candidates := make(lochness.Hypervisors, 10)
 	for i := 0; i < cap(candidates); i++ {
@@ -294,7 +294,7 @@ func (s *GuestTestSuite) TestCandidateRandomize() {
 
 }
 
-func (s *GuestTestSuite) TestForEachGuest() {
+func (s *GuestSuite) TestForEachGuest() {
 	guest := s.NewGuest()
 	guest2 := s.NewGuest()
 	expectedFound := map[string]bool{

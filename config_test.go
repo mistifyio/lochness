@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ConfigTestSuite struct {
+func TestConfig(t *testing.T) {
+	suite.Run(t, new(ConfigSuite))
+}
+
+type ConfigSuite struct {
 	common.Suite
 }
 
-func TestConfigTestSuite(t *testing.T) {
-	suite.Run(t, new(ConfigTestSuite))
-}
-
-func (s *ConfigTestSuite) TestGetConfig() {
+func (s *ConfigSuite) TestGetConfig() {
 	_ = s.Context.SetConfig("TestGetConfig", "foo")
 	_ = s.Context.SetConfig("TestGetConfigNested/foo", "bar")
 
@@ -46,7 +46,7 @@ func (s *ConfigTestSuite) TestGetConfig() {
 
 }
 
-func (s *ConfigTestSuite) TestSetConfig() {
+func (s *ConfigSuite) TestSetConfig() {
 	tests := []struct {
 		description string
 		key         string
@@ -70,7 +70,7 @@ func (s *ConfigTestSuite) TestSetConfig() {
 	}
 }
 
-func (s *ConfigTestSuite) TestForEachConfig() {
+func (s *ConfigSuite) TestForEachConfig() {
 	keyValues := map[string]string{
 		"TestForEachConfig":       "foo",
 		"TestGetConfigNested/foo": "bar",

@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type JMapTestSuite struct {
+func TestJMap(t *testing.T) {
+	suite.Run(t, new(JMapSuite))
+}
+
+type JMapSuite struct {
 	suite.Suite
 }
 
-func TestJMapTestSuite(t *testing.T) {
-	suite.Run(t, new(JMapTestSuite))
-}
-
-func (s *JMapTestSuite) TestID() {
+func (s *JMapSuite) TestID() {
 	j := &cli.JMap{}
 	s.Empty(j.ID())
 
@@ -25,12 +25,12 @@ func (s *JMapTestSuite) TestID() {
 	s.Equal("asdf", j.ID())
 }
 
-func (s *JMapTestSuite) TestString() {
+func (s *JMapSuite) TestString() {
 	j := &cli.JMap{"id": "asdf", "foo": "bar"}
 	s.Equal(`{"foo":"bar","id":"asdf"}`, j.String())
 }
 
-func (s *JMapTestSuite) TestPrint() {
+func (s *JMapSuite) TestPrint() {
 	stdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -53,12 +53,12 @@ func (s *JMapTestSuite) TestPrint() {
 	s.Equal(j.String(), results[1])
 }
 
-func (s *JMapTestSuite) TestLen() {
+func (s *JMapSuite) TestLen() {
 	jms := cli.JMapSlice{cli.JMap{}, cli.JMap{}}
 	s.Equal(2, jms.Len())
 }
 
-func (s *JMapTestSuite) TestLess() {
+func (s *JMapSuite) TestLess() {
 	jms := cli.JMapSlice{
 		cli.JMap{"id": "a"},
 		cli.JMap{"id": "b"},
@@ -68,7 +68,7 @@ func (s *JMapTestSuite) TestLess() {
 	s.False(jms.Less(1, 0))
 }
 
-func (s *JMapTestSuite) TestSwap() {
+func (s *JMapSuite) TestSwap() {
 	j0 := cli.JMap{"id": "a"}
 	j1 := cli.JMap{"id": "b"}
 	jms := cli.JMapSlice{

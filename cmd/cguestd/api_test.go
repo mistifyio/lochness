@@ -21,6 +21,10 @@ import (
 	"github.com/tylerb/graceful"
 )
 
+func TestCGuestdAPI(t *testing.T) {
+	suite.Run(t, new(APISuite))
+}
+
 type APISuite struct {
 	common.Suite
 	Port           uint
@@ -91,10 +95,6 @@ func (s *APISuite) TearDownSuite() {
 	_ = s.BeanstalkdCmd.Wait()
 
 	s.Suite.TearDownSuite()
-}
-
-func TestCGuestdAPI(t *testing.T) {
-	suite.Run(t, new(APISuite))
 }
 
 func (s *APISuite) TestGuestsList() {

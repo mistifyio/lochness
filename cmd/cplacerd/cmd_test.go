@@ -14,6 +14,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestCPlacerd(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
+}
+
 type CmdSuite struct {
 	common.Suite
 	BinName        string
@@ -52,10 +56,6 @@ func (s *CmdSuite) TearDownTest() {
 	_ = s.BeanstalkdCmd.Process.Kill()
 	_ = s.BeanstalkdCmd.Wait()
 	s.Suite.TearDownTest()
-}
-
-func TestCPlacerd(t *testing.T) {
-	suite.Run(t, new(CmdSuite))
 }
 
 func (s *CmdSuite) TestCmd() {

@@ -17,6 +17,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestLocker(t *testing.T) {
+	suite.Run(t, new(CmdSuite))
+}
+
 type CmdSuite struct {
 	common.Suite
 	BinName string
@@ -26,10 +30,6 @@ func (s *CmdSuite) SetupSuite() {
 	s.Suite.SetupSuite()
 	s.Require().NoError(common.Build())
 	s.BinName = "locker"
-}
-
-func TestLocker(t *testing.T) {
-	suite.Run(t, new(CmdSuite))
 }
 
 func (s *CmdSuite) TestCmd() {

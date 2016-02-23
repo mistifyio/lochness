@@ -11,15 +11,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ClientTestSuite struct {
-	CommonTestSuite
+func TestJobQClient(t *testing.T) {
+	suite.Run(t, new(ClientSuite))
 }
 
-func TestClientTestSuite(t *testing.T) {
-	suite.Run(t, new(ClientTestSuite))
+type ClientSuite struct {
+	JobQCommonSuite
 }
 
-func (s *ClientTestSuite) TestNewClient() {
+func (s *ClientSuite) TestNewClient() {
 	tests := []struct {
 		description string
 		bstalkAddr  string
@@ -47,7 +47,7 @@ func (s *ClientTestSuite) TestNewClient() {
 	}
 }
 
-func (s *ClientTestSuite) TestAddTask() {
+func (s *ClientSuite) TestAddTask() {
 	j := s.newJob("select-hypervisor")
 	j2 := s.newJob("")
 
@@ -73,14 +73,14 @@ func (s *ClientTestSuite) TestAddTask() {
 	}
 }
 
-func (s *ClientTestSuite) TestDeleteTask() {
+func (s *ClientSuite) TestDeleteTask() {
 	job := s.newJob("restart")
 	taskID, _ := s.Client.AddTask(job)
 	s.NoError(s.Client.DeleteTask(taskID), "existing should succeed")
 	s.Error(s.Client.DeleteTask(taskID), "missing should fail")
 }
 
-func (s *ClientTestSuite) TestNextWorkTask() {
+func (s *ClientSuite) TestNextWorkTask() {
 	job := s.newJob("restart")
 	taskID, _ := s.Client.AddTask(job)
 	task, err := s.Client.NextWorkTask()
@@ -89,7 +89,7 @@ func (s *ClientTestSuite) TestNextWorkTask() {
 	s.Equal(job.ID, task.JobID)
 }
 
-func (s *ClientTestSuite) TestNextCreateTask() {
+func (s *ClientSuite) TestNextCreateTask() {
 	job := s.newJob("select-hypervisor")
 	taskID, _ := s.Client.AddTask(job)
 	task, err := s.Client.NextCreateTask()
@@ -98,7 +98,7 @@ func (s *ClientTestSuite) TestNextCreateTask() {
 	s.Equal(job.ID, task.JobID)
 }
 
-func (s *ClientTestSuite) TestAddJob() {
+func (s *ClientSuite) TestAddJob() {
 	tests := []struct {
 		description string
 		guest       string
@@ -124,7 +124,7 @@ func (s *ClientTestSuite) TestAddJob() {
 	}
 }
 
-func (s *ClientTestSuite) TestStats() {
+func (s *ClientSuite) TestStats() {
 	stats, err := s.Client.StatsCreate()
 	if connErr, ok := err.(beanstalk.ConnError); ok {
 		err = connErr.Err

@@ -10,20 +10,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type FlavorTestSuite struct {
+func TestFlavor(t *testing.T) {
+	suite.Run(t, new(FlavorSuite))
+}
+
+type FlavorSuite struct {
 	common.Suite
 }
 
-func TestFlavorTestSuite(t *testing.T) {
-	suite.Run(t, new(FlavorTestSuite))
-}
-
-func (s *FlavorTestSuite) TestNewFlavor() {
+func (s *FlavorSuite) TestNewFlavor() {
 	f := s.Context.NewFlavor()
 	s.NotEmpty(uuid.Parse(f.ID))
 }
 
-func (s *FlavorTestSuite) TestFlavor() {
+func (s *FlavorSuite) TestFlavor() {
 	flavor := s.NewFlavor()
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func (s *FlavorTestSuite) TestFlavor() {
 
 }
 
-func (s *FlavorTestSuite) TestRefresh() {
+func (s *FlavorSuite) TestRefresh() {
 	flavor := s.NewFlavor()
 	flavorCopy := &lochness.Flavor{}
 	*flavorCopy = *flavor
@@ -65,7 +65,7 @@ func (s *FlavorTestSuite) TestRefresh() {
 	s.Error(newFlavor.Refresh(), "unsaved flavor refresh should fail")
 }
 
-func (s *FlavorTestSuite) TestValidate() {
+func (s *FlavorSuite) TestValidate() {
 	tests := []struct {
 		description string
 		flavor      *lochness.Flavor
@@ -89,7 +89,7 @@ func (s *FlavorTestSuite) TestValidate() {
 	}
 }
 
-func (s *FlavorTestSuite) TestSave() {
+func (s *FlavorSuite) TestSave() {
 	goodFlavor := s.Context.NewFlavor()
 	goodFlavor.Image = uuid.New()
 

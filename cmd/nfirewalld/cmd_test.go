@@ -13,6 +13,11 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestNFirewalld(t *testing.T) {
+	t.SkipNow()
+	suite.Run(t, new(CmdSuite))
+}
+
 type CmdSuite struct {
 	common.Suite
 	ConfigPath string
@@ -47,11 +52,6 @@ func (s *CmdSuite) TearDownTest() {
 	//	os.Remove(s.ConfigPath)
 
 	s.Suite.TearDownTest()
-}
-
-func TestNFirewalld(t *testing.T) {
-	t.SkipNow()
-	suite.Run(t, new(CmdSuite))
 }
 
 func (s *CmdSuite) TestCmd() {

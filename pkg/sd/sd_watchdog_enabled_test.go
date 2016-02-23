@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type SDWatchdogEnabledTestSuite struct {
+func TestSDWatchdogEnabled(t *testing.T) {
+	suite.Run(t, new(SDWatchdogEnabledSuite))
+}
+
+type SDWatchdogEnabledSuite struct {
 	suite.Suite
 }
 
-func TestSDWatchdogEnabledTestSuite(t *testing.T) {
-	suite.Run(t, new(SDWatchdogEnabledTestSuite))
-}
-
-func (s *SDWatchdogEnabledTestSuite) TestWatchdogEnabled() {
+func (s *SDWatchdogEnabledSuite) TestWatchdogEnabled() {
 	spid := strconv.Itoa(os.Getpid())
 	tests := []struct {
 		description     string

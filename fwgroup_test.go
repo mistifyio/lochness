@@ -12,20 +12,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type FWGroupTestSuite struct {
+func TestFWGroup(t *testing.T) {
+	suite.Run(t, new(FWGroupSuite))
+}
+
+type FWGroupSuite struct {
 	common.Suite
 }
 
-func TestFWGroupTestSuite(t *testing.T) {
-	suite.Run(t, new(FWGroupTestSuite))
-}
-
-func (s *FWGroupTestSuite) TestNewFWGroup() {
+func (s *FWGroupSuite) TestNewFWGroup() {
 	fw := s.Context.NewFWGroup()
 	s.NotEmpty(uuid.Parse(fw.ID))
 }
 
-func (s *FWGroupTestSuite) TestFWGroup() {
+func (s *FWGroupSuite) TestFWGroup() {
 	fwgroup := s.NewFWGroup()
 
 	tests := []struct {
@@ -54,7 +54,7 @@ func (s *FWGroupTestSuite) TestFWGroup() {
 	}
 }
 
-func (s *FWGroupTestSuite) TestRefresh() {
+func (s *FWGroupSuite) TestRefresh() {
 	fwgroup := s.NewFWGroup()
 	fwgroupCopy := &lochness.FWGroup{}
 	*fwgroupCopy = *fwgroup
@@ -70,7 +70,7 @@ func (s *FWGroupTestSuite) TestRefresh() {
 	s.Error(newFWGroup.Refresh(), "unsaved fwgroup refresh should fail")
 }
 
-func (s *FWGroupTestSuite) TestValidate() {
+func (s *FWGroupSuite) TestValidate() {
 	tests := []struct {
 		description string
 		ID          string
@@ -93,7 +93,7 @@ func (s *FWGroupTestSuite) TestValidate() {
 	}
 }
 
-func (s *FWGroupTestSuite) TestSave() {
+func (s *FWGroupSuite) TestSave() {
 	goodFWGroup := s.Context.NewFWGroup()
 
 	clobberFWGroup := *goodFWGroup
@@ -119,7 +119,7 @@ func (s *FWGroupTestSuite) TestSave() {
 	}
 }
 
-func (s *FWGroupTestSuite) TestJSON() {
+func (s *FWGroupSuite) TestJSON() {
 
 	fwgroup := s.Context.NewFWGroup()
 	_, n, _ := net.ParseCIDR("192.168.100.1/16")
