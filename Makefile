@@ -1,3 +1,7 @@
+rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
+
+SHELL := /bin/bash
+
 PREFIX := /usr
 SBIN_DIR=$(PREFIX)/sbin
 CMDS :=  \
@@ -17,6 +21,11 @@ CMDS :=  \
 	nfirewalld \
 	nheartbeatd \
 
+
+test_files := $(call rwildcard,,*_test.go)
+pkgdirs := $(filter-out ./, $(sort $(dir $(test_files))))
+pkgs := $(notdir $(patsubst %/,%,$(pkgdirs)))
+tests := $(join $(pkgdirs), $(addsuffix .test,$(pkgs))) lochness.test
 
 BINS := $(join $(addprefix cmd/,$(CMDS)) ,$(addprefix /,$(CMDS)))
 all: $(BINS)
@@ -41,6 +50,13 @@ cmd/nconfigd/nconfigd: $(wildcard cmd/nconfigd/*.go)
 cmd/nfirewalld/nfirewalld: $(wildcard cmd/nfirewalld/*.go)
 cmd/nheartbeatd/nheartbeatd: $(wildcard cmd/nheartbeatd/*.go)
 
+internal/cli/cli.test: $(wildcard internal/cli/*.go)
+pkg/deferer/deferer.test: $(wildcard pkg/deferer/*.go)
+pkg/jobqueue/jobqueue.test: $(wildcard pkg/jobqueue/*.go)
+pkg/lock/lock.test: $(wildcard pkg/lock/*.go)
+pkg/sd/sd.test: $(wildcard pkg/sd/*.go)
+pkg/watcher/watcher.test: $(wildcard pkg/watcher/*.go)
+
 $(SBIN_DIR)/%:
 	install -D $< $(DESTDIR)$@
 
@@ -56,6 +72,29 @@ $(SBIN_DIR)/locker: cmd/locker/locker
 $(SBIN_DIR)/nconfigd: cmd/nconfigd/nconfigd
 $(SBIN_DIR)/nfirewalld: cmd/nfirewalld/nfirewalld
 $(SBIN_DIR)/nheartbeatd: cmd/nheartbeatd/nheartbeatd
+
+.PHONY: test
+test: $(addsuffix .run,$(tests))
+	@cat $(addsuffix .out,$(tests))
+
+.PHONY: %.test.run
+%.test.run: %.test
+	@echo "TEST  $^"
+	@cid=$(shell docker run -dti -v "${PWD}:/lochness:ro" -v /sys/fs/cgroup:/sys/fs/cgroup:ro --name $(notdir $^) mistifyio/mistify-os) && \
+	test -n $(cid) && \
+	sleep .25 && \
+	docker exec $$cid sh -c "cd /lochness; cd $(@D); LOCHNESS_TEST_NO_BUILD=1 ./$(notdir $^) -test.v" &> $^.out; \
+	docker kill $$cid &>/dev/null && \
+	docker rm -v $$cid >& /dev/null
+
+.SECONDARY: $(tests)
+%.test: %
+	@echo BUILD $@
+	@cd $(dir $^) && go test -c
+
+lochness.test:
+	@echo BUILD $@
+	@go test -c
 
 clean:
 	for d in $(dir $(CMDS)); do (cd $$d && go clean); done
