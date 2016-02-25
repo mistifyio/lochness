@@ -98,27 +98,27 @@ func main() {
 	// XXX: we want to try to keep track of where a job is
 	// in this pipeline? would have to persist in the job
 	funcs := []TaskFunc{
-		TaskFunc{
+		{
 			name:     "check job status",
 			function: checkJobStatus,
 		},
-		TaskFunc{
+		{
 			name:     "check guest status",
 			function: checkGuestStatus,
 		},
-		TaskFunc{
+		{
 			name:     "select hypervisor candidate",
 			function: selectHypervisor,
 		},
-		TaskFunc{
+		{
 			name:     "update job action",
 			function: changeJobAction,
 		},
-		TaskFunc{
+		{
 			name:     "add task to worker",
 			function: addJobToWorker,
 		},
-		TaskFunc{
+		{
 			name:     "make task for deletion",
 			function: deleteTask,
 		},
