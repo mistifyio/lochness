@@ -2,6 +2,7 @@ package common
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
 	"syscall"
 
@@ -104,6 +105,9 @@ func ExitStatus(err error) int {
 
 // Build builds the current go package.
 func Build() error {
+	if os.Getenv("LOCHNESS_TEST_NO_BUILD") != "" {
+		return nil
+	}
 	_, err := ExecSync("go", "build")
 	return err
 }
