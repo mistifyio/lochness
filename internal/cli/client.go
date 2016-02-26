@@ -141,7 +141,8 @@ func parseError(dec *json.Decoder) (string, []interface{}) {
 	msg := ""
 	iface, ok := jmap["message"]
 	if ok {
-		if str, ok := iface.(string); ok {
+		var str string
+		if str, ok = iface.(string); ok {
 			msg = str
 		}
 	}

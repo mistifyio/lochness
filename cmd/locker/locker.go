@@ -76,7 +76,7 @@ func runService(dc *deferer.Deferer, serviceDone chan struct{}, id int, name str
 			"name":  name,
 		}, "error writing service file")
 	}
-	if err := f.Sync(); err != nil {
+	if err = f.Sync(); err != nil {
 		d.FatalWithFields(log.Fields{
 			"error": err,
 			"func":  "f.Sync",
@@ -170,7 +170,7 @@ func main() {
 			"arg":   os.Args[1],
 		}, "error decoding arg string")
 	}
-	if err := json.Unmarshal(arg, &params); err != nil {
+	if err = json.Unmarshal(arg, &params); err != nil {
 		d.FatalWithFields(log.Fields{
 			"error": err,
 			"func":  "json.Unmarshal",
@@ -179,7 +179,7 @@ func main() {
 	}
 
 	l := params.Lock
-	if err := l.Refresh(); err != nil {
+	if err = l.Refresh(); err != nil {
 		d.FatalWithFields(log.Fields{
 			"error": err,
 			"func":  "lock.Refresh",
@@ -195,7 +195,8 @@ func main() {
 	})
 	locker := refresh(l, params.Interval)
 
-	sdttl, err := sd.WatchdogEnabled()
+	var sdttl time.Duration
+	sdttl, err = sd.WatchdogEnabled()
 	if err != nil {
 		d.FatalWithFields(log.Fields{
 			"error": err,

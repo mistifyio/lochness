@@ -1,3 +1,5 @@
 *.test
-.*.swp
-.*~
+*.test.out
+.*
+!.gitignore
+!.travis.yml

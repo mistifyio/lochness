@@ -13,8 +13,8 @@ import (
 	"text/template"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/armon/go-metrics"
-	"github.com/bakins/go-metrics-map"
+	metrics "github.com/armon/go-metrics"
+	mapsink "github.com/bakins/go-metrics-map"
 	"github.com/bakins/go-metrics-middleware"
 	"github.com/bakins/net-http-recover"
 	"github.com/coreos/go-etcd/etcd"
