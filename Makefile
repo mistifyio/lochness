@@ -15,8 +15,6 @@ CMDS :=  \
 	guest \
 	hv \
 	img \
-	lock \
-	locker \
 	nconfigd \
 	nfirewalld \
 	nheartbeatd \
@@ -50,8 +48,6 @@ cmd/cworkerd/cworkerd cmd/cworkerd/cworkerd.test: $(wildcard cmd/cworkerd/*.go) 
 cmd/guest/guest cmd/guest/guest.test: $(wildcard cmd/guest/*.go) $(pkgs)
 cmd/hv/hv cmd/hv/hv.test: $(wildcard cmd/hv/*.go) $(pkgs)
 cmd/img/img cmd/img/img.test: $(wildcard cmd/img/*.go) $(pkgs)
-cmd/lock/lock cmd/lock/lock.test: $(wildcard cmd/lock/*.go) $(pkgs)
-cmd/locker/locker cmd/locker/locker.test: $(wildcard cmd/locker/*.go) $(pkgs)
 cmd/nconfigd/nconfigd cmd/nconfigd/nconfigd.test: $(wildcard cmd/nconfigd/*.go) $(pkgs)
 cmd/nfirewalld/nfirewalld cmd/nfirewalld/nfirewalld.test: $(wildcard cmd/nfirewalld/*.go) $(pkgs)
 cmd/nheartbeatd/nheartbeatd cmd/nheartbeatd/nheartbeatd.test: $(wildcard cmd/nheartbeatd/*.go) $(pkgs)
@@ -66,8 +62,6 @@ $(SBIN_DIR)/chypervisord: cmd/chypervisord/chypervisord
 $(SBIN_DIR)/cnetworkd: cmd/cnetworkd/cnetworkd
 $(SBIN_DIR)/cplacerd: cmd/cplacerd/cplacerd
 $(SBIN_DIR)/cworkerd: cmd/cworkerd/cworkerd
-$(SBIN_DIR)/lock: cmd/lock/lock
-$(SBIN_DIR)/locker: cmd/locker/locker
 $(SBIN_DIR)/nconfigd: cmd/nconfigd/nconfigd
 $(SBIN_DIR)/nfirewalld: cmd/nfirewalld/nfirewalld
 $(SBIN_DIR)/nheartbeatd: cmd/nheartbeatd/nheartbeatd
@@ -107,11 +101,10 @@ lochness.test:
 .PHONY: internal/tests/common internal/tests/common.test
 internal/tests/common internal/tests/common.test:
 
-.PHONY: internal/cli/cli pkg/deferer/deferer pkg/jobqueue/jobqueue pkg/lock/lock pkg/sd/sd pkg/watcher/watcher
+.PHONY: internal/cli/cli pkg/deferer/deferer pkg/jobqueue/jobqueue pkg/sd/sd pkg/watcher/watcher
 internal/cli/cli.test: $(wildcard internal/cli/*.go)
 pkg/deferer/deferer.test pkg/deferer/deferer.test: $(wildcard pkg/deferer/*.go)
 pkg/jobqueue/jobqueue.test: $(wildcard pkg/jobqueue/*.go)
-pkg/lock/lock.test: $(wildcard pkg/lock/*.go)
 pkg/sd/sd.test: $(wildcard pkg/sd/*.go)
 pkg/watcher/watcher.test: $(wildcard pkg/watcher/*.go)
 
