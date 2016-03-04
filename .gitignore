@@ -1,4 +1,5 @@
 *.test
+*.run.out
 *.test.out
 .*
 !.gitignore
