@@ -56,6 +56,12 @@ func (s *CmdSuite) SetupSuite() {
 	s.BinName = "nconfigd"
 }
 
+func (s *CmdSuite) TearDownSuite() {
+	_ = os.RemoveAll(s.WorkPath)
+
+	s.Suite.TearDownSuite()
+}
+
 func (s *CmdSuite) SetupTest() {
 	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
@@ -80,21 +86,19 @@ func (s *CmdSuite) SetupTest() {
 	s.Config = config
 }
 
-func (s *CmdSuite) TearDownSuite() {
-	_ = os.RemoveAll(s.WorkPath)
-
-	s.Suite.TearDownSuite()
-}
-
-type testCase struct {
-	description   string
-	key           string
-	value         string
-	expectedRuns  int
-	expectedRoles []string
+func (s *CmdSuite) TearDownTest() {
+	s.Suite.TearDownTest()
 }
 
 func (s *CmdSuite) TestCmd() {
+	type testCase struct {
+		description   string
+		key           string
+		value         string
+		expectedRuns  int
+		expectedRoles []string
+	}
+
 	args := []string{
 		"-a", s.WorkPath,
 		"-c", s.ConfigPath,
@@ -109,6 +113,8 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
+		s.TearDownTest()
+		s.SetupTest()
 		msg := common.TestMsgFunc(test.description)
 
 		cmd, err := common.Start("./"+s.BinName, args...)
