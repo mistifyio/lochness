@@ -5,17 +5,16 @@ import (
 	"regexp"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mistifyio/lochness"
 )
 
 type (
-	// Fetcher grabs keys from etcd and maintains lists of hypervisors, guests, and
-	// subnets
+	// Fetcher grabs keys from a kv and maintains lists of hypervisors, guests, and subnets
 	Fetcher struct {
 		context     *lochness.Context
-		etcdClient  *etcd.Client
+		kvClient    *kv.Client
 		hypervisors map[string]*lochness.Hypervisor
 		guests      map[string]*lochness.Guest
 		subnets     map[string]*lochness.Subnet
@@ -23,7 +22,7 @@ type (
 
 	// ilogFields defines what needs to be passed to logIntegrationMessage()
 	ilogFields struct {
-		r *etcd.Response
+		r *kv.Response
 		m string
 		i string
 		v string
@@ -35,16 +34,16 @@ type (
 var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
 
 // NewFetcher creates a new fetcher
-func NewFetcher(etcdAddress string) *Fetcher {
-	e := etcd.NewClient([]string{etcdAddress})
+func NewFetcher(kvAddress string) *Fetcher {
+	e := kv.NewClient([]string{kvAddress})
 	c := lochness.NewContext(e)
 	return &Fetcher{
-		context:    c,
-		etcdClient: e,
+		context:  c,
+		kvClient: e,
 	}
 }
 
-// FetchAll pulls the hypervisors, guests, and subnets from etcd
+// FetchAll pulls the hypervisors, guests, and subnets from a kv
 func (f *Fetcher) FetchAll() error {
 	var errs *multierror.Error
 	if err := f.fetchHypervisors(); err != nil {
@@ -59,7 +58,7 @@ func (f *Fetcher) FetchAll() error {
 	return errs.ErrorOrNil()
 }
 
-// fetchHypervisors pulls the hypervisors from etcd
+// fetchHypervisors pulls the hypervisors from a kv
 func (f *Fetcher) fetchHypervisors() error {
 	f.hypervisors = make(map[string]*lochness.Hypervisor)
 	err := f.context.ForEachHypervisor(func(hv *lochness.Hypervisor) error {
@@ -67,18 +66,18 @@ func (f *Fetcher) fetchHypervisors() error {
 		return nil
 	})
 	if err != nil {
-		if _, ok := err.(*etcd.EtcdError); ok && err.(*etcd.EtcdError).ErrorCode == 100 {
+		if _, ok := err.(*kv.EtcdError); ok && err.(*kv.EtcdError).ErrorCode == 100 {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "context.ForEachHypervisor",
-			}).Warning("no hypervisors are stored in etcd")
+			}).Warning("no hypervisors are stored in kv")
 			return nil
 		}
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "context.ForEachHypervisor",
-		}).Error("could not retrieve hypervisors from etcd")
+		}).Error("could not retrieve hypervisors from kv")
 		return err
 	}
 	log.WithFields(log.Fields{
@@ -87,7 +86,7 @@ func (f *Fetcher) fetchHypervisors() error {
 	return nil
 }
 
-// fetchGuests pulls the guests from etcd
+// fetchGuests pulls the guests from a kv
 func (f *Fetcher) fetchGuests() error {
 	f.guests = make(map[string]*lochness.Guest)
 	err := f.context.ForEachGuest(func(g *lochness.Guest) error {
@@ -95,18 +94,18 @@ func (f *Fetcher) fetchGuests() error {
 		return nil
 	})
 	if err != nil {
-		if err.(*etcd.EtcdError).ErrorCode == 100 {
+		if err.(*kv.EtcdError).ErrorCode == 100 {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "context.ForEachGuest",
-			}).Warning("no guests are stored in etcd")
+			}).Warning("no guests are stored in kv")
 			return nil
 		}
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "context.ForEachGuest",
-		}).Error("could not retrieve guests from etcd")
+		}).Error("could not retrieve guests from kv")
 		return err
 	}
 	log.WithFields(log.Fields{
@@ -115,7 +114,7 @@ func (f *Fetcher) fetchGuests() error {
 	return nil
 }
 
-// fetchSubnets pulls the subnets from etcd
+// fetchSubnets pulls the subnets from a kv
 func (f *Fetcher) fetchSubnets() error {
 	f.subnets = make(map[string]*lochness.Subnet)
 	err := f.context.ForEachSubnet(func(s *lochness.Subnet) error {
@@ -123,18 +122,18 @@ func (f *Fetcher) fetchSubnets() error {
 		return nil
 	})
 	if err != nil {
-		if err.(*etcd.EtcdError).ErrorCode == 100 {
+		if err.(*kv.EtcdError).ErrorCode == 100 {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
-				"func":  "etcd.Get",
-			}).Warning("no subnets are stored in etcd")
+				"func":  "Get",
+			}).Warning("no subnets are stored in kv")
 			return nil
 		}
 		log.WithFields(log.Fields{
 			"error": err,
-			"func":  "etcd.Get",
-		}).Error("could not retrieve subnets from etcd")
+			"func":  "Get",
+		}).Error("could not retrieve subnets from kv")
 		return err
 	}
 	log.WithFields(log.Fields{
@@ -176,17 +175,17 @@ func (f *Fetcher) Subnets() (map[string]*lochness.Subnet, error) {
 	return f.subnets, nil
 }
 
-// IntegrateResponse takes an etcd reponse and updates our list of hypervisors,
+// IntegrateResponse takes an a kv reponse and updates our list of hypervisors,
 // subnets, or guests, then returns whether a refresh should happen
-func (f *Fetcher) IntegrateResponse(r *etcd.Response) (bool, error) {
+func (f *Fetcher) IntegrateResponse(r *kv.Response) (bool, error) {
 	if r == nil {
-		return false, errors.New("nil etcd response")
+		return false, errors.New("nil kv response")
 	}
 
 	// Parse the key
 	matches := matchKeys.FindStringSubmatch(r.Node.Key)
 	if len(matches) < 2 {
-		msg := "caught response from etcd that did not match"
+		msg := "caught response from kv that did not match"
 		log.WithFields(log.Fields{
 			"key":    r.Node.Key,
 			"action": r.Action,
@@ -262,9 +261,9 @@ func (f *Fetcher) logIntegrationMessage(level string, message string, fields ilo
 	}
 }
 
-// integrateHypervisorChange updates our hypervisors using an etcd response,
+// integrateHypervisorChange updates our hypervisors using an a kv response,
 // then returns whether a refresh should happen
-func (f *Fetcher) integrateHypervisorChange(r *etcd.Response, element string, id string, vtype string) error {
+func (f *Fetcher) integrateHypervisorChange(r *kv.Response, element string, id string, vtype string) error {
 	ilf := ilogFields{r: r, m: element, i: id, v: vtype}
 
 	// Sanity check
@@ -294,7 +293,7 @@ func (f *Fetcher) integrateHypervisorChange(r *etcd.Response, element string, id
 	if err := hv.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
 		ilf.e = err
 		ilf.f = "hypervisor.UnmarshalJSON"
-		f.logIntegrationMessage("error", "could not unmarshal etcd response", ilf)
+		f.logIntegrationMessage("error", "could not unmarshal kv response", ilf)
 		return err
 	}
 	f.hypervisors[id] = hv
@@ -303,8 +302,8 @@ func (f *Fetcher) integrateHypervisorChange(r *etcd.Response, element string, id
 	return nil
 }
 
-// integrateGuestChange updates our guests using an etcd response
-func (f *Fetcher) integrateGuestChange(r *etcd.Response, element string, id string, vtype string) error {
+// integrateGuestChange updates our guests using an a kv response
+func (f *Fetcher) integrateGuestChange(r *kv.Response, element string, id string, vtype string) error {
 	ilf := ilogFields{r: r, m: element, i: id, v: vtype}
 
 	// Sanity check
@@ -334,7 +333,7 @@ func (f *Fetcher) integrateGuestChange(r *etcd.Response, element string, id stri
 	if err := g.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
 		ilf.e = err
 		ilf.f = "guest.UnmarshalJSON"
-		f.logIntegrationMessage("error", "could not unmarshal etcd response", ilf)
+		f.logIntegrationMessage("error", "could not unmarshal kv response", ilf)
 		return err
 	}
 	f.guests[id] = g
@@ -343,8 +342,8 @@ func (f *Fetcher) integrateGuestChange(r *etcd.Response, element string, id stri
 	return nil
 }
 
-// integrateSubnetChange updates our subnets using an etcd response
-func (f *Fetcher) integrateSubnetChange(r *etcd.Response, element string, id string, vtype string) error {
+// integrateSubnetChange updates our subnets using an a kv response
+func (f *Fetcher) integrateSubnetChange(r *kv.Response, element string, id string, vtype string) error {
 	ilf := ilogFields{r: r, m: element, i: id, v: vtype}
 
 	// Sanity check
