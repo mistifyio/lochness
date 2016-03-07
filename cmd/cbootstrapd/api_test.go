@@ -84,7 +84,7 @@ func (s *APISuite) SetupSuite() {
 	s.BinName = "cbootstrapd"
 	args := []string{
 		"-b", s.APIURL,
-		"-e", s.KVURL,
+		"-k", s.KVURL,
 		"-i", s.ImageDir,
 		"-o", "'" + s.Opts + "'",
 		"-p", strconv.Itoa(int(s.Port)),
@@ -120,7 +120,7 @@ func (s *APISuite) TestIPXEGet() {
 	_ = hypervisor.Save()
 
 	s.checkIPXE("hypervisor defined version", s.Hypervisor, s.Hypervisor.Config["version"])
-	s.checkIPXE("etcd defined default version", hypervisor, defaultVersion)
+	s.checkIPXE("kv defined default version", hypervisor, defaultVersion)
 	_ = s.Context.SetConfig("defaultVersion", "")
 	s.checkIPXE("command flag defined default version", hypervisor, s.DefaultVersion)
 }
