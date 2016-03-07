@@ -121,14 +121,14 @@ func (r *Refresher) genHypervisorsConf(w io.Writer, hypervisors map[string]*loch
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "template.Parse",
-		}).Error("Could not parse hypervisors.conf template")
+		}).Error("could not parse hypervisors.conf template")
 		return err
 	}
 	if err = t.Execute(w, vals); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "template.Execute",
-		}).Error("Could not execute hypervisors.conf template")
+		}).Error("could not execute hypervisors.conf template")
 		return err
 	}
 	return nil
@@ -174,14 +174,14 @@ func (r *Refresher) genGuestsConf(w io.Writer, guests map[string]*lochness.Guest
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "template.Parse",
-		}).Error("Could not parse guests.conf template")
+		}).Error("could not parse guests.conf template")
 		return err
 	}
 	if err = t.Execute(w, vals); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "template.Execute",
-		}).Error("Could not execute guests.conf template")
+		}).Error("could not execute guests.conf template")
 		return err
 	}
 	return nil
