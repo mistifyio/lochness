@@ -52,7 +52,7 @@ func (s *CmdSuite) TestCmd() {
 	for _, test := range tests {
 		msg := common.TestMsgFunc(test.description)
 		args := []string{
-			"-e", s.KVClient.GetCluster()[0],
+			"-k", s.KVURL,
 			"-d", test.id,
 			"-i", strconv.Itoa(test.interval),
 			"-t", strconv.Itoa(test.ttl),
