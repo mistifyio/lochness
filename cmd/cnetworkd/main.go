@@ -2,20 +2,20 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
 
-const defaultEtcdAddr = "http://localhost:4001"
+const defaultKVAddr = "http://localhost:4001"
 
 func main() {
 	var port uint
-	var etcdAddr, logLevel string
+	var kvAddr, logLevel string
 
 	flag.UintVarP(&port, "port", "p", 19000, "listen port")
-	flag.StringVarP(&etcdAddr, "etcd", "e", defaultEtcdAddr, "address of etcd machine")
+	flag.StringVarP(&kvAddr, "kv", "k", defaultKVAddr, "address of kv machine")
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.Parse()
 
@@ -26,15 +26,15 @@ func main() {
 		}).Fatal("failed to set up logging")
 	}
 
-	etcdClient := etcd.NewClient([]string{etcdAddr})
+	kvClient := kv.NewClient([]string{kvAddr})
 
-	if !etcdClient.SyncCluster() {
+	if !kvClient.SyncCluster() {
 		log.WithFields(log.Fields{
-			"addr": etcdAddr,
+			"addr": kvAddr,
 		}).Fatal("unable to sync etcd cluster")
 	}
 
-	ctx := lochness.NewContext(etcdClient)
+	ctx := lochness.NewContext(kvClient)
 
 	server := Run(port, ctx)
 	// Block until the server is stopped
