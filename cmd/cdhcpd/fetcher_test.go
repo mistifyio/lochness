@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness/cmd/cdhcpd"
 	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/stretchr/testify/suite"
@@ -91,7 +91,7 @@ func (s *FetcherSuite) TestFetchAll() {
 	s.True(ok)
 }
 
-func getResp(resp *etcd.Response, err error) *etcd.Response { return resp }
+func getResp(resp *kv.Response, err error) *kv.Response { return resp }
 
 func (s *FetcherSuite) TestIntegrateResponse() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
@@ -115,7 +115,7 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 
 	tests := []struct {
 		description string
-		resp        *etcd.Response
+		resp        *kv.Response
 		refresh     bool
 		expectedErr bool
 	}{

@@ -47,7 +47,7 @@ func (s *CmdSuite) TestCmd() {
 
 	args := []string{
 		"-d", "cdhcpdTest",
-		"-e", s.KVURL,
+		"-k", s.KVURL,
 		"-c", s.ConfDir,
 		"-l", "fatal",
 	}

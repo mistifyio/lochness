@@ -175,9 +175,9 @@ func restartDhcpd() {
 func main() {
 
 	// Command line options
-	var etcdAddress, domain, confPath, logLevel string
+	var kvAddress, domain, confPath, logLevel string
 	flag.StringVarP(&domain, "domain", "d", "", "domain for lochness; required")
-	flag.StringVarP(&etcdAddress, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	flag.StringVarP(&kvAddress, "kv", "k", "http://127.0.0.1:4001", "address of kv server")
 	flag.StringVarP(&confPath, "conf-dir", "c", "/etc/dhcp/", "dhcpd configuration directory")
 	flag.StringVarP(&logLevel, "log-level", "l", "warning", "log level: debug/info/warning/error/critical/fatal")
 	flag.Parse()
@@ -200,7 +200,7 @@ func main() {
 	gconfPath := path.Join(confPath, "guests.conf")
 
 	// Set up fetcher and refresher
-	f := NewFetcher(etcdAddress)
+	f := NewFetcher(kvAddress)
 	r := NewRefresher(domain)
 	err := f.FetchAll()
 	if err != nil {
@@ -217,7 +217,7 @@ func main() {
 	}
 
 	// Create the watcher
-	w, err := watcher.New(f.etcdClient)
+	w, err := watcher.New(f.kvClient)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -225,7 +225,7 @@ func main() {
 		}).Fatal("could not create watcher")
 	}
 
-	// Start watching the necessary etcd prefixs
+	// Start watching the necessary kv prefixes
 	prefixes := [...]string{"/lochness/hypervisors", "/lochness/guests", "/lochness/subnets"}
 	for _, prefix := range prefixes {
 		if err := w.Add(prefix); err != nil {
