@@ -7,7 +7,7 @@ The following arguments are understood:
 
 	./cnetworkd -h
 	Usage of ./cnetworkd:
-	-e, --etcd="http://localhost:4001": address of etcd machine
+	-k, --kv="http://localhost:4001": address of kv machine
 	-l, --log-level="warn": log level
 	-p, --port=19000: listen port
 
