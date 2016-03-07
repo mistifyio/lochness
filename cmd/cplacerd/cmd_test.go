@@ -110,7 +110,7 @@ func (s *CmdSuite) TestCmd() {
 		// Start the daemon
 		args := []string{
 			"-p", s.Port,
-			"-e", s.KVURL,
+			"-k", s.KVURL,
 			"-b", s.BeanstalkdPath,
 			"-l", "fatal",
 		}
