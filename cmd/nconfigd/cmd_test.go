@@ -98,7 +98,7 @@ func (s *CmdSuite) TestCmd() {
 	args := []string{
 		"-a", s.WorkPath,
 		"-c", s.ConfigPath,
-		"-e", s.KVURL,
+		"-k", s.KVURL,
 	}
 
 	tests := []testCase{
