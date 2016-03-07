@@ -22,7 +22,7 @@ func (s *ContextSuite) TestNewContext() {
 }
 
 func (s *ContextSuite) TestIsKeyNotFound() {
-	_, err := s.EtcdClient.Get(s.PrefixKey("some-randon-non-existent-key"), false, false)
+	_, err := s.KVClient.Get(s.PrefixKey("some-randon-non-existent-key"), false, false)
 
 	s.Error(err)
 	s.True(lochness.IsKeyNotFound(err))

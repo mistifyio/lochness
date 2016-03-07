@@ -52,7 +52,7 @@ func (s *CmdSuite) TestCmd() {
 	for _, test := range tests {
 		msg := common.TestMsgFunc(test.description)
 		args := []string{
-			"-e", s.EtcdClient.GetCluster()[0],
+			"-e", s.KVClient.GetCluster()[0],
 			"-d", test.id,
 			"-i", strconv.Itoa(test.interval),
 			"-t", strconv.Itoa(test.ttl),
@@ -75,7 +75,7 @@ func (s *CmdSuite) TestCmd() {
 				break
 			}
 
-			resp, err := s.EtcdClient.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id), false, false)
+			resp, err := s.KVClient.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id), false, false)
 			if !s.NoError(err, msg("heartbeat key should exist")) {
 				continue
 			}
@@ -99,7 +99,7 @@ func (s *CmdSuite) TestCmd() {
 
 		// Check that the key expires
 		time.Sleep(time.Duration(test.ttl) * time.Second)
-		_, err = s.EtcdClient.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id), false, false)
+		_, err = s.KVClient.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id), false, false)
 		s.Error(err, msg("heartbeat should have expired"))
 	}
 }

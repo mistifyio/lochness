@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
@@ -24,24 +24,24 @@ import (
 // Suite sets up a general test suite with setup/teardown.
 type Suite struct {
 	suite.Suite
-	EtcdDir    string
-	EtcdPrefix string
-	EtcdURL    string
-	EtcdClient *etcd.Client
-	EtcdCmd    *exec.Cmd
-	Context    *lochness.Context
+	KVDir    string
+	KVPrefix string
+	KVURL    string
+	KVClient *kv.Client
+	KVCmd    *exec.Cmd
+	Context  *lochness.Context
 }
 
-// SetupSuite runs a new etcd insance.
+// SetupSuite runs a new kv instance.
 func (s *Suite) SetupSuite() {
-	// Start up a test etcd
-	s.EtcdDir, _ = ioutil.TempDir("", "lochnessTest-"+uuid.New())
+	// Start up a test kv
+	s.KVDir, _ = ioutil.TempDir("", "lochnessTest-"+uuid.New())
 	port := 54321
 	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
-	s.EtcdCmd = exec.Command("etcd",
+	s.KVCmd = exec.Command("etcd",
 		"-name", "lochnessTest",
-		"-data-dir", s.EtcdDir,
+		"-data-dir", s.KVDir,
 		"-initial-cluster-state", "new",
 		"-initial-cluster-token", "lochnessTest",
 		"-initial-cluster", "lochnessTest="+peerURL,
@@ -50,43 +50,43 @@ func (s *Suite) SetupSuite() {
 		"-listen-client-urls", clientURL,
 		"-advertise-client-urls", clientURL,
 	)
-	s.Require().NoError(s.EtcdCmd.Start())
-	s.EtcdClient = etcd.NewClient([]string{clientURL})
-	s.EtcdURL = clientURL
+	s.Require().NoError(s.KVCmd.Start())
+	s.KVClient = kv.NewClient([]string{clientURL})
+	s.KVURL = clientURL
 
-	// Wait for test etcd to be ready
-	for !s.EtcdClient.SyncCluster() {
+	// Wait for test kv to be ready
+	for !s.KVClient.SyncCluster() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	s.Context = lochness.NewContext(s.EtcdClient)
+	s.Context = lochness.NewContext(s.KVClient)
 
-	s.EtcdPrefix = "/lochness"
+	s.KVPrefix = "/lochness"
 }
 
 // SetupTest prepares anything needed per test.
 func (s *Suite) SetupTest() {
 }
 
-// TearDownTest cleans the etcd instance.
+// TearDownTest cleans the kv instance.
 func (s *Suite) TearDownTest() {
-	// Clean out etcd
-	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
+	// Clean out kv
+	_, _ = s.KVClient.Delete(s.KVPrefix, true)
 }
 
-// TearDownSuite stops the etcd instance and removes all data.
+// TearDownSuite stops the kv instance and removes all data.
 func (s *Suite) TearDownSuite() {
-	// Stop the test etcd process
-	_ = s.EtcdCmd.Process.Kill()
-	_ = s.EtcdCmd.Wait()
+	// Stop the test kv process
+	_ = s.KVCmd.Process.Kill()
+	_ = s.KVCmd.Wait()
 
-	// Remove the test etcd data directory
-	s.Require().NoError(os.RemoveAll(s.EtcdDir))
+	// Remove the test kv data directory
+	s.Require().NoError(os.RemoveAll(s.KVDir))
 }
 
-// PrefixKey generates an etcd key using the set prefix
+// PrefixKey generates an kv key using the set prefix
 func (s *Suite) PrefixKey(key string) string {
-	return filepath.Join(s.EtcdPrefix, key)
+	return filepath.Join(s.KVPrefix, key)
 }
 
 // NewFlavor creates and saves a new Flavor.

@@ -89,12 +89,12 @@ Wait waits for a command to finish and returns the exit error.
 ```go
 type Suite struct {
 	suite.Suite
-	EtcdDir    string
-	EtcdPrefix string
-	EtcdURL    string
-	EtcdClient *etcd.Client
-	EtcdCmd    *exec.Cmd
-	Context    *lochness.Context
+	KVDir    string
+	KVPrefix string
+	KVURL    string
+	KV       kv.KV
+	KVCmd    *exec.Cmd
+	Context  *lochness.Context
 }
 ```
 
@@ -177,14 +177,14 @@ NewVLANGroup creates and saves a new VLANGroup.
 ```go
 func (s *Suite) PrefixKey(key string) string
 ```
-PrefixKey generates an etcd key using the set prefix
+PrefixKey generates an kv key using the set prefix
 
 #### func (*Suite) SetupSuite
 
 ```go
 func (s *Suite) SetupSuite()
 ```
-SetupSuite runs a new etcd insance.
+SetupSuite runs a new kv instance.
 
 #### func (*Suite) SetupTest
 
@@ -198,14 +198,14 @@ SetupTest prepares anything needed per test.
 ```go
 func (s *Suite) TearDownSuite()
 ```
-TearDownSuite stops the etcd instance and removes all data.
+TearDownSuite stops the kv instance and removes all data.
 
 #### func (*Suite) TearDownTest
 
 ```go
 func (s *Suite) TearDownTest()
 ```
-TearDownTest cleans the etcd instance.
+TearDownTest cleans the kv instance.
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

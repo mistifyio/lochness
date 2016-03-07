@@ -84,7 +84,7 @@ func (s *APISuite) SetupSuite() {
 	s.BinName = "cbootstrapd"
 	args := []string{
 		"-b", s.APIURL,
-		"-e", s.EtcdURL,
+		"-e", s.KVURL,
 		"-i", s.ImageDir,
 		"-o", "'" + s.Opts + "'",
 		"-p", strconv.Itoa(int(s.Port)),

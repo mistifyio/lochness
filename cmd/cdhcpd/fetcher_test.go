@@ -28,7 +28,7 @@ func (s *FetcherSuite) SetupSuite() {
 
 func (s *FetcherSuite) SetupTest() {
 	s.Suite.SetupTest()
-	s.Fetcher = main.NewFetcher(s.EtcdURL)
+	s.Fetcher = main.NewFetcher(s.KVURL)
 
 	log.SetLevel(log.FatalLevel)
 }
@@ -101,12 +101,12 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 	gJSON, _ := json.Marshal(guest)
 	sJSON, _ := json.Marshal(subnet)
 
-	hPath := s.EtcdPrefix + "/hypervisors/%s/metadata"
-	sPath := s.EtcdPrefix + "/subnets/%s/metadata"
-	gPath := s.EtcdPrefix + "/guests/%s/metadata"
+	hPath := s.KVPrefix + "/hypervisors/%s/metadata"
+	sPath := s.KVPrefix + "/subnets/%s/metadata"
+	gPath := s.KVPrefix + "/guests/%s/metadata"
 
 	// Should fail before first fetch
-	resp, err := s.EtcdClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)
+	resp, err := s.KVClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)
 	refresh, err := s.Fetcher.IntegrateResponse(resp)
 	s.False(refresh)
 	s.Error(err)
@@ -121,47 +121,47 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 	}{
 		{
 			"create wrong key",
-			getResp(s.EtcdClient.Create("/foobar", "baz", 0)),
+			getResp(s.KVClient.Create("/foobar", "baz", 0)),
 			false, true,
 		},
 		{
 			"get hypervisor",
-			getResp(s.EtcdClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)),
+			getResp(s.KVClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)),
 			false, false,
 		},
 		{
 			"set hypervisor",
-			getResp(s.EtcdClient.Set(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
+			getResp(s.KVClient.Set(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
 			true, false,
 		},
 		{
 			"set guest",
-			getResp(s.EtcdClient.Set(fmt.Sprintf(gPath, guest.ID), string(gJSON), 0)),
+			getResp(s.KVClient.Set(fmt.Sprintf(gPath, guest.ID), string(gJSON), 0)),
 			true, false,
 		},
 		{
 			"set subnet",
-			getResp(s.EtcdClient.Set(fmt.Sprintf(sPath, subnet.ID), string(sJSON), 0)),
+			getResp(s.KVClient.Set(fmt.Sprintf(sPath, subnet.ID), string(sJSON), 0)),
 			true, false,
 		},
 		{
 			"delete guest",
-			getResp(s.EtcdClient.Delete(fmt.Sprintf(gPath, guest.ID), false)),
+			getResp(s.KVClient.Delete(fmt.Sprintf(gPath, guest.ID), false)),
 			true, false,
 		},
 		{
 			"delete subnet",
-			getResp(s.EtcdClient.Delete(fmt.Sprintf(sPath, subnet.ID), false)),
+			getResp(s.KVClient.Delete(fmt.Sprintf(sPath, subnet.ID), false)),
 			true, false,
 		},
 		{
 			"delete hypervisor",
-			getResp(s.EtcdClient.Delete(fmt.Sprintf(hPath, hypervisor.ID), false)),
+			getResp(s.KVClient.Delete(fmt.Sprintf(hPath, hypervisor.ID), false)),
 			true, false,
 		},
 		{
 			"create hypervisor",
-			getResp(s.EtcdClient.Create(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
+			getResp(s.KVClient.Create(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
 			true, false,
 		},
 	}
