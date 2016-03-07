@@ -5,7 +5,7 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/bakins/go-metrics-map"
 	"github.com/bakins/go-metrics-middleware"
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	logx "github.com/mistifyio/mistify-logrus-ext"
@@ -22,10 +22,10 @@ const defaultEtcdAddr = "http://localhost:4001"
 
 func main() {
 	var port uint
-	var etcdAddr, bstalk, logLevel, statsd string
+	var kvAddr, bstalk, logLevel, statsd string
 
 	flag.UintVarP(&port, "port", "p", 18000, "listen port")
-	flag.StringVarP(&etcdAddr, "etcd", "e", defaultEtcdAddr, "address of etcd machine")
+	flag.StringVarP(&kvAddr, "kv", "k", defaultEtcdAddr, "address of kv machine")
 	flag.StringVarP(&bstalk, "beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
 	flag.StringVarP(&statsd, "statsd", "s", "", "statsd address")
@@ -39,20 +39,20 @@ func main() {
 		}).Fatal("unable to set up logrus")
 	}
 
-	etcdClient := etcd.NewClient([]string{etcdAddr})
+	kvClient := kv.NewClient([]string{kvAddr})
 
-	if !etcdClient.SyncCluster() {
+	if !kvClient.SyncCluster() {
 		log.WithFields(log.Fields{
 			"error": nil,
 			"func":  "etcd.SyncCluster",
-			"addr":  etcdAddr,
+			"addr":  kvAddr,
 		}).Fatal("unable to sync etcd cluster")
 	}
 
-	ctx := lochness.NewContext(etcdClient)
+	ctx := lochness.NewContext(kvClient)
 
 	log.WithField("address", bstalk).Info("connection to beanstalk")
-	jobQueue, err := jobqueue.NewClient(bstalk, etcdClient)
+	jobQueue, err := jobqueue.NewClient(bstalk, kvClient)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
