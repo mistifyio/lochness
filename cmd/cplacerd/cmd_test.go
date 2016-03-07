@@ -47,7 +47,7 @@ func (s *CmdSuite) SetupSuite() {
 	}
 	s.Require().True(beanstalkdReady)
 
-	jobQueue, err := jobqueue.NewClient(s.BeanstalkdPath, s.EtcdClient)
+	jobQueue, err := jobqueue.NewClient(s.BeanstalkdPath, s.KVClient)
 	s.Require().NoError(err)
 	s.JobQueue = jobQueue
 }
@@ -110,7 +110,7 @@ func (s *CmdSuite) TestCmd() {
 		// Start the daemon
 		args := []string{
 			"-p", s.Port,
-			"-e", s.EtcdURL,
+			"-e", s.KVURL,
 			"-b", s.BeanstalkdPath,
 			"-l", "fatal",
 		}

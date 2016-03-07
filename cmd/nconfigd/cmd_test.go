@@ -68,7 +68,7 @@ func (s *CmdSuite) SetupTest() {
 	configB := &bytes.Buffer{}
 
 	s.Require().NoError(s.ConfigTemplate.Execute(configB, map[string]string{
-		"Prefix":       s.EtcdPrefix,
+		"Prefix":       s.KVPrefix,
 		"HypervisorID": s.Hypervisor.ID,
 	}), "failed to render config")
 
@@ -98,7 +98,7 @@ func (s *CmdSuite) TestCmd() {
 	args := []string{
 		"-a", s.WorkPath,
 		"-c", s.ConfigPath,
-		"-e", s.EtcdURL,
+		"-e", s.KVURL,
 	}
 
 	tests := []testCase{
@@ -116,7 +116,7 @@ func (s *CmdSuite) TestCmd() {
 			continue
 		}
 
-		_, err = s.EtcdClient.Set(test.key, test.value, 0)
+		_, err = s.KVClient.Set(test.key, test.value, 0)
 		s.NoError(err)
 
 		time.Sleep(1 * time.Second)
