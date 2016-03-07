@@ -17,7 +17,7 @@ import (
 	mapsink "github.com/bakins/go-metrics-map"
 	"github.com/bakins/go-metrics-middleware"
 	"github.com/bakins/net-http-recover"
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/gorilla/context"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -34,7 +34,7 @@ type server struct {
 	defaultVersion string
 	baseURL        string
 	addOpts        string
-	etcdAddr       string
+	kvAddr         string
 }
 
 const envRegex = "^[_A-Z][_A-Z0-9]*$"
@@ -48,7 +48,7 @@ const configTemplate = `{{range $key, $value := .}}{{ printf "%s=%s\n" $key $val
 
 func main() {
 	port := flag.UintP("port", "p", 8888, "address to listen")
-	eaddr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd machine")
+	kvAddr := flag.StringP("kv", "k", "http://127.0.0.1:4001", "address of kv machine")
 	baseURL := flag.StringP("base", "b", "http://ipxe.mistify.local:8888", "base address of bits request")
 	defaultVersion := flag.StringP("version", "v", "0.1.0", "If all else fails, what version to serve")
 	imageDir := flag.StringP("images", "i", "/var/lib/images", "directory containing the images")
@@ -57,7 +57,7 @@ func main() {
 
 	flag.Parse()
 
-	e := etcd.NewClient([]string{*eaddr})
+	e := kv.NewClient([]string{*kvAddr})
 	c := lochness.NewContext(e)
 
 	router := mux.NewRouter()
@@ -71,7 +71,7 @@ func main() {
 		defaultVersion: *defaultVersion,
 		baseURL:        *baseURL,
 		addOpts:        *addOpts,
-		etcdAddr:       *eaddr,
+		kvAddr:         *kvAddr,
 	}
 
 	chain := alice.New(
@@ -174,7 +174,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	configs := map[string]string{
-		"ETCD_ADDRESS": s.etcdAddr,
+		"ETCD_ADDRESS": s.kvAddr,
 	}
 	err := s.ctx.ForEachConfig(func(key, val string) error {
 		if s.r.MatchString(key) {
