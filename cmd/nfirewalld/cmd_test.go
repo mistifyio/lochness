@@ -56,7 +56,7 @@ func (s *CmdSuite) TearDownTest() {
 
 func (s *CmdSuite) TestCmd() {
 	args := []string{
-		"-e", s.KVURL,
+		"-k", s.KVURL,
 		"-f", s.ConfigPath,
 		"-i", s.Hypervisor.ID,
 	}

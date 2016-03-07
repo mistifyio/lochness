@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	ln "github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	flag "github.com/ogier/pflag"
@@ -258,7 +258,7 @@ func cleanStaleFiles(rulesfile string) {
 	}
 }
 
-func getHV(hn string, e *etcd.Client, c *ln.Context) *ln.Hypervisor {
+func getHV(hn string, e *kv.Client, c *ln.Context) *ln.Hypervisor {
 	var err error
 	hn, err = ln.SetHypervisorID(hn)
 	if err != nil {
@@ -293,10 +293,10 @@ func canonicalizeRules(rules string) string {
 }
 
 func main() {
-	eaddr := "http://localhost:4001"
+	kvAddr := "http://localhost:4001"
 	hn := ""
 	rules := "/etc/nftables.conf"
-	flag.StringVarP(&eaddr, "etcd", "e", eaddr, "etcd cluster address")
+	flag.StringVarP(&kvAddr, "kv", "k", kvAddr, "kv cluster address")
 	flag.StringVarP(&hn, "id", "i", hn, "hypervisor id")
 	flag.StringVarP(&rules, "file", "f", rules, "nft configuration file")
 	flag.Parse()
@@ -304,7 +304,7 @@ func main() {
 	rules = canonicalizeRules(rules)
 	cleanStaleFiles(rules)
 
-	e := etcd.NewClient([]string{eaddr})
+	e := kv.NewClient([]string{kvAddr})
 	c := ln.NewContext(e)
 	hv := getHV(hn, e, c)
 
