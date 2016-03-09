@@ -111,7 +111,8 @@ func (f *Flavor) Validate() error {
 	return nil
 }
 
-// Save persists a Flavor.  It will call Validate.
+// Save persists a Flavor.
+// It will call Validate.
 func (f *Flavor) Save() error {
 	if err := f.Validate(); err != nil {
 		return err

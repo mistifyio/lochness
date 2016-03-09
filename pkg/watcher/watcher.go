@@ -51,8 +51,7 @@ func New(c *kv.Client) (*Watcher, error) {
 	return w, nil
 }
 
-// Add will add prefix to the watch list, there still may be a short time (<500us)
-// after Add returns when an event on prefix may be missed.
+// Add will add prefix to the watch list, there may still be a short time (<500us) after Add returns when an event on prefix may be missed.
 func (w *Watcher) Add(prefix string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -72,9 +71,9 @@ func (w *Watcher) Add(prefix string) error {
 	return nil
 }
 
-// Next blocks until an event has been received by any of the wathed prefixes.
-// The event it self may be accesed via the Response method. False will be
-// returned upon an error, the error can be retrieved via the Err method.
+// Next blocks until an event has been received by any of the watched prefixes.
+// The event itself may be accessed via the Response method.
+// If an error is encountered false will be returned, the error can be retrieved via the Err method.
 func (w *Watcher) Next() bool {
 	select {
 	case resp := <-w.responses:
@@ -139,10 +138,8 @@ func (w *Watcher) watch(prefix string, stop chan bool) {
 	defer func() { _ = w.Remove(prefix) }()
 
 	// Get the index to start watching from.
-	// This minimizes the window between calling etcd.Watch() and the watch
-	// actually starting where changes can be missed.  Since etcd.Watch()
-	// itself blocks, we have no direct way of knowing when the watch actually
-	// starts, so this is the best we can do.
+	// This minimizes the window between calling kv.Watch() and the watch actually starting where changes can be missed.
+	// Since kv.Watch() itself blocks, we have no direct way of knowing when the watch actually starts, so this is the best we can do.
 	waitIndex := uint64(0)
 	resp, err := w.c.Get("/", false, false)
 	if err == nil {

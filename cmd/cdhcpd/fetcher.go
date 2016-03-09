@@ -302,7 +302,7 @@ func (f *Fetcher) integrateHypervisorChange(r *kv.Response, element string, id s
 	return nil
 }
 
-// integrateGuestChange updates our guests using an a kv response
+// integrateGuestChange updates our guests using a kv response
 func (f *Fetcher) integrateGuestChange(r *kv.Response, element string, id string, vtype string) error {
 	ilf := ilogFields{r: r, m: element, i: id, v: vtype}
 

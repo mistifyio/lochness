@@ -210,7 +210,7 @@ func (h *Hypervisor) Refresh() error {
 	return nil
 }
 
-// TODO: figure out safe amount of memory to report and how to limit it (etcd?)
+// TODO: figure out safe amount of memory to report and how to limit it
 func memory() (uint64, error) {
 	f, err := os.Open("/proc/meminfo")
 	if err != nil {
@@ -264,10 +264,10 @@ func canonicalizeUUID(id string) (string, error) {
 	return strings.ToLower(i.String()), nil
 }
 
-// SetHypervisorID sets the id of the current hypervisor. It should be used by all daemons
-// that are ran on a hypervisor and are expected to interact with the data stores directly.
-// Passing in a blank string will fall back to first checking the environment variable
-// "HYPERVISOR_ID" and then using the hostname.  ID must be a valid UUID.
+// SetHypervisorID sets the id of the current hypervisor.
+// It should be used by all daemons that are ran on a hypervisor and are expected to interact with the data stores directly.
+// Passing in a blank string will fall back to first checking the environment variable "HYPERVISOR_ID" and then using the hostname.
+// ID must be a valid UUID.
 // ID will be lowercased.
 func SetHypervisorID(id string) (string, error) {
 	// the if statement approach is clunky and probably needs refining
@@ -300,8 +300,8 @@ func SetHypervisorID(id string) (string, error) {
 	return hypervisorID, nil
 }
 
-// GetHypervisorID gets the hypervisor id as set with SetHypervisorID. It does not
-// make an attempt to discover the id if not set.
+// GetHypervisorID gets the hypervisor id as set with SetHypervisorID.
+// It does not make an attempt to discover the id if not set.
 func GetHypervisorID() string {
 	return hypervisorID
 }
@@ -314,9 +314,8 @@ func (h *Hypervisor) VerifyOnHV() error {
 	return nil
 }
 
-// calcGuestsUsage calculates total resource usage of managed guests. Note that
-// CPU "usage" is intentionally ignored as cores are not directly allocated to
-// guests.
+// calcGuestsUsage calculates total resource usage of managed guests.
+// Note that CPU "usage" is intentionally ignored as cores are not directly allocated to guests.
 func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	usage := Resources{}
 	err := h.ForEachGuest(func(guest *Guest) error {
@@ -335,8 +334,8 @@ func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	return usage, nil
 }
 
-// UpdateResources syncs Hypervisor resource usage to the data store. It should only be ran on
-// the actual hypervisor.
+// UpdateResources syncs Hypervisor resource usage to the data store.
+// It should only be ran on the actual hypervisor.
 func (h *Hypervisor) UpdateResources() error {
 	if err := h.VerifyOnHV(); err != nil {
 		return err
@@ -375,7 +374,8 @@ func (h *Hypervisor) UpdateResources() error {
 	return h.Save()
 }
 
-// Validate ensures a Hypervisor has reasonable data. It currently does nothing.
+// Validate ensures a Hypervisor has reasonable data.
+// It currently does nothing.
 func (h *Hypervisor) Validate() error {
 	// TODO: do validation stuff...
 	if h.ID == "" {
@@ -387,7 +387,8 @@ func (h *Hypervisor) Validate() error {
 	return nil
 }
 
-// Save persists a FWGroup.  It will call Validate.
+// Save persists a FWGroup.
+// It will call Validate.
 func (h *Hypervisor) Save() error {
 
 	if err := h.Validate(); err != nil {
@@ -468,8 +469,9 @@ func (h *Hypervisor) heartbeatKey() string {
 	return filepath.Join(HypervisorPath, h.ID, "heartbeat")
 }
 
-// Heartbeat announces the avilibility of a hypervisor.  In general, this is useful for
-// service announcement/discovery. Should be ran from the hypervisor, or something monitoring it.
+// Heartbeat announces the availability of a hypervisor.
+// In general, this is useful for service announcement/discovery.
+// Should be ran from the hypervisor, or something monitoring it.
 func (h *Hypervisor) Heartbeat(ttl time.Duration) error {
 	if err := h.VerifyOnHV(); err != nil {
 		return err
@@ -495,8 +497,9 @@ func (h *Hypervisor) guestKey(g *Guest) string {
 	return filepath.Join(HypervisorPath, h.ID, "guests", key)
 }
 
-// AddGuest adds a Guest to the Hypervisor. It reserves an IPaddress for the Guest.
-/// It also updates the Guest.
+// AddGuest adds a Guest to the Hypervisor.
+// It reserves an IPaddress for the Guest.
+// It also updates the Guest.
 func (h *Hypervisor) AddGuest(g *Guest) error {
 
 	// make sure we have subnet guest wants.  we should have this figured out
@@ -561,7 +564,8 @@ LOOP:
 	return nil
 }
 
-// RemoveGuest removes a guest from the hypervisor. Also releases the IP
+// RemoveGuest removes a guest from the hypervisor.
+// Also releases the IP
 func (h *Hypervisor) RemoveGuest(g *Guest) error {
 	if g.HypervisorID != h.ID {
 		return errors.New("guest does not belong to hypervisor")
@@ -604,7 +608,8 @@ func (h *Hypervisor) Guests() []string {
 	return h.guests
 }
 
-// ForEachGuest will run f on each Guest. It will stop iteration if f returns an error.
+// ForEachGuest will run f on each Guest.
+// It will stop iteration if f returns an error.
 func (h *Hypervisor) ForEachGuest(f func(*Guest) error) error {
 	for _, id := range h.guests {
 		guest, err := h.context.Guest(id)
@@ -638,9 +643,10 @@ func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error)
 	return nil, nil
 }
 
-// ForEachHypervisor will run f on each Hypervisor. It will stop iteration if f returns an error.
+// ForEachHypervisor will run f on each Hypervisor.
+// It will stop iteration if f returns an error.
 func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
-	// should we condense this to a single etcd call?
+	// should we condense this to a single kv call?
 	// We would need to rework how we "load" hypervisor a bit
 	resp, err := c.kv.Get(HypervisorPath, false, false)
 	if err != nil {
@@ -659,7 +665,8 @@ func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 	return nil
 }
 
-// SetConfig sets a single Hypervisor Config value. Set value to "" to unset.
+// SetConfig sets a single Hypervisor Config value.
+// Set value to "" to unset.
 func (h *Hypervisor) SetConfig(key, value string) error {
 	if key == "" {
 		return errors.New("empty config key")
@@ -680,7 +687,8 @@ func (h *Hypervisor) SetConfig(key, value string) error {
 	return nil
 }
 
-// Destroy removes a hypervisor.  The Hypervisor must not have any guests.
+// Destroy removes a hypervisor.
+// The Hypervisor must not have any guests.
 func (h *Hypervisor) Destroy() error {
 	if len(h.guests) != 0 {
 		// XXX: should use an error var?

@@ -185,7 +185,8 @@ func (f *FWGroup) Validate() error {
 	return nil
 }
 
-// Save persists a FWGroup.  It will call Validate.
+// Save persists a FWGroup.
+// It will call Validate.
 func (f *FWGroup) Save() error {
 
 	if err := f.Validate(); err != nil {
