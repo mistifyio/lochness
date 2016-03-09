@@ -279,7 +279,7 @@ func (g *Guest) Destroy() error {
 
 // Candidates returns a list of Hypervisors that may run this Guest.
 func (g *Guest) Candidates(f ...CandidateFunction) (Hypervisors, error) {
-	// this is not terribly effecient, but is fairly easy to understand
+	// this is not terribly efficient, but is fairly easy to understand
 
 	var hypervisors Hypervisors
 	_ = g.context.ForEachHypervisor(func(h *Hypervisor) error {

@@ -105,7 +105,8 @@ func (c *Context) blankSubnet(id string) *Subnet {
 	return s
 }
 
-// NewSubnet creates a new "blank" subnet.  Fill in the needed values and then call Save
+// NewSubnet creates a new "blank" subnet.
+// Fill in the needed values and then call Save.
 func (c *Context) NewSubnet() *Subnet {
 	return c.blankSubnet("")
 }

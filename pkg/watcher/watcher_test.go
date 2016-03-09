@@ -119,9 +119,9 @@ func (s *WatcherSuite) TestNextResponse() {
 
 	prefixes := make([]string, 5)
 	for i := 0; i < 5; i++ {
+		// Using existing prefixes for more consistent test results.
+		// See comment in Watcher.Add() internals for more details.
 		prefixes[i] = uuid.New()
-		// Using existing prefixes for more consistent test results. See comment
-		// in Watcher.Add() internals for more details.
 		_, _ = s.KVClient.SetDir(prefixes[i], 0)
 		_ = s.Watcher.Add(prefixes[i])
 	}

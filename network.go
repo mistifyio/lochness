@@ -108,7 +108,8 @@ func (n *Network) Validate() error {
 	return nil
 }
 
-// Save persists a Network.  It will call Validate.
+// Save persists a Network.
+// It will call Validate.
 func (n *Network) Save() error {
 
 	if err := n.Validate(); err != nil {
