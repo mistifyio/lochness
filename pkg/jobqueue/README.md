@@ -2,7 +2,7 @@
 
 [![jobqueue](https://godoc.org/github.com/mistifyio/lochness/pkg/jobqueue?status.png)](https://godoc.org/github.com/mistifyio/lochness/pkg/jobqueue)
 
-Package jobqueue manages the lochness guest job queue. Jobs are stored in etcd,
+Package jobqueue manages the lochness guest job queue. Jobs are stored in a kv,
 with references placed in beanstalk tubes for processing.
 
 ## Usage
@@ -36,7 +36,7 @@ Client is for interacting with the job queue
 #### func  NewClient
 
 ```go
-func NewClient(bstalk string, e *etcd.Client) (*Client, error)
+func NewClient(bstalk string, kv kv.KV) (*Client, error)
 ```
 NewClient creates a new Client and initializes the beanstalk connection + tubes
 
@@ -152,7 +152,7 @@ type Task struct {
 }
 ```
 
-Task is a "helper" struct to pull together information from beanstalk and etcd
+Task is a "helper" struct to pull together information from beanstalk and the kv
 
 #### func (*Task) Delete
 
