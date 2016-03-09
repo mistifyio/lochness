@@ -66,7 +66,7 @@ func (f *Fetcher) fetchHypervisors() error {
 		return nil
 	})
 	if err != nil {
-		if _, ok := err.(*kv.EtcdError); ok && err.(*kv.EtcdError).ErrorCode == 100 {
+		if lochness.IsKeyNotFound(err) {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
@@ -94,7 +94,7 @@ func (f *Fetcher) fetchGuests() error {
 		return nil
 	})
 	if err != nil {
-		if err.(*kv.EtcdError).ErrorCode == 100 {
+		if lochness.IsKeyNotFound(err) {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
@@ -122,7 +122,7 @@ func (f *Fetcher) fetchSubnets() error {
 		return nil
 	})
 	if err != nil {
-		if err.(*kv.EtcdError).ErrorCode == 100 {
+		if lochness.IsKeyNotFound(err) {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
