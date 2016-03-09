@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/pborman/uuid"
 )
 
@@ -91,11 +91,11 @@ func (j *Job) Save(ttl time.Duration) error {
 	}
 
 	// if we changed something, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if j.modifiedIndex != 0 {
-		resp, err = j.client.etcd.CompareAndSwap(j.key(), string(v), uint64(ttl.Seconds()), "", j.modifiedIndex)
+		resp, err = j.client.kv.CompareAndSwap(j.key(), string(v), uint64(ttl.Seconds()), "", j.modifiedIndex)
 	} else {
-		resp, err = j.client.etcd.Create(j.key(), string(v), uint64(ttl.Seconds()))
+		resp, err = j.client.kv.Create(j.key(), string(v), uint64(ttl.Seconds()))
 	}
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (j *Job) Save(ttl time.Duration) error {
 
 // Refresh reloads a Job from the data store.
 func (j *Job) Refresh() error {
-	resp, err := j.client.etcd.Get(j.key(), false, false)
+	resp, err := j.client.kv.Get(j.key(), false, false)
 
 	if err != nil {
 		return err

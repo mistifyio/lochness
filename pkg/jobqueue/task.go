@@ -6,8 +6,7 @@ import (
 	"github.com/mistifyio/lochness"
 )
 
-// Task is a "helper" struct to pull together information from beanstalk and
-// etcd
+// Task is a "helper" struct to pull together information from beanstalk and kv
 type Task struct {
 	ID     uint64 // id from beanstalkd
 	JobID  string // body from beanstalkd
@@ -44,7 +43,7 @@ func (t *Task) RefreshGuest() error {
 	if t.Job.Guest == "" {
 		return errors.New("job missing guest id")
 	}
-	ctx := lochness.NewContext(t.client.etcd)
+	ctx := lochness.NewContext(t.client.kv)
 	guest, err := ctx.Guest(t.Job.Guest)
 	if err != nil {
 		return err

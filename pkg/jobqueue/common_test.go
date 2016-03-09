@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/pborman/uuid"
@@ -17,24 +17,24 @@ import (
 
 type JobQCommonSuite struct {
 	suite.Suite
-	EtcdDir    string
-	EtcdPrefix string
-	EtcdClient *etcd.Client
-	EtcdCmd    *exec.Cmd
+	KVDir      string
+	KVPrefix   string
+	KVClient   *kv.Client
+	KVCmd      *exec.Cmd
 	BStalkAddr string
 	BStalkCmd  *exec.Cmd
 	Client     *jobqueue.Client
 }
 
 func (s *JobQCommonSuite) SetupSuite() {
-	// Start up a test etcd
-	s.EtcdDir, _ = ioutil.TempDir("", "jobqueueTestEtcd-"+uuid.New())
+	// Start up a test kv
+	s.KVDir, _ = ioutil.TempDir("", "jobqueueTestEtcd-"+uuid.New())
 	port := 54333
 	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
-	s.EtcdCmd = exec.Command("etcd",
+	s.KVCmd = exec.Command("etcd",
 		"-name", "jobqueueTest",
-		"-data-dir", s.EtcdDir,
+		"-data-dir", s.KVDir,
 		"-initial-cluster-state", "new",
 		"-initial-cluster-token", "jobqueueTest",
 		"-initial-cluster", "jobqueueTest="+peerURL,
@@ -43,16 +43,15 @@ func (s *JobQCommonSuite) SetupSuite() {
 		"-listen-client-urls", clientURL,
 		"-advertise-client-urls", clientURL,
 	)
-	s.Require().NoError(s.EtcdCmd.Start())
-	s.EtcdClient = etcd.NewClient([]string{clientURL})
+	s.Require().NoError(s.KVCmd.Start())
+	s.KVClient = kv.NewClient([]string{clientURL})
 
-	// Wait for test etcd to be ready
-	for !s.EtcdClient.SyncCluster() {
+	// Wait for test kv to be ready
+	for !s.KVClient.SyncCluster() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// s.EtcdPrefix = uuid.New()
-	s.EtcdPrefix = "/lochness"
+	s.KVPrefix = "/lochness"
 }
 
 func (s *JobQCommonSuite) SetupTest() {
@@ -63,26 +62,26 @@ func (s *JobQCommonSuite) SetupTest() {
 	s.BStalkAddr = fmt.Sprintf("127.0.0.1:%s", bPort)
 
 	time.Sleep(100 * time.Millisecond)
-	client, err := jobqueue.NewClient(s.BStalkAddr, s.EtcdClient)
+	client, err := jobqueue.NewClient(s.BStalkAddr, s.KVClient)
 	s.Require().NoError(err)
 	s.Client = client
 }
 
 func (s *JobQCommonSuite) TearDownTest() {
-	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
+	_, _ = s.KVClient.Delete(s.KVPrefix, true)
 
 	_ = s.BStalkCmd.Process.Kill()
 	_ = s.BStalkCmd.Wait()
 }
 
 func (s *JobQCommonSuite) TearDownSuite() {
-	_ = s.EtcdCmd.Process.Kill()
-	_ = s.EtcdCmd.Wait()
-	_ = os.RemoveAll(s.EtcdDir)
+	_ = s.KVCmd.Process.Kill()
+	_ = s.KVCmd.Wait()
+	_ = os.RemoveAll(s.KVDir)
 }
 
 func (s *JobQCommonSuite) prefixKey(key string) string {
-	return filepath.Join(s.EtcdPrefix, key)
+	return filepath.Join(s.KVPrefix, key)
 }
 
 func (s *JobQCommonSuite) newJob(action string) *jobqueue.Job {
@@ -90,7 +89,7 @@ func (s *JobQCommonSuite) newJob(action string) *jobqueue.Job {
 		action = "restart"
 	}
 
-	context := lochness.NewContext(s.EtcdClient)
+	context := lochness.NewContext(s.KVClient)
 	guest := context.NewGuest()
 	guest.FlavorID = uuid.New()
 	guest.NetworkID = uuid.New()
