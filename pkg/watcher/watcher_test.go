@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
@@ -21,22 +21,22 @@ func TestWatcher(t *testing.T) {
 
 type WatcherSuite struct {
 	suite.Suite
-	EtcdDir    string
-	EtcdPrefix string
-	EtcdClient *etcd.Client
-	EtcdCmd    *exec.Cmd
-	Watcher    *watcher.Watcher
+	KVDir    string
+	KVPrefix string
+	KVClient *kv.Client
+	KVCmd    *exec.Cmd
+	Watcher  *watcher.Watcher
 }
 
 func (s *WatcherSuite) SetupSuite() {
-	// Start up a test etcd
-	s.EtcdDir, _ = ioutil.TempDir("", "watcherTestEtcd-"+uuid.New())
+	// Start up a test kv
+	s.KVDir, _ = ioutil.TempDir("", "watcherTestEtcd-"+uuid.New())
 	port := 54444
 	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
-	s.EtcdCmd = exec.Command("etcd",
+	s.KVCmd = exec.Command("etcd",
 		"-name", "watcherTest",
-		"-data-dir", s.EtcdDir,
+		"-data-dir", s.KVDir,
 		"-initial-cluster-state", "new",
 		"-initial-cluster-token", "watcherTest",
 		"-initial-cluster", "watcherTest="+peerURL,
@@ -45,35 +45,34 @@ func (s *WatcherSuite) SetupSuite() {
 		"-listen-client-urls", clientURL,
 		"-advertise-client-urls", clientURL,
 	)
-	s.Require().NoError(s.EtcdCmd.Start())
-	s.EtcdClient = etcd.NewClient([]string{clientURL})
+	s.Require().NoError(s.KVCmd.Start())
+	s.KVClient = kv.NewClient([]string{clientURL})
 
-	// Wait for test etcd to be ready
-	for !s.EtcdClient.SyncCluster() {
+	// Wait for test kv to be ready
+	for !s.KVClient.SyncCluster() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// s.EtcdPrefix = uuid.New()
-	s.EtcdPrefix = "/lochness"
+	s.KVPrefix = "/lochness"
 }
 
 func (s *WatcherSuite) SetupTest() {
-	s.Watcher, _ = watcher.New(s.EtcdClient)
+	s.Watcher, _ = watcher.New(s.KVClient)
 }
 
 func (s *WatcherSuite) TearDownTest() {
 	s.NoError(s.Watcher.Close())
-	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
+	_, _ = s.KVClient.Delete(s.KVPrefix, true)
 }
 
 func (s *WatcherSuite) TearDownSuite() {
-	_ = s.EtcdCmd.Process.Kill()
-	_ = s.EtcdCmd.Wait()
-	_ = os.RemoveAll(s.EtcdDir)
+	_ = s.KVCmd.Process.Kill()
+	_ = s.KVCmd.Wait()
+	_ = os.RemoveAll(s.KVDir)
 }
 
 func (s *WatcherSuite) prefixKey(key string) string {
-	return filepath.Join(s.EtcdPrefix, key)
+	return filepath.Join(s.KVPrefix, key)
 }
 
 func testMsgFunc(prefix string) func(...interface{}) string {
@@ -123,14 +122,14 @@ func (s *WatcherSuite) TestNextResponse() {
 		prefixes[i] = uuid.New()
 		// Using existing prefixes for more consistent test results. See comment
 		// in Watcher.Add() internals for more details.
-		_, _ = s.EtcdClient.SetDir(prefixes[i], 0)
+		_, _ = s.KVClient.SetDir(prefixes[i], 0)
 		_ = s.Watcher.Add(prefixes[i])
 	}
 
 	go func() {
 		for i := 0; i < len(prefixes); i++ {
 			for j := 0; j < len(prefixes); j++ {
-				_, _ = s.EtcdClient.Set(prefixes[j]+"/subkey", fmt.Sprintf("%d", i+j), 0)
+				_, _ = s.KVClient.Set(prefixes[j]+"/subkey", fmt.Sprintf("%d", i+j), 0)
 			}
 		}
 	}()

@@ -1,11 +1,11 @@
-// Package watcher provides etcd prefix watching capabilities.
+// Package watcher provides kv prefix watching capabilities.
 package watcher
 
 import (
 	"errors"
 	"sync"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 )
 
 // ErrPrefixNotWatched is an error for attempting to remove an unwatched prefix
@@ -14,13 +14,13 @@ var ErrPrefixNotWatched = errors.New("prefix is not being watched")
 // ErrStopped is an error for attempting to add a prefix to a stopped watcher
 var ErrStopped = errors.New("watcher has been stopped")
 
-// Watcher monitors etcd prefixes and notifies on change
+// Watcher monitors kv prefixes and notifies on change
 type Watcher struct {
-	c         *etcd.Client
-	responses chan *etcd.Response
+	c         *kv.Client
+	responses chan *kv.Response
 	errors    chan *Error
 	err       *Error
-	response  *etcd.Response
+	response  *kv.Response
 
 	mu       sync.Mutex // mu protects the following two vars
 	isClosed bool
@@ -38,12 +38,12 @@ func (e *Error) Error() string {
 }
 
 // New creates a new Watcher
-func New(c *etcd.Client) (*Watcher, error) {
+func New(c *kv.Client) (*Watcher, error) {
 	if c == nil {
-		return nil, errors.New("missing etcd client")
+		return nil, errors.New("missing kv client")
 	}
 	w := &Watcher{
-		responses: make(chan *etcd.Response),
+		responses: make(chan *kv.Response),
 		errors:    make(chan *Error),
 		c:         c,
 		prefixes:  map[string]chan bool{},
@@ -87,7 +87,7 @@ func (w *Watcher) Next() bool {
 }
 
 // Response returns the response received that caused Next to return.
-func (w *Watcher) Response() *etcd.Response {
+func (w *Watcher) Response() *kv.Response {
 	return w.response
 }
 
@@ -110,7 +110,7 @@ func (w *Watcher) removeLocked(prefix string) *Error {
 		return &Error{Prefix: prefix, Err: ErrPrefixNotWatched}
 	}
 
-	// Stop the etcd prefix watch
+	// Stop the kv prefix watch
 	close(ch)
 
 	// Remove the prefix
@@ -149,7 +149,7 @@ func (w *Watcher) watch(prefix string, stop chan bool) {
 		waitIndex = resp.EtcdIndex
 	}
 
-	responses := make(chan *etcd.Response)
+	responses := make(chan *kv.Response)
 	go func() {
 		for resp := range responses {
 			w.responses <- resp
@@ -157,7 +157,7 @@ func (w *Watcher) watch(prefix string, stop chan bool) {
 	}()
 
 	_, err = w.c.Watch(prefix, waitIndex, true, responses, stop)
-	if err == nil || err == etcd.ErrWatchStoppedByUser {
+	if err == nil || err == kv.ErrWatchStoppedByUser {
 		return
 	}
 	w.errors <- &Error{Prefix: prefix, Err: err}
