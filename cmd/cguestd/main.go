@@ -5,9 +5,10 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/bakins/go-metrics-map"
 	"github.com/bakins/go-metrics-middleware"
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
@@ -39,20 +40,19 @@ func main() {
 		}).Fatal("unable to set up logrus")
 	}
 
-	kvClient := kv.NewClient([]string{kvAddr})
-
-	if !kvClient.SyncCluster() {
+	e, err := kv.New(kvAddr)
+	if err != nil {
 		log.WithFields(log.Fields{
-			"error": nil,
-			"func":  "etcd.SyncCluster",
 			"addr":  kvAddr,
-		}).Fatal("unable to sync etcd cluster")
+			"error": err,
+			"func":  "kv.New",
+		}).Fatal("unable to connect to kv")
 	}
 
-	ctx := lochness.NewContext(kvClient)
+	ctx := lochness.NewContext(e)
 
 	log.WithField("address", bstalk).Info("connection to beanstalk")
-	jobQueue, err := jobqueue.NewClient(bstalk, kvClient)
+	jobQueue, err := jobqueue.NewClient(bstalk, e)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,

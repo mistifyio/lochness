@@ -55,9 +55,10 @@ func (s *FlavorSuite) TestRefresh() {
 	flavor := s.NewFlavor()
 	flavorCopy := &lochness.Flavor{}
 	*flavorCopy = *flavor
-	flavor.Image = uuid.New()
 
-	_ = flavor.Save()
+	flavor.Image = uuid.New()
+	s.Require().NoError(flavor.Save())
+
 	s.NoError(flavorCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(flavor, flavorCopy), "refresh should pull new data")
 

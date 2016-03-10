@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"time"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
 var (
 	// JobPath is the path in the config store
-	JobPath = "lochness/jobs/"
+	JobPath = "/lochness/jobs/"
 )
 
 // Job Status
@@ -90,34 +90,28 @@ func (j *Job) Save(ttl time.Duration) error {
 		return err
 	}
 
-	// if we changed something, don't clobber
-	var resp *kv.Response
-	if j.modifiedIndex != 0 {
-		resp, err = j.client.kv.CompareAndSwap(j.key(), string(v), uint64(ttl.Seconds()), "", j.modifiedIndex)
-	} else {
-		resp, err = j.client.kv.Create(j.key(), string(v), uint64(ttl.Seconds()))
-	}
+	// TODO(mm) handle ttl
+	index, err := j.client.kv.Update(j.key(), kv.Value{Data: v, Index: j.modifiedIndex})
 	if err != nil {
 		return err
 	}
 
-	j.modifiedIndex = resp.EtcdIndex
+	j.modifiedIndex = index
 
 	return nil
 }
 
 // Refresh reloads a Job from the data store.
 func (j *Job) Refresh() error {
-	resp, err := j.client.kv.Get(j.key(), false, false)
-
+	value, err := j.client.kv.Get(j.key())
 	if err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal([]byte(resp.Node.Value), &j); err != nil {
+	if err := json.Unmarshal(value.Data, &j); err != nil {
 		return err
 	}
-	j.modifiedIndex = resp.Node.ModifiedIndex
+	j.modifiedIndex = value.Index
 
 	return nil
 }

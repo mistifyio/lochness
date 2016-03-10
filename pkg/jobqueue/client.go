@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
+	"github.com/mistifyio/lochness/pkg/kv"
 )
 
 // Default parameters
@@ -22,14 +22,14 @@ const (
 // Client is for interacting with the job queue
 type Client struct {
 	beanConn *beanstalk.Conn
-	kv       *kv.Client
+	kv       kv.KV
 	tubes    *tubes
 }
 
 // NewClient creates a new Client and initializes the beanstalk connection + tubes
-func NewClient(bstalk string, e *kv.Client) (*Client, error) {
-	if e == nil {
-		return nil, errors.New("missing kv client")
+func NewClient(bstalk string, kv kv.KV) (*Client, error) {
+	if kv == nil {
+		return nil, errors.New("kv must not be nil")
 	}
 
 	conn, err := beanstalk.Dial("tcp", bstalk)
@@ -39,7 +39,7 @@ func NewClient(bstalk string, e *kv.Client) (*Client, error) {
 
 	client := &Client{
 		beanConn: conn,
-		kv:       e,
+		kv:       kv,
 		tubes:    newTubes(conn),
 	}
 	return client, nil

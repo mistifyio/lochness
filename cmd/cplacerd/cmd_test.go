@@ -47,7 +47,7 @@ func (s *CmdSuite) SetupSuite() {
 	}
 	s.Require().True(beanstalkdReady)
 
-	jobQueue, err := jobqueue.NewClient(s.BeanstalkdPath, s.KVClient)
+	jobQueue, err := jobqueue.NewClient(s.BeanstalkdPath, s.KV)
 	s.Require().NoError(err)
 	s.JobQueue = jobQueue
 }

@@ -55,9 +55,10 @@ func (s *VLANGroupSuite) TestRefresh() {
 	vlangroup := s.NewVLANGroup()
 	vlangroupCopy := &lochness.VLANGroup{}
 	*vlangroupCopy = *vlangroup
-	_ = vlangroup.AddVLAN(s.NewVLAN())
 
-	_ = vlangroup.Save()
+	s.Require().NoError(vlangroup.AddVLAN(s.NewVLAN()))
+
+	s.Require().NoError(vlangroup.Save())
 	s.NoError(vlangroupCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(vlangroup, vlangroupCopy), "refresh should pull new data")
 
@@ -118,7 +119,7 @@ func (s *VLANGroupSuite) TestSave() {
 func (s *VLANGroupSuite) TestDestroy() {
 	vlangroup := s.NewVLANGroup()
 	vlan := s.NewVLAN()
-	_ = vlangroup.AddVLAN(vlan)
+	s.Require().NoError(vlangroup.AddVLAN(vlan))
 
 	blankVG := s.Context.NewVLANGroup()
 	blankVG.ID = ""

@@ -30,7 +30,7 @@ func ListVLANGroups(w http.ResponseWriter, r *http.Request) {
 		vlanGroups = append(vlanGroups, vlanGroup)
 		return nil
 	})
-	if err != nil && !lochness.IsKeyNotFound(err) {
+	if err != nil && !ctx.IsKeyNotFound(err) {
 		hr.JSONError(http.StatusInternalServerError, err)
 		return
 	}
@@ -143,7 +143,7 @@ func UpdateVLANGroupVLANs(w http.ResponseWriter, r *http.Request) {
 	for tag, action := range groupModifications {
 		vlan, err := ctx.VLAN(tag)
 		if err != nil {
-			if lochness.IsKeyNotFound(err) {
+			if ctx.IsKeyNotFound(err) {
 				hr.JSONMsg(http.StatusBadRequest, "vlan not found")
 			} else {
 				hr.JSONMsg(http.StatusInternalServerError, err.Error())
