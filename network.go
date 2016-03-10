@@ -5,7 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/pborman/uuid"
 )
 
@@ -72,7 +72,7 @@ func (n *Network) key() string {
 // Refresh reloads the Network from the data store.
 func (n *Network) Refresh() error {
 
-	resp, err := n.context.etcd.Get(filepath.Join(NetworkPath, n.ID), false, true)
+	resp, err := n.context.kv.Get(filepath.Join(NetworkPath, n.ID), false, true)
 
 	if err != nil {
 		return err
@@ -122,11 +122,11 @@ func (n *Network) Save() error {
 	}
 
 	// if we changed something, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if n.modifiedIndex != 0 {
-		resp, err = n.context.etcd.CompareAndSwap(n.key(), string(v), 0, "", n.modifiedIndex)
+		resp, err = n.context.kv.CompareAndSwap(n.key(), string(v), 0, "", n.modifiedIndex)
 	} else {
-		resp, err = n.context.etcd.Create(n.key(), string(v), 0)
+		resp, err = n.context.kv.Create(n.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func (n *Network) AddSubnet(s *Subnet) error {
 		}
 	}
 
-	if _, err := n.context.etcd.Set(n.subnetKey(s), "", 0); err != nil {
+	if _, err := n.context.kv.Set(n.subnetKey(s), "", 0); err != nil {
 		return err
 	}
 	n.subnets = append(n.subnets, s.ID)
@@ -178,7 +178,7 @@ func (n *Network) AddSubnet(s *Subnet) error {
 
 // RemoveSubnet removes a subnet from the network
 func (n *Network) RemoveSubnet(s *Subnet) error {
-	if _, err := n.context.etcd.Delete(n.subnetKey(s), false); err != nil {
+	if _, err := n.context.kv.Delete(n.subnetKey(s), false); err != nil {
 		return err
 	}
 

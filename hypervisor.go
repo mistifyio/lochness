@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/pborman/uuid"
 )
 
@@ -173,7 +173,7 @@ func (h *Hypervisor) key() string {
 
 // Refresh reloads a Hypervisor from the data store.
 func (h *Hypervisor) Refresh() error {
-	resp, err := h.context.etcd.Get(filepath.Join(HypervisorPath, h.ID), false, true)
+	resp, err := h.context.kv.Get(filepath.Join(HypervisorPath, h.ID), false, true)
 
 	if err != nil {
 		return err
@@ -401,11 +401,11 @@ func (h *Hypervisor) Save() error {
 	}
 
 	// if we changed something, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if h.modifiedIndex != 0 {
-		resp, err = h.context.etcd.CompareAndSwap(h.key(), string(v), 0, "", h.modifiedIndex)
+		resp, err = h.context.kv.CompareAndSwap(h.key(), string(v), 0, "", h.modifiedIndex)
 	} else {
-		resp, err = h.context.etcd.Create(h.key(), string(v), 0)
+		resp, err = h.context.kv.Create(h.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
@@ -442,7 +442,7 @@ func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 		}
 	}
 
-	_, err := h.context.etcd.Set(filepath.Join(h.subnetKey(s)), bridge, 0)
+	_, err := h.context.kv.Set(filepath.Join(h.subnetKey(s)), bridge, 0)
 	if err == nil {
 		h.subnets[s.ID] = bridge
 	}
@@ -451,7 +451,7 @@ func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 
 // RemoveSubnet removes a subnet from a Hypervisor.
 func (h *Hypervisor) RemoveSubnet(s *Subnet) error {
-	if _, err := h.context.etcd.Delete(filepath.Join(h.subnetKey(s)), false); err != nil {
+	if _, err := h.context.kv.Delete(filepath.Join(h.subnetKey(s)), false); err != nil {
 		return err
 	}
 	delete(h.subnets, s.ID)
@@ -477,7 +477,7 @@ func (h *Hypervisor) Heartbeat(ttl time.Duration) error {
 
 	h.alive = true
 	v := time.Now().String()
-	_, err := h.context.etcd.Set(h.heartbeatKey(), v, uint64(ttl.Seconds()))
+	_, err := h.context.kv.Set(h.heartbeatKey(), v, uint64(ttl.Seconds()))
 	return err
 }
 
@@ -544,7 +544,7 @@ LOOP:
 	g.SubnetID = s.ID
 	g.Bridge = bridge
 
-	_, err = h.context.etcd.Set(filepath.Join(h.guestKey(g)), g.ID, 0)
+	_, err = h.context.kv.Set(filepath.Join(h.guestKey(g)), g.ID, 0)
 
 	if err != nil {
 		return err
@@ -575,7 +575,7 @@ func (h *Hypervisor) RemoveGuest(g *Guest) error {
 		return err
 	}
 
-	if _, err := h.context.etcd.Delete(filepath.Join(h.guestKey(g)), false); err != nil {
+	if _, err := h.context.kv.Delete(filepath.Join(h.guestKey(g)), false); err != nil {
 		return err
 	}
 
@@ -621,7 +621,7 @@ func (h *Hypervisor) ForEachGuest(f func(*Guest) error) error {
 
 // FirstHypervisor will return the first hypervisor for which the function returns true.
 func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error) {
-	resp, err := c.etcd.Get(HypervisorPath, false, false)
+	resp, err := c.kv.Get(HypervisorPath, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -642,7 +642,7 @@ func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error)
 func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 	// should we condense this to a single etcd call?
 	// We would need to rework how we "load" hypervisor a bit
-	resp, err := c.etcd.Get(HypervisorPath, false, false)
+	resp, err := c.kv.Get(HypervisorPath, false, false)
 	if err != nil {
 		return err
 	}
@@ -666,13 +666,13 @@ func (h *Hypervisor) SetConfig(key, value string) error {
 	}
 
 	if value != "" {
-		if _, err := h.context.etcd.Set(filepath.Join(HypervisorPath, h.ID, "config", key), value, 0); err != nil {
+		if _, err := h.context.kv.Set(filepath.Join(HypervisorPath, h.ID, "config", key), value, 0); err != nil {
 			return err
 		}
 
 		h.Config[key] = value
 	} else {
-		if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID, "config", key), false); err != nil && !IsKeyNotFound(err) {
+		if _, err := h.context.kv.Delete(filepath.Join(HypervisorPath, h.ID, "config", key), false); err != nil && !IsKeyNotFound(err) {
 			return err
 		}
 		delete(h.Config, key)
@@ -693,11 +693,11 @@ func (h *Hypervisor) Destroy() error {
 	}
 
 	// XXX: another instance where transactions would be helpful
-	if _, err := h.context.etcd.CompareAndDelete(h.key(), "", h.modifiedIndex); err != nil {
+	if _, err := h.context.kv.CompareAndDelete(h.key(), "", h.modifiedIndex); err != nil {
 		return err
 	}
 
-	if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID), true); err != nil {
+	if _, err := h.context.kv.Delete(filepath.Join(HypervisorPath, h.ID), true); err != nil {
 		return err
 	}
 

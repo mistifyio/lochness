@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 )
 
 //Used to get set arbitrary config variables
@@ -21,7 +21,7 @@ func (c *Context) GetConfig(key string) (string, error) {
 		return "", errors.New("empty config key")
 	}
 
-	resp, err := c.etcd.Get(filepath.Join(ConfigPath, key), false, false)
+	resp, err := c.kv.Get(filepath.Join(ConfigPath, key), false, false)
 	if err != nil {
 		return "", err
 	}
@@ -36,20 +36,20 @@ func (c *Context) SetConfig(key, val string) error {
 		return errors.New("empty config key")
 	}
 
-	_, err := c.etcd.Set(filepath.Join(ConfigPath, key), val, 0)
+	_, err := c.kv.Set(filepath.Join(ConfigPath, key), val, 0)
 	return err
 }
 
 // ForEachConfig will run f on each config. It will stop iteration if f returns an error.
 func (c *Context) ForEachConfig(f func(key, val string) error) error {
-	resp, err := c.etcd.Get(ConfigPath, true, true)
+	resp, err := c.kv.Get(ConfigPath, true, true)
 	if err != nil {
 		return err
 	}
 	return forEachConfig(resp.Node.Nodes, f)
 }
 
-func forEachConfig(nodes etcd.Nodes, f func(key, val string) error) error {
+func forEachConfig(nodes kv.Nodes, f func(key, val string) error) error {
 	for _, n := range nodes {
 		if n.Dir {
 			if err := forEachConfig(n.Nodes, f); err != nil {

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 )
 
 var (
@@ -71,7 +71,7 @@ func (c *Context) VLAN(tag int) (*VLAN, error) {
 
 // Refresh reloads the VLAN from the data store.
 func (v *VLAN) Refresh() error {
-	resp, err := v.context.etcd.Get(filepath.Dir(v.key()), false, true)
+	resp, err := v.context.kv.Get(filepath.Dir(v.key()), false, true)
 	if err != nil {
 		return err
 	}
@@ -116,11 +116,11 @@ func (v *VLAN) Save() error {
 	}
 
 	// if something changed, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if v.modifiedIndex != 0 {
-		resp, err = v.context.etcd.CompareAndSwap(v.key(), string(value), 0, "", v.modifiedIndex)
+		resp, err = v.context.kv.CompareAndSwap(v.key(), string(value), 0, "", v.modifiedIndex)
 	} else {
-		resp, err = v.context.etcd.Create(v.key(), string(value), 0)
+		resp, err = v.context.kv.Create(v.key(), string(value), 0)
 	}
 	if err != nil {
 		return err
@@ -145,7 +145,7 @@ func (v *VLAN) Destroy() error {
 	}
 
 	// Delete the VLAN
-	if _, err := v.context.etcd.Delete(filepath.Dir(v.key()), true); err != nil {
+	if _, err := v.context.kv.Delete(filepath.Dir(v.key()), true); err != nil {
 		return err
 	}
 	return nil
@@ -153,7 +153,7 @@ func (v *VLAN) Destroy() error {
 
 // ForEachVLAN will run f on each VLAN. It will stop iteration if f returns an error.
 func (c *Context) ForEachVLAN(f func(*VLAN) error) error {
-	resp, err := c.etcd.Get(VLANPath, false, false)
+	resp, err := c.kv.Get(VLANPath, false, false)
 	if err != nil {
 		return err
 	}

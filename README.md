@@ -118,13 +118,6 @@ func GetHypervisorID() string
 GetHypervisorID gets the hypervisor id as set with SetHypervisorID. It does not
 make an attempt to discover the id if not set.
 
-#### func  IsKeyNotFound
-
-```go
-func IsKeyNotFound(err error) bool
-```
-IsKeyNotFound is a helper to determine if the error is a key not found error
-
 #### func  SetHypervisorID
 
 ```go
@@ -170,7 +163,7 @@ Context carries around data/structs needed for operations
 #### func  NewContext
 
 ```go
-func NewContext(e *etcd.Client) *Context
+func NewContext(kv kv.KV) *Context
 ```
 NewContext creates a new context
 
@@ -266,6 +259,13 @@ func (c *Context) Hypervisor(id string) (*Hypervisor, error)
 ```
 Hypervisor fetches a Hypervisor from the config store.
 
+#### func (*Context) IsKeyNotFound
+
+```go
+func (c *Context) IsKeyNotFound(err error) bool
+```
+IsKeyNotFound is a helper to determine if the error is a key not found error
+
 #### func (*Context) Network
 
 ```go
@@ -321,7 +321,7 @@ NewNetwork creates a new, blank Network.
 func (c *Context) NewSubnet() *Subnet
 ```
 NewSubnet creates a new "blank" subnet. Fill in the needed values and then call
-Save
+Save.
 
 #### func (*Context) NewVLAN
 
@@ -610,7 +610,7 @@ Hypervisor is a physical box on which guests run
 func (h *Hypervisor) AddGuest(g *Guest) error
 ```
 AddGuest adds a Guest to the Hypervisor. It reserves an IPaddress for the Guest.
-/ It also updates the Guest.
+It also updates the Guest.
 
 #### func (*Hypervisor) AddSubnet
 
@@ -646,7 +646,7 @@ Guests returns a slice of GuestIDs assigned to the Hypervisor.
 ```go
 func (h *Hypervisor) Heartbeat(ttl time.Duration) error
 ```
-Heartbeat announces the avilibility of a hypervisor. In general, this is useful
+Heartbeat announces the availability of a hypervisor. In general, this is useful
 for service announcement/discovery. Should be ran from the hypervisor, or
 something monitoring it.
 
@@ -676,7 +676,7 @@ Refresh reloads a Hypervisor from the data store.
 ```go
 func (h *Hypervisor) RemoveGuest(g *Guest) error
 ```
-RemoveGuest removes a guest from the hypervisor. Also releases the IP
+RemoveGuest removes a guest from the hypervisor. Also releases the IP.
 
 #### func (*Hypervisor) RemoveSubnet
 
