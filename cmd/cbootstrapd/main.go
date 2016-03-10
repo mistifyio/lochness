@@ -17,12 +17,13 @@ import (
 	mapsink "github.com/bakins/go-metrics-map"
 	"github.com/bakins/go-metrics-middleware"
 	"github.com/bakins/net-http-recover"
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/gorilla/context"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	flag "github.com/ogier/pflag"
 )
 
@@ -57,8 +58,11 @@ func main() {
 
 	flag.Parse()
 
-	e := kv.NewClient([]string{*kvAddr})
-	c := lochness.NewContext(e)
+	KV, err := kv.New(*kvAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	c := lochness.NewContext(KV)
 
 	router := mux.NewRouter()
 	router.StrictSlash(true)
@@ -137,7 +141,7 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 	if version == "" {
 		var err error
 		version, err = s.ctx.GetConfig("defaultVersion")
-		if err != nil && !lochness.IsKeyNotFound(err) {
+		if err != nil && !s.ctx.IsKeyNotFound(err) {
 			// XXX: should be fatal?
 			log.WithFields(log.Fields{
 				"error": err,

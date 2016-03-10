@@ -122,7 +122,7 @@ func (s *CmdSuite) TestCmd() {
 			continue
 		}
 
-		_, err = s.KVClient.Set(test.key, test.value, 0)
+		err = s.KV.Set(test.key, test.value)
 		s.NoError(err)
 
 		time.Sleep(1 * time.Second)

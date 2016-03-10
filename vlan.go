@@ -5,8 +5,9 @@ import (
 	"errors"
 	"path/filepath"
 	"strconv"
+	"strings"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 )
 
 var (
@@ -71,27 +72,41 @@ func (c *Context) VLAN(tag int) (*VLAN, error) {
 
 // Refresh reloads the VLAN from the data store.
 func (v *VLAN) Refresh() error {
-	resp, err := v.context.kv.Get(filepath.Dir(v.key()), false, true)
+	prefix := filepath.Join(VLANPath, strconv.Itoa(v.Tag))
+
+	nodes, err := v.context.kv.GetAll(prefix)
 	if err != nil {
 		return err
 	}
 
-	for _, node := range resp.Node.Nodes {
-		key := filepath.Base(node.Key)
-		switch key {
-		case "metadata":
-			if err := json.Unmarshal([]byte(node.Value), &v); err != nil {
-				return err
-			}
-			v.modifiedIndex = node.ModifiedIndex
-		case "vlangroups":
-			v.vlanGroups = make([]string, len(node.Nodes))
-			for i, x := range node.Nodes {
-				v.vlanGroups[i] = filepath.Base(x.Key)
-			}
-		}
+	// handle metadata
+	key := filepath.Join(prefix, "metadata")
+	value, ok := nodes[key]
+	if !ok {
+		return errors.New("metadata key is missing")
 	}
 
+	if err := json.Unmarshal(value.Data, &v); err != nil {
+		return err
+	}
+	v.modifiedIndex = value.Index
+	delete(nodes, key)
+
+	groups := []string{}
+
+	// TODO(needs tests)
+	for k := range nodes {
+		elements := strings.Split(k, "/")
+		base := elements[len(elements)-1]
+		dir := elements[len(elements)-2]
+
+		if dir != "vlangroups" {
+			continue
+		}
+		groups = append(groups, base)
+	}
+
+	v.vlanGroups = groups
 	return nil
 }
 
@@ -115,19 +130,11 @@ func (v *VLAN) Save() error {
 		return err
 	}
 
-	// if something changed, don't clobber
-	var resp *kv.Response
-	if v.modifiedIndex != 0 {
-		resp, err = v.context.kv.CompareAndSwap(v.key(), string(value), 0, "", v.modifiedIndex)
-	} else {
-		resp, err = v.context.kv.Create(v.key(), string(value), 0)
-	}
+	index, err := v.context.kv.Update(v.key(), kv.Value{Data: value, Index: v.modifiedIndex})
 	if err != nil {
 		return err
 	}
-
-	v.modifiedIndex = resp.EtcdIndex
-
+	v.modifiedIndex = index
 	return nil
 }
 
@@ -145,20 +152,18 @@ func (v *VLAN) Destroy() error {
 	}
 
 	// Delete the VLAN
-	if _, err := v.context.kv.Delete(filepath.Dir(v.key()), true); err != nil {
-		return err
-	}
-	return nil
+	return v.context.kv.Delete(filepath.Dir(v.key()), true)
 }
 
 // ForEachVLAN will run f on each VLAN. It will stop iteration if f returns an error.
 func (c *Context) ForEachVLAN(f func(*VLAN) error) error {
-	resp, err := c.kv.Get(VLANPath, false, false)
+	keys, err := c.kv.Keys(VLANPath)
 	if err != nil {
 		return err
 	}
-	for _, n := range resp.Node.Nodes {
-		vlanTag, _ := strconv.Atoi(filepath.Base(n.Key))
+
+	for _, k := range keys {
+		vlanTag, _ := strconv.Atoi(filepath.Base(k))
 		vlan, err := c.VLAN(vlanTag)
 		if err != nil {
 			return err

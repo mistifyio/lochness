@@ -57,14 +57,14 @@ use
 ```go
 var (
 	// FWGroupPath is the path in the config store
-	FWGroupPath = "lochness/fwgroups/"
+	FWGroupPath = "/lochness/fwgroups/"
 )
 ```
 
 ```go
 var (
 	// FlavorPath is the path in the config store
-	FlavorPath = "lochness/flavors/"
+	FlavorPath = "/lochness/flavors/"
 )
 ```
 
@@ -78,21 +78,21 @@ var (
 ```go
 var (
 	// HypervisorPath is the path in the config store
-	HypervisorPath = "lochness/hypervisors/"
+	HypervisorPath = "/lochness/hypervisors/"
 )
 ```
 
 ```go
 var (
 	// NetworkPath is the path in the config store.
-	NetworkPath = "lochness/networks/"
+	NetworkPath = "/lochness/networks/"
 )
 ```
 
 ```go
 var (
 	// SubnetPath is the key prefix for subnets
-	SubnetPath = "lochness/subnets/"
+	SubnetPath = "/lochness/subnets/"
 )
 ```
 

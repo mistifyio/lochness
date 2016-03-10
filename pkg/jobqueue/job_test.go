@@ -94,7 +94,8 @@ func (s *JobSuite) TestRefresh() {
 	job.Action = "restart"
 	job.Guest = uuid.New()
 
-	_ = job.Save(60 * time.Second)
+	s.Require().NoError(job.Save(60 * time.Second))
+	s.Require().NoError(job.Release())
 	s.NoError(jobCopy.Refresh(), "refresh existing should succeed")
 	// For some reason, assert.ObjectsAreEqualValues doesn't work here
 	s.Equal(job.Action, jobCopy.Action, "refresh should pull new data")

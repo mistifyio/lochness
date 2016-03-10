@@ -27,7 +27,7 @@ func getVLANHelper(hr HTTPResponse, r *http.Request) (*lochness.VLAN, bool) {
 
 	vlan, err := ctx.VLAN(vlanTag)
 	if err != nil {
-		if lochness.IsKeyNotFound(err) {
+		if ctx.IsKeyNotFound(err) {
 			hr.JSONMsg(http.StatusNotFound, "tag not found")
 		} else {
 			hr.JSONError(http.StatusInternalServerError, err)
@@ -77,7 +77,7 @@ func getVLANGroupHelper(hr HTTPResponse, r *http.Request) (*lochness.VLANGroup, 
 
 	vlanGroup, err := ctx.VLANGroup(groupID)
 	if err != nil {
-		if lochness.IsKeyNotFound(err) {
+		if ctx.IsKeyNotFound(err) {
 			hr.JSONMsg(http.StatusNotFound, "group not found")
 		} else {
 			hr.JSONError(http.StatusInternalServerError, err)

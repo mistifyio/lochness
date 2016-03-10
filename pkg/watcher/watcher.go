@@ -3,9 +3,10 @@ package watcher
 
 import (
 	"errors"
+	"strings"
 	"sync"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 )
 
 // ErrPrefixNotWatched is an error for attempting to remove an unwatched prefix
@@ -16,15 +17,15 @@ var ErrStopped = errors.New("watcher has been stopped")
 
 // Watcher monitors kv prefixes and notifies on change
 type Watcher struct {
-	c         *kv.Client
-	responses chan *kv.Response
-	errors    chan *Error
-	err       *Error
-	response  *kv.Response
+	kv     kv.KV
+	events chan kv.Event
+	errors chan *Error
+	err    *Error
+	event  kv.Event
 
 	mu       sync.Mutex // mu protects the following two vars
 	isClosed bool
-	prefixes map[string]chan bool
+	prefixes map[string]chan struct{}
 }
 
 // Error contains both the watched prefix and the error.
@@ -38,15 +39,15 @@ func (e *Error) Error() string {
 }
 
 // New creates a new Watcher
-func New(c *kv.Client) (*Watcher, error) {
-	if c == nil {
-		return nil, errors.New("missing kv client")
+func New(KV kv.KV) (*Watcher, error) {
+	if KV == nil {
+		return nil, errors.New("kv instance must be non-nil")
 	}
 	w := &Watcher{
-		responses: make(chan *kv.Response),
-		errors:    make(chan *Error),
-		c:         c,
-		prefixes:  map[string]chan bool{},
+		events:   make(chan kv.Event),
+		errors:   make(chan *Error),
+		kv:       KV,
+		prefixes: map[string]chan struct{}{},
 	}
 	return w, nil
 }
@@ -65,7 +66,7 @@ func (w *Watcher) Add(prefix string) error {
 		return nil
 	}
 
-	ch := make(chan bool)
+	ch := make(chan struct{})
 	w.prefixes[prefix] = ch
 	go w.watch(prefix, ch)
 	return nil
@@ -76,8 +77,8 @@ func (w *Watcher) Add(prefix string) error {
 // If an error is encountered false will be returned, the error can be retrieved via the Err method.
 func (w *Watcher) Next() bool {
 	select {
-	case resp := <-w.responses:
-		w.response = resp
+	case event := <-w.events:
+		w.event = event
 		return true
 	case err := <-w.errors:
 		w.err = err
@@ -85,9 +86,9 @@ func (w *Watcher) Next() bool {
 	}
 }
 
-// Response returns the response received that caused Next to return.
-func (w *Watcher) Response() *kv.Response {
-	return w.response
+// Event returns the event received that caused Next to return.
+func (w *Watcher) Event() kv.Event {
+	return w.event
 }
 
 // Err returns the last error received
@@ -134,28 +135,66 @@ func (w *Watcher) Close() *Error {
 	return nil
 }
 
-func (w *Watcher) watch(prefix string, stop chan bool) {
-	defer func() { _ = w.Remove(prefix) }()
+func getLatestIndex(kv kv.KV, prefix string) uint64 {
+	resp, err := kv.Get(prefix)
+	if err == nil {
+		return resp.Index
+	} else if !strings.Contains(err.Error(), "directory") {
+		return 0
+	}
+
+	keys, err := kv.Keys(prefix)
+	if err != nil || len(keys) == 0 {
+		return 0
+	}
+
+	latest := uint64(0)
+	for _, key := range keys {
+		resp, err := kv.Get(key)
+		if err != nil {
+			continue
+		}
+		if resp.Index > latest {
+			latest = resp.Index
+		}
+	}
+	return latest
+}
+
+func (w *Watcher) watch(prefix string, stop chan struct{}) {
+	defer func() {
+		_ = w.Remove(prefix)
+	}()
 
 	// Get the index to start watching from.
 	// This minimizes the window between calling kv.Watch() and the watch actually starting where changes can be missed.
 	// Since kv.Watch() itself blocks, we have no direct way of knowing when the watch actually starts, so this is the best we can do.
-	waitIndex := uint64(0)
-	resp, err := w.c.Get("/", false, false)
-	if err == nil {
-		waitIndex = resp.EtcdIndex
-	}
+	waitIndex := getLatestIndex(w.kv, prefix)
 
-	responses := make(chan *kv.Response)
-	go func() {
-		for resp := range responses {
-			w.responses <- resp
-		}
-	}()
-
-	_, err = w.c.Watch(prefix, waitIndex, true, responses, stop)
-	if err == nil || err == kv.ErrWatchStoppedByUser {
+	events, errors, err := w.kv.Watch(prefix, waitIndex, stop)
+	if err != nil {
+		w.errors <- &Error{Prefix: prefix, Err: err}
 		return
 	}
-	w.errors <- &Error{Prefix: prefix, Err: err}
+
+LOOP:
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				close(stop)
+				break LOOP
+			}
+			w.events <- event
+		case err, ok := <-errors:
+			if !ok {
+				close(stop)
+				break LOOP
+			}
+			w.errors <- &Error{Prefix: prefix, Err: err}
+		case <-stop:
+			break LOOP
+		}
+	}
+
 }

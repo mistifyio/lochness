@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 )
 
 //Used to get set arbitrary config variables
@@ -21,12 +21,12 @@ func (c *Context) GetConfig(key string) (string, error) {
 		return "", errors.New("empty config key")
 	}
 
-	resp, err := c.kv.Get(filepath.Join(ConfigPath, key), false, false)
+	resp, err := c.kv.Get(filepath.Join(ConfigPath, key))
 	if err != nil {
 		return "", err
 	}
 
-	return resp.Node.Value, nil
+	return string(resp.Data), nil
 
 }
 
@@ -36,31 +36,24 @@ func (c *Context) SetConfig(key, val string) error {
 		return errors.New("empty config key")
 	}
 
-	_, err := c.kv.Set(filepath.Join(ConfigPath, key), val, 0)
+	err := c.kv.Set(filepath.Join(ConfigPath, key), val)
 	return err
 }
 
 // ForEachConfig will run f on each config. It will stop iteration if f returns an error.
 func (c *Context) ForEachConfig(f func(key, val string) error) error {
-	resp, err := c.kv.Get(ConfigPath, true, true)
+	nodes, err := c.kv.GetAll(ConfigPath)
 	if err != nil {
 		return err
 	}
-	return forEachConfig(resp.Node.Nodes, f)
+	return forEachConfig(nodes, f)
 }
 
-func forEachConfig(nodes kv.Nodes, f func(key, val string) error) error {
-	for _, n := range nodes {
-		if n.Dir {
-			if err := forEachConfig(n.Nodes, f); err != nil {
-				return err
-			}
-		} else {
-			k := strings.TrimPrefix(n.Key, ConfigPath)
-			v := n.Value
-			if err := f(k, v); err != nil {
-				return err
-			}
+func forEachConfig(nodes map[string]kv.Value, f func(key, val string) error) error {
+	for k, v := range nodes {
+		k = strings.TrimPrefix(k, ConfigPath)
+		if err := f(k, string(v.Data)); err != nil {
+			return err
 		}
 	}
 	return nil
