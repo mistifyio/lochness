@@ -15,8 +15,9 @@ import (
 	"path/filepath"
 	"time"
 
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -27,7 +28,7 @@ type Suite struct {
 	KVDir    string
 	KVPrefix string
 	KVURL    string
-	KVClient *kv.Client
+	KV       kv.KV
 	KVCmd    *exec.Cmd
 	Context  *lochness.Context
 }
@@ -51,17 +52,22 @@ func (s *Suite) SetupSuite() {
 		"-advertise-client-urls", clientURL,
 	)
 	s.Require().NoError(s.KVCmd.Start())
-	s.KVClient = kv.NewClient([]string{clientURL})
-	s.KVURL = clientURL
+	time.Sleep(500 * time.Millisecond) // Wait for test kv to be ready
 
-	// Wait for test kv to be ready
-	for !s.KVClient.SyncCluster() {
-		time.Sleep(10 * time.Millisecond)
+	var err error
+	for i := 0; i < 10; i++ {
+		s.KV, err = kv.New(clientURL)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond) // Wait for test kv to be ready
 	}
-
-	s.Context = lochness.NewContext(s.KVClient)
-
+	if s.KV == nil {
+		panic(err)
+	}
+	s.Context = lochness.NewContext(s.KV)
 	s.KVPrefix = "/lochness"
+	s.KVURL = clientURL
 }
 
 // SetupTest prepares anything needed per test.
@@ -71,7 +77,7 @@ func (s *Suite) SetupTest() {
 // TearDownTest cleans the kv instance.
 func (s *Suite) TearDownTest() {
 	// Clean out kv
-	_, _ = s.KVClient.Delete(s.KVPrefix, true)
+	_ = s.KV.Delete(s.KVPrefix, true)
 }
 
 // TearDownSuite stops the kv instance and removes all data.
@@ -181,10 +187,10 @@ func (s *Suite) NewHypervisorWithGuest() (*lochness.Hypervisor, *lochness.Guest)
 
 	subnet := s.NewSubnet()
 	network, _ := s.Context.Network(guest.NetworkID)
-	_ = network.AddSubnet(subnet)
-	_ = hypervisor.AddSubnet(subnet, "mistify0")
+	s.Require().NoError(network.AddSubnet(subnet))
+	s.Require().NoError(hypervisor.AddSubnet(subnet, "mistify0"))
 
-	_ = hypervisor.AddGuest(guest)
+	s.Require().NoError(hypervisor.AddGuest(guest))
 
 	return hypervisor, guest
 }

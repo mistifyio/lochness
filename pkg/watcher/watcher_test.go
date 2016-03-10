@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
-func TestWatcher(t *testing.T) {
+func TestWatcherCmd(t *testing.T) {
 	suite.Run(t, new(WatcherSuite))
 }
 
@@ -23,14 +24,14 @@ type WatcherSuite struct {
 	suite.Suite
 	KVDir    string
 	KVPrefix string
-	KVClient *kv.Client
+	KV       kv.KV
 	KVCmd    *exec.Cmd
 	Watcher  *watcher.Watcher
 }
 
 func (s *WatcherSuite) SetupSuite() {
-	// Start up a test kv
-	s.KVDir, _ = ioutil.TempDir("", "watcherTestEtcd-"+uuid.New())
+	// Start up a test etcd
+	s.KVDir, _ = ioutil.TempDir("", "watcherTest-"+uuid.New())
 	port := 54444
 	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
@@ -46,23 +47,24 @@ func (s *WatcherSuite) SetupSuite() {
 		"-advertise-client-urls", clientURL,
 	)
 	s.Require().NoError(s.KVCmd.Start())
-	s.KVClient = kv.NewClient([]string{clientURL})
+	time.Sleep(10 * time.Millisecond) // Wait for test kv to be ready
 
-	// Wait for test kv to be ready
-	for !s.KVClient.SyncCluster() {
-		time.Sleep(10 * time.Millisecond)
+	KV, err := kv.New(clientURL)
+	if err != nil {
+		panic(err)
 	}
 
+	s.KV = KV
 	s.KVPrefix = "/lochness"
 }
 
 func (s *WatcherSuite) SetupTest() {
-	s.Watcher, _ = watcher.New(s.KVClient)
+	s.Watcher, _ = watcher.New(s.KV)
 }
 
 func (s *WatcherSuite) TearDownTest() {
 	s.NoError(s.Watcher.Close())
-	_, _ = s.KVClient.Delete(s.KVPrefix, true)
+	_ = s.KV.Delete(s.KVPrefix, true)
 }
 
 func (s *WatcherSuite) TearDownSuite() {
@@ -116,20 +118,22 @@ func (s *WatcherSuite) TestAdd() {
 }
 
 func (s *WatcherSuite) TestNextResponse() {
-
 	prefixes := make([]string, 5)
 	for i := 0; i < 5; i++ {
 		// Using existing prefixes for more consistent test results.
 		// See comment in Watcher.Add() internals for more details.
 		prefixes[i] = uuid.New()
-		_, _ = s.KVClient.SetDir(prefixes[i], 0)
-		_ = s.Watcher.Add(prefixes[i])
+
+		// ensure prefix is a "directory" not a key
+		s.Require().NoError(s.KV.Set(prefixes[i]+"/foo", "foo"))
+		s.Require().NoError(s.KV.Delete(prefixes[i]+"/foo", false))
+		s.Require().NoError(s.Watcher.Add(prefixes[i]))
 	}
 
 	go func() {
 		for i := 0; i < len(prefixes); i++ {
 			for j := 0; j < len(prefixes); j++ {
-				_, _ = s.KVClient.Set(prefixes[j]+"/subkey", fmt.Sprintf("%d", i+j), 0)
+				_ = s.KV.Set(prefixes[j]+"/subkey", fmt.Sprint(i+j))
 			}
 		}
 	}()
@@ -137,11 +141,11 @@ func (s *WatcherSuite) TestNextResponse() {
 	lastModifiedIndex := uint64(0)
 	for i := len(prefixes) * len(prefixes); i > 0 && s.Watcher.Next(); i-- {
 		s.NoError(s.Watcher.Err())
-		resp := s.Watcher.Response()
-		s.NotNil(resp, "should return a response")
-		s.Equal(resp, s.Watcher.Response(), "response should only change after Next()")
-		s.NotEqual(lastModifiedIndex, resp.Node.ModifiedIndex, "response should change after Next()")
-		lastModifiedIndex = resp.Node.ModifiedIndex
+		event := s.Watcher.Event()
+		s.NotNil(event, "should return an event")
+		s.Equal(event, s.Watcher.Event(), "event should only change after Next()")
+		s.NotEqual(lastModifiedIndex, event.Index, "response should change after Next()")
+		lastModifiedIndex = event.Index
 	}
 
 }

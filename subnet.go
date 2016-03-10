@@ -8,14 +8,15 @@ import (
 	"math/rand"
 	"net"
 	"path/filepath"
+	"strings"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
 var (
 	// SubnetPath is the key prefix for subnets
-	SubnetPath = "lochness/subnets/"
+	SubnetPath = "/lochness/subnets/"
 )
 
 type (
@@ -132,29 +133,35 @@ func (s *Subnet) key() string {
 
 // Refresh reloads the Subnet from the data store.
 func (s *Subnet) Refresh() error {
-	resp, err := s.context.kv.Get(filepath.Join(SubnetPath, s.ID), false, true)
+	prefix := filepath.Join(SubnetPath, s.ID)
 
+	nodes, err := s.context.kv.GetAll(prefix)
 	if err != nil {
 		return err
 	}
 
-	for _, n := range resp.Node.Nodes {
-		key := filepath.Base(n.Key)
-		switch key {
+	// handle metadata
+	key := filepath.Join(prefix, "metadata")
+	value, ok := nodes[key]
+	if !ok {
+		return errors.New("metadata key is missing")
+	}
 
-		case "metadata":
-			if err := json.Unmarshal([]byte(n.Value), &s); err != nil {
-				return err
-			}
-			s.modifiedIndex = n.ModifiedIndex
+	if err := json.Unmarshal(value.Data, &s); err != nil {
+		return err
+	}
+	s.modifiedIndex = value.Index
+	delete(nodes, key)
 
-		case "addresses":
-			for _, n := range n.Nodes {
-				if ip := net.ParseIP(filepath.Base(n.Key)); ip != nil {
-					// just skip on error
-					s.addresses[ipToI32(ip)] = n.Value
-				}
-			}
+	for k, v := range nodes {
+		elements := strings.Split(k, "/")
+		dir := elements[len(elements)-2]
+		if dir != "addresses" {
+			continue
+		}
+		if ip := net.ParseIP(elements[len(elements)-1]); ip != nil {
+			// just skip on error
+			s.addresses[ipToI32(ip)] = string(v.Data)
 		}
 	}
 
@@ -175,8 +182,7 @@ func (s *Subnet) Delete() error {
 	}
 
 	// Delete the subnet
-	_, err := s.context.kv.Delete(filepath.Join(SubnetPath, s.ID), true)
-	return err
+	return s.context.kv.Delete(filepath.Join(SubnetPath, s.ID), true)
 }
 
 // Validate ensures the values are reasonable.
@@ -222,18 +228,11 @@ func (s *Subnet) Save() error {
 		return err
 	}
 
-	// if we changed something, don't clobber
-	var resp *kv.Response
-	if s.modifiedIndex != 0 {
-		resp, err = s.context.kv.CompareAndSwap(s.key(), string(v), 0, "", s.modifiedIndex)
-	} else {
-		resp, err = s.context.kv.Create(s.key(), string(v), 0)
-	}
+	index, err := s.context.kv.Update(s.key(), kv.Value{Data: v, Index: s.modifiedIndex})
 	if err != nil {
 		return err
 	}
-
-	s.modifiedIndex = resp.EtcdIndex
+	s.modifiedIndex = index
 	return nil
 }
 
@@ -298,12 +297,10 @@ func randomizeAddresses(a []net.IP) []net.IP {
 
 // ReserveAddress reserves an ip address. The id is a guest id.
 func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
-
 	// hacky...
 	//should this lock?? or do we assume lock is held?
 
 	avail := s.AvailableAddresses()
-
 	if len(avail) == 0 {
 		return nil, errors.New("no available addresses")
 	}
@@ -313,36 +310,36 @@ func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 	var chosen net.IP
 	for _, ip := range avail {
 		v := ip.String()
-		_, err := s.context.kv.Create(s.addressKey(v), id, 0)
-		if err == nil {
+		if _, err := s.context.kv.Update(s.addressKey(v), kv.Value{Data: []byte(id)}); err == nil {
 			chosen = ip
 			s.addresses[ipToI32(ip)] = id
 			break
 		}
 	}
 
-	// what is nothing was chosen?
+	// what if nothing was chosen?
 	return chosen, nil
 }
 
 // ReleaseAddress releases an address. This does not change any thing that may also be referring to this address.
 func (s *Subnet) ReleaseAddress(ip net.IP) error {
 
-	_, err := s.context.kv.Delete(s.addressKey(ip.String()), false)
-	if err == nil {
-		delete(s.addresses, ipToI32(ip))
+	if err := s.context.kv.Delete(s.addressKey(ip.String()), false); err != nil {
+		return err
 	}
-	return err
+	delete(s.addresses, ipToI32(ip))
+	return nil
 }
 
 // ForEachSubnet will run f on each Subnet. It will stop iteration if f returns an error.
 func (c *Context) ForEachSubnet(f func(*Subnet) error) error {
-	resp, err := c.kv.Get(SubnetPath, false, false)
+	keys, err := c.kv.Keys(SubnetPath)
 	if err != nil {
 		return err
 	}
-	for _, n := range resp.Node.Nodes {
-		s, err := c.Subnet(filepath.Base(n.Key))
+
+	for _, k := range keys {
+		s, err := c.Subnet(filepath.Base(k))
 		if err != nil {
 			return err
 		}

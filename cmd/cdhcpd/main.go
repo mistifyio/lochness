@@ -217,7 +217,7 @@ func main() {
 	}
 
 	// Create the watcher
-	w, err := watcher.New(f.kvClient)
+	w, err := watcher.New(f.kv)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -226,7 +226,7 @@ func main() {
 	}
 
 	// Start watching the necessary kv prefixes
-	prefixes := [...]string{"/lochness/hypervisors", "/lochness/guests", "/lochness/subnets"}
+	prefixes := []string{"/lochness/hypervisors", "/lochness/guests", "/lochness/subnets"}
 	for _, prefix := range prefixes {
 		if err := w.Add(prefix); err != nil {
 			log.WithFields(log.Fields{
@@ -247,7 +247,7 @@ func main() {
 		done := <-ready
 
 		// Integrate the response and update the configs if necessary
-		refresh, err := f.IntegrateResponse(w.Response())
+		refresh, err := f.IntegrateResponse(w.Event())
 		if err != nil {
 			log.Info("error on integration; re-fetching")
 			err := f.FetchAll()

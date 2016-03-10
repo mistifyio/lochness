@@ -10,10 +10,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-metrics"
 	"github.com/bakins/go-metrics-map"
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/mistifyio/mistify-agent/config"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
@@ -39,18 +40,19 @@ func main() {
 		}).Fatal("unable to to set up logrus")
 	}
 
-	kvClient := kv.NewClient([]string{kvAddr})
-
-	if !kvClient.SyncCluster() {
+	KV, err := kv.New(kvAddr)
+	if err != nil {
 		log.WithFields(log.Fields{
-			"addr": kvAddr,
-		}).Fatal("unable to sync etcd cluster")
+			"addr":  kvAddr,
+			"error": err,
+			"func":  "kv.New",
+		}).Fatal("unable to connect to kv")
 	}
 
-	ctx := lochness.NewContext(kvClient)
+	ctx := lochness.NewContext(KV)
 
 	log.WithField("address", bstalk).Info("connection to beanstalk")
-	jobQueue, err := jobqueue.NewClient(bstalk, kvClient)
+	jobQueue, err := jobqueue.NewClient(bstalk, KV)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
@@ -99,12 +101,16 @@ func consume(jobQueue *jobqueue.Client, agent *lochness.MistifyAgent, m *metrics
 			"error": err,
 		}).Error("invalid task")
 
+		if task.Job != nil {
+			updateJobStatus(task, jobqueue.JobStatusError, err)
+		}
 		if err := task.Delete(); err != nil {
 			log.WithFields(log.Fields{
 				"task":  task.ID,
 				"error": err,
 			}).Error("unable to delete")
 		}
+		return
 	}
 
 	logFields := log.Fields{

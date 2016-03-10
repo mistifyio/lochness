@@ -4,9 +4,10 @@ import (
 	"strconv"
 	"testing"
 
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -23,20 +24,20 @@ func (s *ClientSuite) TestNewClient() {
 	tests := []struct {
 		description string
 		bstalkAddr  string
-		kvClient    *kv.Client
+		kv          kv.KV
 		expectedErr bool
 	}{
 		{"missing both", "", nil, true},
 		{"missing kv", s.BStalkAddr, nil, true},
-		{"missing bstalk", "", s.KVClient, true},
-		{"invalid bstalk", "asdf", s.KVClient, true},
-		{"not running bstalk", "127.0.0.1:12345", s.KVClient, true},
-		{"bstalk and kv", s.BStalkAddr, s.KVClient, false},
+		{"missing bstalk", "", s.KV, true},
+		{"invalid bstalk", "asdf", s.KV, true},
+		{"not running bstalk", "127.0.0.1:12345", s.KV, true},
+		{"bstalk and kv", s.BStalkAddr, s.KV, false},
 	}
 
 	for _, test := range tests {
 		msg := testMsgFunc(test.description)
-		c, err := jobqueue.NewClient(test.bstalkAddr, test.kvClient)
+		c, err := jobqueue.NewClient(test.bstalkAddr, test.kv)
 		if test.expectedErr {
 			s.Error(err, msg("should error"))
 			s.Nil(c, msg("fail should not return client"))

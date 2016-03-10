@@ -12,8 +12,9 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	kv "github.com/coreos/go-etcd/etcd"
 	ln "github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	flag "github.com/ogier/pflag"
 )
@@ -258,7 +259,7 @@ func cleanStaleFiles(rulesfile string) {
 	}
 }
 
-func getHV(hn string, e *kv.Client, c *ln.Context) *ln.Hypervisor {
+func getHV(hn string, c *ln.Context) *ln.Hypervisor {
 	var err error
 	hn, err = ln.SetHypervisorID(hn)
 	if err != nil {
@@ -304,11 +305,18 @@ func main() {
 	rules = canonicalizeRules(rules)
 	cleanStaleFiles(rules)
 
-	e := kv.NewClient([]string{kvAddr})
-	c := ln.NewContext(e)
-	hv := getHV(hn, e, c)
+	KV, err := kv.New(kvAddr)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "kv.New",
+		}).Fatal("failed to connect to kv")
+	}
 
-	watcher, err := watcher.New(e)
+	c := ln.NewContext(KV)
+	hv := getHV(hn, c)
+
+	watcher, err := watcher.New(KV)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
