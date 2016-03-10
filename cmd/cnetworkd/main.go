@@ -2,8 +2,9 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
@@ -26,15 +27,16 @@ func main() {
 		}).Fatal("failed to set up logging")
 	}
 
-	kvClient := kv.NewClient([]string{kvAddr})
-
-	if !kvClient.SyncCluster() {
+	KV, err := kv.New(kvAddr)
+	if err != nil {
 		log.WithFields(log.Fields{
-			"addr": kvAddr,
-		}).Fatal("unable to sync etcd cluster")
+			"addr":  kvAddr,
+			"error": err,
+			"func":  "kv.New",
+		}).Fatal("unable to connect to kv")
 	}
 
-	ctx := lochness.NewContext(kvClient)
+	ctx := lochness.NewContext(KV)
 
 	server := Run(port, ctx)
 	// Block until the server is stopped

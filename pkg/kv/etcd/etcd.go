@@ -68,7 +68,7 @@ func (e ekv) GetAll(prefix string) (map[string]kv.Value, error) {
 
 	if !resp.Node.Dir {
 		return map[string]kv.Value{
-			resp.Node.Key: kv.Value{Data: []byte(resp.Node.Value), Index: resp.Node.ModifiedIndex},
+			resp.Node.Key: {Data: []byte(resp.Node.Value), Index: resp.Node.ModifiedIndex},
 		}, nil
 	}
 

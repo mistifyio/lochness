@@ -6,7 +6,7 @@ import (
 	"github.com/mistifyio/lochness"
 )
 
-// Task is a "helper" struct to pull together information from beanstalk and kv
+// Task is a "helper" struct to pull together information from beanstalk and the kv
 type Task struct {
 	ID     uint64 // id from beanstalkd
 	JobID  string // body from beanstalkd
@@ -17,11 +17,21 @@ type Task struct {
 
 // Delete removes a task from beanstalk
 func (t *Task) Delete() error {
+	if t.Job != nil {
+		if err := t.Job.Release(); err != nil {
+			return err
+		}
+	}
 	return t.client.beanConn.Delete(t.ID)
 }
 
 // Release releases a task back to beanstalk
 func (t *Task) Release() error {
+	if t.Job != nil {
+		if err := t.Job.Release(); err != nil {
+			return err
+		}
+	}
 	return t.client.beanConn.Release(t.ID, priority, delay)
 }
 

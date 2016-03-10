@@ -14,7 +14,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
@@ -120,10 +121,10 @@ func consumeResponses(config Config, eaddr string, w *watcher.Watcher, ready cha
 	key := make(chan string, 1)
 	go func() {
 		for w.Next() {
-			resp := w.Response()
-			log.WithField("response", resp).Info("response received")
-			key <- resp.Node.Key
-			log.WithField("response", resp).Info("response processed")
+			event := w.Event()
+			log.WithField("event", event).Info("event received")
+			key <- event.Key
+			log.WithField("event", event).Info("event processed")
 		}
 		if err := w.Err(); err != nil {
 			log.WithField("error", err).Fatal("watcher error")
@@ -170,8 +171,8 @@ func consumeResponses(config Config, eaddr string, w *watcher.Watcher, ready cha
 }
 
 // watchKeys creates a new Watcher and adds all configured keys
-func watchKeys(config Config, kvClient *kv.Client) *watcher.Watcher {
-	w, err := watcher.New(kvClient)
+func watchKeys(config Config, kv kv.KV) *watcher.Watcher {
+	w, err := watcher.New(kv)
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to create watcher")
 	}
@@ -234,9 +235,8 @@ func main() {
 
 	// set up kv connection
 	log.WithField("address", kvAddr).Info("connection to kv")
-	kvClient := kv.NewClient([]string{kvAddr})
-	// make sure we can actually connect to kv
-	if !kvClient.SyncCluster() {
+	e, err := kv.New(kvAddr)
+	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
 			"address": kvAddr,
@@ -250,7 +250,7 @@ func main() {
 	}
 
 	// set up watcher
-	w := watchKeys(config, kvClient)
+	w := watchKeys(config, e)
 
 	// to coordinate clean exiting between the consumer and the signal handler
 	ready := make(chan struct{}, 1)

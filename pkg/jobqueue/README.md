@@ -20,7 +20,7 @@ Job Status
 ```go
 var (
 	// JobPath is the path in the config store
-	JobPath = "lochness/jobs/"
+	JobPath = "/lochness/jobs/"
 )
 ```
 
@@ -126,6 +126,13 @@ Job is a single job for a guest such as create, delete, etc.
 func (j *Job) Refresh() error
 ```
 Refresh reloads a Job from the data store.
+
+#### func (*Job) Release
+
+```go
+func (j *Job) Release() error
+```
+Release releases control of the Job so that another component may acquire it.
 
 #### func (*Job) Save
 

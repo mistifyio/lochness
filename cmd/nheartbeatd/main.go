@@ -4,8 +4,9 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )
@@ -34,8 +35,16 @@ func main() {
 		log.Fatal("ttl must be greater than interval")
 	}
 
-	e := kv.NewClient([]string{*kvAddr})
-	c := lochness.NewContext(e)
+	KV, err := kv.New(*kvAddr)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"func":  "kvNew",
+			"id":    id,
+		}).Fatal("failed to connect to kv")
+	}
+
+	c := lochness.NewContext(KV)
 
 	hn, err := lochness.SetHypervisorID(*id)
 	if err != nil {

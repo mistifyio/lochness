@@ -5,13 +5,13 @@ import (
 	"errors"
 	"path/filepath"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
 var (
 	// FlavorPath is the path in the config store
-	FlavorPath = "lochness/flavors/"
+	FlavorPath = "/lochness/flavors/"
 )
 
 type (
@@ -72,22 +72,17 @@ func (f *Flavor) key() string {
 }
 
 // fromResponse is a helper to unmarshal a Flavor
-func (f *Flavor) fromResponse(resp *kv.Response) error {
-	f.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &f)
+func (f *Flavor) fromResponse(value kv.Value) error {
+	f.modifiedIndex = value.Index
+	return json.Unmarshal(value.Data, &f)
 }
 
 // Refresh reloads from the data store
 func (f *Flavor) Refresh() error {
-	resp, err := f.context.kv.Get(f.key(), false, false)
+	resp, err := f.context.kv.Get(f.key())
 
 	if err != nil {
 		return err
-	}
-
-	if resp == nil || resp.Node == nil {
-		// should this be an error??
-		return nil
 	}
 
 	return f.fromResponse(resp)
@@ -124,17 +119,9 @@ func (f *Flavor) Save() error {
 		return err
 	}
 
-	// if we changed something, don't clobber
-	var resp *kv.Response
-	if f.modifiedIndex != 0 {
-		resp, err = f.context.kv.CompareAndSwap(f.key(), string(v), 0, "", f.modifiedIndex)
-	} else {
-		resp, err = f.context.kv.Create(f.key(), string(v), 0)
+	index, err := f.context.kv.Update(f.key(), kv.Value{Data: v, Index: f.modifiedIndex})
+	if err == nil {
+		f.modifiedIndex = index
 	}
-	if err != nil {
-		return err
-	}
-
-	f.modifiedIndex = resp.EtcdIndex
-	return nil
+	return err
 }

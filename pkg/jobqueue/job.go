@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"time"
 
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
 var (
 	// JobPath is the path in the config store
-	JobPath = "lochness/jobs/"
+	JobPath = "/lochness/jobs/"
 )
 
 // Job Status
@@ -26,16 +26,16 @@ const (
 type (
 	// Job is a single job for a guest such as create, delete, etc.
 	Job struct {
-		ID            string    `json:"id"`
-		RemoteID      string    `json:"remote"` // ID of remote hypervisor/guest job
-		Action        string    `json:"action"`
-		Guest         string    `json:"guest"`
-		Error         string    `json:"error,omitempty"`
-		Status        string    `json:"status,omitempty"`
-		StartedAt     time.Time `json:"started_at,omitempty"`
-		FinishedAt    time.Time `json:"finished_at,omitempty"`
-		modifiedIndex uint64
-		client        *Client
+		ID         string    `json:"id"`
+		RemoteID   string    `json:"remote"` // ID of remote hypervisor/guest job
+		Action     string    `json:"action"`
+		Guest      string    `json:"guest"`
+		Error      string    `json:"error,omitempty"`
+		Status     string    `json:"status,omitempty"`
+		StartedAt  time.Time `json:"started_at,omitempty"`
+		FinishedAt time.Time `json:"finished_at,omitempty"`
+		client     *Client
+		lock       kv.Lock
 	}
 )
 
@@ -50,7 +50,6 @@ func (c *Client) NewJob() *Job {
 
 // Validate ensures required fields are populated.
 func (j *Job) Validate() error {
-
 	//XXX: use global error definitions for these?
 
 	if j.ID == "" {
@@ -79,47 +78,52 @@ func (j *Job) key() string {
 
 // Save persists a job.
 func (j *Job) Save(ttl time.Duration) error {
-
 	if err := j.Validate(); err != nil {
 		return err
 	}
 
 	v, err := json.Marshal(j)
-
 	if err != nil {
 		return err
 	}
 
-	// if we changed something, don't clobber
-	var resp *kv.Response
-	if j.modifiedIndex != 0 {
-		resp, err = j.client.kv.CompareAndSwap(j.key(), string(v), uint64(ttl.Seconds()), "", j.modifiedIndex)
-	} else {
-		resp, err = j.client.kv.Create(j.key(), string(v), uint64(ttl.Seconds()))
-	}
-	if err != nil {
-		return err
+	if j.lock == nil {
+		lock, err := j.client.kv.Lock(j.key(), ttl)
+		if err != nil {
+			return err
+		}
+		j.lock = lock
 	}
 
-	j.modifiedIndex = resp.EtcdIndex
+	return j.lock.Set(v)
+}
 
-	return nil
+// Release releases control of the Job so that another component may use it.
+func (j *Job) Release() error {
+	if j.lock == nil {
+		return errors.New("job is not locked")
+	}
+	lock := j.lock
+	j.lock = nil
+	return lock.Unlock()
 }
 
 // Refresh reloads a Job from the data store.
 func (j *Job) Refresh() error {
-	resp, err := j.client.kv.Get(j.key(), false, false)
+	if j.lock == nil {
+		lock, err := j.client.kv.Lock(j.key(), jobTTL)
+		if err != nil {
+			return err
+		}
+		j.lock = lock
+	}
 
+	data, err := j.lock.Get()
 	if err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal([]byte(resp.Node.Value), &j); err != nil {
-		return err
-	}
-	j.modifiedIndex = resp.Node.ModifiedIndex
-
-	return nil
+	return json.Unmarshal(data, &j)
 }
 
 // Job retrieves a single job from the data store.

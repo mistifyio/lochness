@@ -92,6 +92,7 @@ func (s *APISuite) SetupSuite() {
 	}
 
 	var err error
+	// TODO wait is never called so we don't know if its actually running
 	s.Cmd, err = common.Start("./"+s.BinName, args...)
 	s.Require().NoError(err)
 	time.Sleep(1 * time.Second)
@@ -169,6 +170,7 @@ func (s *APISuite) TestConfigGet() {
 		bodyB, _ := ioutil.ReadAll(resp.Body)
 		config, err := configRespToMap(string(bodyB))
 		s.NoError(err)
+
 		for key, value := range hypervisor.Config {
 			if strings.ToUpper(key) == key {
 				s.Equal(value, config[key])

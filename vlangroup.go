@@ -5,10 +5,10 @@ import (
 	"errors"
 	"path/filepath"
 	"strconv"
+	"strings"
 
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
-
-	kv "github.com/coreos/go-etcd/etcd"
 )
 
 var (
@@ -36,7 +36,7 @@ func (c *Context) blankVLANGroup(id string) *VLANGroup {
 		context:  c,
 		ID:       id,
 		Metadata: make(map[string]string),
-		vlans:    make([]int, 0, 0),
+		vlans:    []int{},
 	}
 
 	if id == "" {
@@ -80,28 +80,42 @@ func (c *Context) VLANGroup(id string) (*VLANGroup, error) {
 
 // Refresh reloads the VLAN from the data store.
 func (vg *VLANGroup) Refresh() error {
-	resp, err := vg.context.kv.Get(filepath.Dir(vg.key()), false, true)
+	prefix := filepath.Dir(vg.key())
+
+	nodes, err := vg.context.kv.GetAll(prefix)
 	if err != nil {
 		return err
 	}
 
-	for _, node := range resp.Node.Nodes {
-		key := filepath.Base(node.Key)
-		switch key {
-		case "metadata":
-			if err := json.Unmarshal([]byte(node.Value), &vg); err != nil {
-				return err
-			}
-			vg.modifiedIndex = node.ModifiedIndex
-		case "vlans":
-			vg.vlans = make([]int, len(node.Nodes))
-			for i, x := range node.Nodes {
-				vlanTag, _ := strconv.Atoi(filepath.Base(x.Key))
-				vg.vlans[i] = vlanTag
-			}
-		}
+	// handle metadata
+	key := filepath.Join(prefix, "metadata")
+	value, ok := nodes[key]
+	if !ok {
+		return errors.New("metadata key is missing")
 	}
 
+	if err := json.Unmarshal(value.Data, &vg); err != nil {
+		return err
+	}
+	vg.modifiedIndex = value.Index
+	delete(nodes, key)
+
+	vlans := []int{}
+
+	// TODO(needs tests)
+	for k := range nodes {
+		elements := strings.Split(k, "/")
+		base := elements[len(elements)-1]
+		dir := elements[len(elements)-2]
+
+		if dir != "vlans" {
+			continue
+		}
+		tag, _ := strconv.Atoi(base)
+		vlans = append(vlans, tag)
+	}
+
+	vg.vlans = vlans
 	return nil
 }
 
@@ -124,18 +138,11 @@ func (vg *VLANGroup) Save() error {
 		return err
 	}
 
-	// if something changed, don't clobber
-	var resp *kv.Response
-	if vg.modifiedIndex != 0 {
-		resp, err = vg.context.kv.CompareAndSwap(vg.key(), string(value), 0, "", vg.modifiedIndex)
-	} else {
-		resp, err = vg.context.kv.Create(vg.key(), string(value), 0)
-	}
+	index, err := vg.context.kv.Update(vg.key(), kv.Value{Data: value, Index: vg.modifiedIndex})
 	if err != nil {
 		return err
 	}
-
-	vg.modifiedIndex = resp.EtcdIndex
+	vg.modifiedIndex = index
 	return nil
 }
 
@@ -144,22 +151,21 @@ func (vg *VLANGroup) Destroy() error {
 	if vg.ID == "" {
 		return errors.New("missing id")
 	}
+
 	// Unlink VLANs
 	for _, vlanTag := range vg.vlans {
 		vlan, err := vg.context.VLAN(vlanTag)
 		if err != nil {
 			return err
 		}
+
 		if err := vg.RemoveVLAN(vlan); err != nil {
 			return err
 		}
 	}
 
 	// Delete the VLANGroup
-	if _, err := vg.context.kv.Delete(filepath.Dir(vg.key()), true); err != nil {
-		return err
-	}
-	return nil
+	return vg.context.kv.Delete(filepath.Dir(vg.key()), true)
 }
 
 // AddVLAN adds a VLAN to the VLANGroup
@@ -179,13 +185,13 @@ func (vg *VLANGroup) AddVLAN(vlan *VLAN) error {
 	}
 
 	// VLANGroup side
-	if _, err := vg.context.kv.Set(vg.vlanKey(vlan), "", 0); err != nil {
+	if err := vg.context.kv.Set(vg.vlanKey(vlan), ""); err != nil {
 		return err
 	}
 	vg.vlans = append(vg.vlans, vlan.Tag)
 
 	// VLAN side
-	if _, err := vlan.context.kv.Set(vlan.vlanGroupKey(vg), "", 0); err != nil {
+	if err := vlan.context.kv.Set(vlan.vlanGroupKey(vg), ""); err != nil {
 		return err
 	}
 	vlan.vlanGroups = append(vlan.vlanGroups, vg.ID)
@@ -196,10 +202,11 @@ func (vg *VLANGroup) AddVLAN(vlan *VLAN) error {
 // RemoveVLAN removes a VLAN from the VLANGroup
 func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 	// VLANGroup side
-	if _, err := vg.context.kv.Delete(vg.vlanKey(vlan), false); err != nil {
+	if err := vg.context.kv.Delete(vg.vlanKey(vlan), false); err != nil {
 		return err
 	}
 
+	// TODO check if len == 0
 	newVLANs := make([]int, 0, len(vg.vlans)-1)
 	for _, vlanTag := range vg.vlans {
 		if vlanTag != vlan.Tag {
@@ -209,7 +216,7 @@ func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 	vg.vlans = newVLANs
 
 	// VLAN side
-	if _, err := vlan.context.kv.Delete(vlan.vlanGroupKey(vg), false); err != nil {
+	if err := vlan.context.kv.Delete(vlan.vlanGroupKey(vg), false); err != nil {
 		return err
 	}
 
@@ -226,12 +233,13 @@ func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 
 // ForEachVLANGroup will run f on each VLAN. It will stop iteration if f returns an error.
 func (c *Context) ForEachVLANGroup(f func(*VLANGroup) error) error {
-	resp, err := c.kv.Get(VLANGroupPath, false, false)
+	keys, err := c.kv.Keys(VLANGroupPath)
 	if err != nil {
 		return err
 	}
-	for _, n := range resp.Node.Nodes {
-		groupID := filepath.Base(n.Key)
+
+	for _, k := range keys {
+		groupID := filepath.Base(k)
 		vlanGroup, err := c.VLANGroup(groupID)
 		if err != nil {
 			return err
