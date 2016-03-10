@@ -5,7 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/pborman/uuid"
 )
 
@@ -72,14 +72,14 @@ func (f *Flavor) key() string {
 }
 
 // fromResponse is a helper to unmarshal a Flavor
-func (f *Flavor) fromResponse(resp *etcd.Response) error {
+func (f *Flavor) fromResponse(resp *kv.Response) error {
 	f.modifiedIndex = resp.Node.ModifiedIndex
 	return json.Unmarshal([]byte(resp.Node.Value), &f)
 }
 
 // Refresh reloads from the data store
 func (f *Flavor) Refresh() error {
-	resp, err := f.context.etcd.Get(f.key(), false, false)
+	resp, err := f.context.kv.Get(f.key(), false, false)
 
 	if err != nil {
 		return err
@@ -124,11 +124,11 @@ func (f *Flavor) Save() error {
 	}
 
 	// if we changed something, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if f.modifiedIndex != 0 {
-		resp, err = f.context.etcd.CompareAndSwap(f.key(), string(v), 0, "", f.modifiedIndex)
+		resp, err = f.context.kv.CompareAndSwap(f.key(), string(v), 0, "", f.modifiedIndex)
 	} else {
-		resp, err = f.context.etcd.Create(f.key(), string(v), 0)
+		resp, err = f.context.kv.Create(f.key(), string(v), 0)
 	}
 	if err != nil {
 		return err

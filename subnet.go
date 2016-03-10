@@ -9,7 +9,7 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/pborman/uuid"
 )
 
@@ -131,7 +131,7 @@ func (s *Subnet) key() string {
 
 // Refresh reloads the Subnet from the data store.
 func (s *Subnet) Refresh() error {
-	resp, err := s.context.etcd.Get(filepath.Join(SubnetPath, s.ID), false, true)
+	resp, err := s.context.kv.Get(filepath.Join(SubnetPath, s.ID), false, true)
 
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func (s *Subnet) Delete() error {
 	}
 
 	// Delete the subnet
-	_, err := s.context.etcd.Delete(filepath.Join(SubnetPath, s.ID), true)
+	_, err := s.context.kv.Delete(filepath.Join(SubnetPath, s.ID), true)
 	return err
 }
 
@@ -222,11 +222,11 @@ func (s *Subnet) Save() error {
 	}
 
 	// if we changed something, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if s.modifiedIndex != 0 {
-		resp, err = s.context.etcd.CompareAndSwap(s.key(), string(v), 0, "", s.modifiedIndex)
+		resp, err = s.context.kv.CompareAndSwap(s.key(), string(v), 0, "", s.modifiedIndex)
 	} else {
-		resp, err = s.context.etcd.Create(s.key(), string(v), 0)
+		resp, err = s.context.kv.Create(s.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
@@ -312,7 +312,7 @@ func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 	var chosen net.IP
 	for _, ip := range avail {
 		v := ip.String()
-		_, err := s.context.etcd.Create(s.addressKey(v), id, 0)
+		_, err := s.context.kv.Create(s.addressKey(v), id, 0)
 		if err == nil {
 			chosen = ip
 			s.addresses[ipToI32(ip)] = id
@@ -327,7 +327,7 @@ func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 // ReleaseAddress releases an address. This does not change any thing that may also be referring to this address.
 func (s *Subnet) ReleaseAddress(ip net.IP) error {
 
-	_, err := s.context.etcd.Delete(s.addressKey(ip.String()), false)
+	_, err := s.context.kv.Delete(s.addressKey(ip.String()), false)
 	if err == nil {
 		delete(s.addresses, ipToI32(ip))
 	}
@@ -336,7 +336,7 @@ func (s *Subnet) ReleaseAddress(ip net.IP) error {
 
 // ForEachSubnet will run f on each Subnet. It will stop iteration if f returns an error.
 func (c *Context) ForEachSubnet(f func(*Subnet) error) error {
-	resp, err := c.etcd.Get(SubnetPath, false, false)
+	resp, err := c.kv.Get(SubnetPath, false, false)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/pborman/uuid"
 )
 
@@ -182,14 +182,14 @@ func (g *Guest) key() string {
 }
 
 // fromResponse is a helper to unmarshal a Guest
-func (g *Guest) fromResponse(resp *etcd.Response) error {
+func (g *Guest) fromResponse(resp *kv.Response) error {
 	g.modifiedIndex = resp.Node.ModifiedIndex
 	return json.Unmarshal([]byte(resp.Node.Value), &g)
 }
 
 // Refresh reloads from the data store
 func (g *Guest) Refresh() error {
-	resp, err := g.context.etcd.Get(g.key(), false, false)
+	resp, err := g.context.kv.Get(g.key(), false, false)
 
 	if err != nil {
 		return err
@@ -235,11 +235,11 @@ func (g *Guest) Save() error {
 	}
 
 	// if we changed something, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if g.modifiedIndex != 0 {
-		resp, err = g.context.etcd.CompareAndSwap(g.key(), string(v), 0, "", g.modifiedIndex)
+		resp, err = g.context.kv.CompareAndSwap(g.key(), string(v), 0, "", g.modifiedIndex)
 	} else {
-		resp, err = g.context.etcd.Create(g.key(), string(v), 0)
+		resp, err = g.context.kv.Create(g.key(), string(v), 0)
 	}
 	if err != nil {
 		return err
@@ -267,11 +267,11 @@ func (g *Guest) Destroy() error {
 	}
 
 	// XXX: another instance where transactions would be helpful
-	if _, err := g.context.etcd.CompareAndDelete(g.key(), "", g.modifiedIndex); err != nil {
+	if _, err := g.context.kv.CompareAndDelete(g.key(), "", g.modifiedIndex); err != nil {
 		return err
 	}
 
-	if _, err := g.context.etcd.Delete(filepath.Join(GuestPath, g.ID), true); err != nil {
+	if _, err := g.context.kv.Delete(filepath.Join(GuestPath, g.ID), true); err != nil {
 		return err
 	}
 	return nil
@@ -457,7 +457,7 @@ var DefaultCandidateFunctions = []CandidateFunction{
 
 // ForEachGuest will run f on each Guest. It will stop iteration if f returns an error.
 func (c *Context) ForEachGuest(f func(*Guest) error) error {
-	resp, err := c.etcd.Get(GuestPath, false, false)
+	resp, err := c.kv.Get(GuestPath, false, false)
 	if err != nil {
 		return err
 	}

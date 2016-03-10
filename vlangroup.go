@@ -8,7 +8,7 @@ import (
 
 	"github.com/pborman/uuid"
 
-	"github.com/coreos/go-etcd/etcd"
+	kv "github.com/coreos/go-etcd/etcd"
 )
 
 var (
@@ -80,7 +80,7 @@ func (c *Context) VLANGroup(id string) (*VLANGroup, error) {
 
 // Refresh reloads the VLAN from the data store.
 func (vg *VLANGroup) Refresh() error {
-	resp, err := vg.context.etcd.Get(filepath.Dir(vg.key()), false, true)
+	resp, err := vg.context.kv.Get(filepath.Dir(vg.key()), false, true)
 	if err != nil {
 		return err
 	}
@@ -125,11 +125,11 @@ func (vg *VLANGroup) Save() error {
 	}
 
 	// if something changed, don't clobber
-	var resp *etcd.Response
+	var resp *kv.Response
 	if vg.modifiedIndex != 0 {
-		resp, err = vg.context.etcd.CompareAndSwap(vg.key(), string(value), 0, "", vg.modifiedIndex)
+		resp, err = vg.context.kv.CompareAndSwap(vg.key(), string(value), 0, "", vg.modifiedIndex)
 	} else {
-		resp, err = vg.context.etcd.Create(vg.key(), string(value), 0)
+		resp, err = vg.context.kv.Create(vg.key(), string(value), 0)
 	}
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (vg *VLANGroup) Destroy() error {
 	}
 
 	// Delete the VLANGroup
-	if _, err := vg.context.etcd.Delete(filepath.Dir(vg.key()), true); err != nil {
+	if _, err := vg.context.kv.Delete(filepath.Dir(vg.key()), true); err != nil {
 		return err
 	}
 	return nil
@@ -179,13 +179,13 @@ func (vg *VLANGroup) AddVLAN(vlan *VLAN) error {
 	}
 
 	// VLANGroup side
-	if _, err := vg.context.etcd.Set(vg.vlanKey(vlan), "", 0); err != nil {
+	if _, err := vg.context.kv.Set(vg.vlanKey(vlan), "", 0); err != nil {
 		return err
 	}
 	vg.vlans = append(vg.vlans, vlan.Tag)
 
 	// VLAN side
-	if _, err := vlan.context.etcd.Set(vlan.vlanGroupKey(vg), "", 0); err != nil {
+	if _, err := vlan.context.kv.Set(vlan.vlanGroupKey(vg), "", 0); err != nil {
 		return err
 	}
 	vlan.vlanGroups = append(vlan.vlanGroups, vg.ID)
@@ -196,7 +196,7 @@ func (vg *VLANGroup) AddVLAN(vlan *VLAN) error {
 // RemoveVLAN removes a VLAN from the VLANGroup
 func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 	// VLANGroup side
-	if _, err := vg.context.etcd.Delete(vg.vlanKey(vlan), false); err != nil {
+	if _, err := vg.context.kv.Delete(vg.vlanKey(vlan), false); err != nil {
 		return err
 	}
 
@@ -209,7 +209,7 @@ func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 	vg.vlans = newVLANs
 
 	// VLAN side
-	if _, err := vlan.context.etcd.Delete(vlan.vlanGroupKey(vg), false); err != nil {
+	if _, err := vlan.context.kv.Delete(vlan.vlanGroupKey(vg), false); err != nil {
 		return err
 	}
 
@@ -226,7 +226,7 @@ func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 
 // ForEachVLANGroup will run f on each VLAN. It will stop iteration if f returns an error.
 func (c *Context) ForEachVLANGroup(f func(*VLANGroup) error) error {
-	resp, err := c.etcd.Get(VLANGroupPath, false, false)
+	resp, err := c.kv.Get(VLANGroupPath, false, false)
 	if err != nil {
 		return err
 	}
