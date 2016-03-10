@@ -62,7 +62,7 @@ func (s *CmdSuite) TestCmd() {
 
 	s.checkConfFiles(hypervisor2, guest2)
 
-	_, _ = s.KVClient.Delete(s.KVPrefix, true)
+	s.Require().NoError(s.KV.Delete(s.KVPrefix, true))
 	time.Sleep(1 * time.Second)
 	hData, _ := ioutil.ReadFile(s.HypervisorConfig)
 	s.NotContains(string(hData), hypervisor.ID, "hypervisor not removed")

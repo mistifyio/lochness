@@ -78,9 +78,13 @@ func (s *HypervisorSuite) TestRefresh() {
 	hypervisorCopy := &lochness.Hypervisor{}
 	*hypervisorCopy = *hypervisor
 	_, _ = lochness.SetHypervisorID(hypervisor.ID)
-	_ = hypervisor.Heartbeat(60 * time.Second)
 
-	_ = hypervisor.Save()
+	hypervisor.TotalResources = lochness.Resources{
+		Memory: 42,
+		CPU:    42,
+		Disk:   42,
+	}
+	s.Require().NoError(hypervisor.Save())
 	s.NoError(hypervisorCopy.Refresh(), "refresh existing should succeed")
 	s.True(assert.ObjectsAreEqual(hypervisor, hypervisorCopy), "refresh should pull new data")
 

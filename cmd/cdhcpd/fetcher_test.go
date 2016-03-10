@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness/cmd/cdhcpd"
 	"github.com/mistifyio/lochness/internal/tests/common"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -104,11 +104,9 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 	gPath := s.KVPrefix + "/guests/%s/metadata"
 
 	// Should fail before first fetch
-	refresh, err := s.Fetcher.IntegrateResponse(&kv.Response{
-		Action: "get",
-		Node: &kv.Node{
-			Key: fmt.Sprintf(hPath, hypervisor.ID),
-		},
+	refresh, err := s.Fetcher.IntegrateResponse(kv.Event{
+		Type: kv.Create,
+		Key:  fmt.Sprintf(hPath, hypervisor.ID),
 	})
 	s.Error(err)
 	s.False(refresh)
@@ -117,95 +115,61 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 
 	tests := []struct {
 		description string
-		resp        *kv.Response
+		resp        kv.Event
 		refresh     bool
 		expectedErr bool
 	}{
 		{"create wrong key",
-			&kv.Response{
-				Action: "create",
-				Node: &kv.Node{
-					Key: "/foobar/baz",
-					Dir: true,
-				},
-			},
-			false, true,
-		},
-		{"get hypervisor",
-			&kv.Response{
-				Action: "get",
-				Node: &kv.Node{
-					Key: fmt.Sprintf(hPath, hypervisor.ID),
-				},
-			},
-			false, false,
+			kv.Event{
+				Type: kv.Create,
+				Key:  "/foobar/baz",
+			}, false, true,
 		},
 		{"set hypervisor",
-			&kv.Response{
-				Action: "set",
-				Node: &kv.Node{
-					Key:   fmt.Sprintf(hPath, hypervisor.ID),
-					Value: string(hJSON),
-				},
-			},
-			true, false,
+			kv.Event{
+				Type:  kv.Update,
+				Key:   fmt.Sprintf(hPath, hypervisor.ID),
+				Value: kv.Value{Data: hJSON},
+			}, true, false,
 		},
 		{"set guest",
-			&kv.Response{
-				Action: "set",
-				Node: &kv.Node{
-					Key:   fmt.Sprintf(gPath, guest.ID),
-					Value: string(gJSON),
-				},
-			},
-			true, false,
+			kv.Event{
+				Type:  kv.Update,
+				Key:   fmt.Sprintf(gPath, guest.ID),
+				Value: kv.Value{Data: gJSON},
+			}, true, false,
 		},
 		{"set subnet",
-			&kv.Response{
-				Action: "set",
-				Node: &kv.Node{
-					Key:   fmt.Sprintf(sPath, subnet.ID),
-					Value: string(sJSON),
-				},
-			},
-			true, false,
+			kv.Event{
+				Type:  kv.Update,
+				Key:   fmt.Sprintf(sPath, subnet.ID),
+				Value: kv.Value{Data: sJSON},
+			}, true, false,
 		},
 		{"delete guest",
-			&kv.Response{
-				Action: "delete",
-				Node: &kv.Node{
-					Key: fmt.Sprintf(gPath, guest.ID),
-				},
-			},
-			true, false,
+			kv.Event{
+				Type: kv.Delete,
+				Key:  fmt.Sprintf(gPath, guest.ID),
+			}, true, false,
 		},
 		{"delete subnet",
-			&kv.Response{
-				Action: "delete",
-				Node: &kv.Node{
-					Key: fmt.Sprintf(sPath, subnet.ID),
-				},
-			},
-			true, false,
+			kv.Event{
+				Type: kv.Delete,
+				Key:  fmt.Sprintf(sPath, subnet.ID),
+			}, true, false,
 		},
 		{"delete hypervisor",
-			&kv.Response{
-				Action: "delete",
-				Node: &kv.Node{
-					Key: fmt.Sprintf(hPath, hypervisor.ID),
-				},
-			},
-			true, false,
+			kv.Event{
+				Type: kv.Delete,
+				Key:  fmt.Sprintf(hPath, hypervisor.ID),
+			}, true, false,
 		},
 		{"create hypervisor",
-			&kv.Response{
-				Action: "create",
-				Node: &kv.Node{
-					Key:   fmt.Sprintf(hPath, hypervisor.ID),
-					Value: string(hJSON),
-				},
-			},
-			true, false,
+			kv.Event{
+				Type:  kv.Create,
+				Key:   fmt.Sprintf(hPath, hypervisor.ID),
+				Value: kv.Value{Data: hJSON},
+			}, true, false,
 		},
 	}
 

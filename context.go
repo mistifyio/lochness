@@ -1,24 +1,22 @@
 package lochness
 
 import (
-	etcdErr "github.com/coreos/etcd/error"
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 )
 
 // Context carries around data/structs needed for operations
 type Context struct {
-	kv *kv.Client
+	kv kv.KV
 }
 
 // NewContext creates a new context
-func NewContext(e *kv.Client) *Context {
+func NewContext(kv kv.KV) *Context {
 	return &Context{
-		kv: e,
+		kv: kv,
 	}
 }
 
 // IsKeyNotFound is a helper to determine if the error is a key not found error
-func IsKeyNotFound(err error) bool {
-	e, ok := err.(*kv.EtcdError)
-	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
+func (c *Context) IsKeyNotFound(err error) bool {
+	return c.kv.IsKeyNotFound(err)
 }

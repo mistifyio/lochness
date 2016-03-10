@@ -75,15 +75,14 @@ func (s *CmdSuite) TestCmd() {
 				break
 			}
 
-			resp, err := s.KVClient.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id), false, false)
+			resp, err := s.KV.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id))
 			if !s.NoError(err, msg("heartbeat key should exist")) {
 				continue
 			}
 
-			s.EqualValues(test.ttl, resp.Node.TTL)
-
-			v, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", resp.Node.Value)
-			if !s.NoError(err, msg("heartbeat value should be a go time string")) {
+			// this is unfortunate but necessary if we actually want to check contents
+			v, err := time.Parse("locked=true:2006-01-02 15:04:05.999999999 -0700 MST", string(resp.Data))
+			if !s.NoError(err, msg("heartbeat lock value should be a go time string")) {
 				continue
 			}
 
@@ -99,7 +98,7 @@ func (s *CmdSuite) TestCmd() {
 
 		// Check that the key expires
 		time.Sleep(time.Duration(test.ttl) * time.Second)
-		_, err = s.KVClient.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id), false, false)
+		_, err = s.KV.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id))
 		s.Error(err, msg("heartbeat should have expired"))
 	}
 }

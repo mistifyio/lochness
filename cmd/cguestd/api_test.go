@@ -73,7 +73,7 @@ func (s *APISuite) SetupSuite() {
 	s.Require().True(beanstalkdReady)
 
 	// Jobqueue
-	s.JobQueue, _ = jobqueue.NewClient(s.BeanstalkdPath, s.KVClient)
+	s.JobQueue, _ = jobqueue.NewClient(s.BeanstalkdPath, s.KV)
 
 	// Run the server
 	s.APIServer = Run(s.Port, s.Context, s.JobQueue, s.MetricsContext)

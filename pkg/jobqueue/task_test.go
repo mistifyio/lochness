@@ -19,8 +19,8 @@ type TaskSuite struct {
 func (s *TaskSuite) TestDelete() {
 	job := s.newJob("")
 	_, _ = s.Client.AddTask(job)
-	task, _ := s.Client.NextWorkTask()
-	_ = task.Release()
+	task, err := s.Client.NextWorkTask()
+	s.Require().NoError(err)
 
 	s.NoError(task.Delete())
 }
@@ -38,12 +38,16 @@ func (s *TaskSuite) TestRefreshJob() {
 	job := s.newJob("")
 	_, _ = s.Client.AddTask(job)
 	task, _ := s.Client.NextWorkTask()
+
+	s.Require().Equal(job.Action, "restart")
+	s.Require().NoError(task.Release())
+	s.Require().NoError(job.Refresh())
 	job.Action = "stop"
-	_ = job.Save(60 * time.Second)
+	s.Require().NoError(job.Save(60 * time.Second))
+	s.Require().NoError(job.Release())
 
 	s.NoError(task.RefreshJob())
-	s.Equal(job.Action, task.Job.Action)
-
+	s.Equal("stop", task.Job.Action)
 }
 
 func (s *TaskSuite) TestRefreshGuest() {

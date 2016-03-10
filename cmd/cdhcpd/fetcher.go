@@ -5,16 +5,17 @@ import (
 	"regexp"
 
 	log "github.com/Sirupsen/logrus"
-	kv "github.com/coreos/go-etcd/etcd"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 )
 
 type (
 	// Fetcher grabs keys from a kv and maintains lists of hypervisors, guests, and subnets
 	Fetcher struct {
 		context     *lochness.Context
-		kvClient    *kv.Client
+		kv          kv.KV
 		hypervisors map[string]*lochness.Hypervisor
 		guests      map[string]*lochness.Guest
 		subnets     map[string]*lochness.Subnet
@@ -22,7 +23,7 @@ type (
 
 	// ilogFields defines what needs to be passed to logIntegrationMessage()
 	ilogFields struct {
-		r *kv.Response
+		r kv.Event
 		m string
 		i string
 		v string
@@ -35,11 +36,15 @@ var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-
 
 // NewFetcher creates a new fetcher
 func NewFetcher(kvAddress string) *Fetcher {
-	e := kv.NewClient([]string{kvAddress})
+	e, err := kv.New(kvAddress)
+	if err != nil {
+		panic(err)
+	}
+
 	c := lochness.NewContext(e)
 	return &Fetcher{
-		context:  c,
-		kvClient: e,
+		context: c,
+		kv:      e,
 	}
 }
 
@@ -66,8 +71,7 @@ func (f *Fetcher) fetchHypervisors() error {
 		return nil
 	})
 	if err != nil {
-		if lochness.IsKeyNotFound(err) {
-			// key missing; log warning but return no error
+		if f.kv.IsKeyNotFound(err) {
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "context.ForEachHypervisor",
@@ -94,8 +98,7 @@ func (f *Fetcher) fetchGuests() error {
 		return nil
 	})
 	if err != nil {
-		if lochness.IsKeyNotFound(err) {
-			// key missing; log warning but return no error
+		if f.kv.IsKeyNotFound(err) {
 			log.WithFields(log.Fields{
 				"error": err,
 				"func":  "context.ForEachGuest",
@@ -122,7 +125,7 @@ func (f *Fetcher) fetchSubnets() error {
 		return nil
 	})
 	if err != nil {
-		if lochness.IsKeyNotFound(err) {
+		if f.kv.IsKeyNotFound(err) {
 			// key missing; log warning but return no error
 			log.WithFields(log.Fields{
 				"error": err,
@@ -177,18 +180,14 @@ func (f *Fetcher) Subnets() (map[string]*lochness.Subnet, error) {
 
 // IntegrateResponse takes an a kv reponse and updates our list of hypervisors,
 // subnets, or guests, then returns whether a refresh should happen
-func (f *Fetcher) IntegrateResponse(r *kv.Response) (bool, error) {
-	if r == nil {
-		return false, errors.New("nil kv response")
-	}
-
+func (f *Fetcher) IntegrateResponse(event kv.Event) (bool, error) {
 	// Parse the key
-	matches := matchKeys.FindStringSubmatch(r.Node.Key)
+	matches := matchKeys.FindStringSubmatch(event.Key)
 	if len(matches) < 2 {
 		msg := "caught response from kv that did not match"
 		log.WithFields(log.Fields{
-			"key":    r.Node.Key,
-			"action": r.Action,
+			"key":    event.Key,
+			"action": event.Type,
 			"regexp": matchKeys.String(),
 		}).Warning(msg)
 		return false, errors.New(msg)
@@ -196,24 +195,24 @@ func (f *Fetcher) IntegrateResponse(r *kv.Response) (bool, error) {
 	element := matches[1]
 	id := matches[2]
 	vtype := matches[4]
-	f.logIntegrationMessage("debug", "response received", ilogFields{r: r, m: element, i: id, v: vtype})
+	f.logIntegrationMessage("debug", "response received", ilogFields{r: event, m: element, i: id, v: vtype})
 
 	// Error out if we haven't fetched the element in question yet
 	if (element == "hypervisors" && f.hypervisors == nil) || (element == "guests" && f.guests == nil) || (element == "subnets" && f.subnets == nil) {
 		msg := "cannot integrate elements when no initial fetch has occurred"
-		f.logIntegrationMessage("error", msg, ilogFields{r: r, m: element, i: id, v: vtype})
+		f.logIntegrationMessage("error", msg, ilogFields{r: event, m: element, i: id, v: vtype})
 		return false, errors.New(msg)
 	}
 
 	// Filter out actions we don't care about
-	switch r.Action {
-	case "create", "compareAndSwap", "set", "delete":
+	switch event.Type {
+	case kv.Create, kv.Delete, kv.Update:
 		if vtype != "metadata" {
-			f.logIntegrationMessage("debug", "action on something other than the main element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
+			f.logIntegrationMessage("debug", "action on something other than the main element; ignoring", ilogFields{r: event, m: element, i: id, v: vtype})
 			return false, nil
 		}
 	default:
-		f.logIntegrationMessage("debug", "action doesn't affect the config; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
+		f.logIntegrationMessage("debug", "action doesn't affect the config; ignoring", ilogFields{r: event, m: element, i: id, v: vtype})
 		return false, nil
 	}
 
@@ -221,13 +220,13 @@ func (f *Fetcher) IntegrateResponse(r *kv.Response) (bool, error) {
 	var err error
 	switch element {
 	case "hypervisors":
-		err = f.integrateHypervisorChange(r, element, id, vtype)
+		err = f.integrateHypervisorChange(event, element, id, vtype)
 	case "guests":
-		err = f.integrateGuestChange(r, element, id, vtype)
+		err = f.integrateGuestChange(event, element, id, vtype)
 	case "subnets":
-		err = f.integrateSubnetChange(r, element, id, vtype)
+		err = f.integrateSubnetChange(event, element, id, vtype)
 	default:
-		f.logIntegrationMessage("debug", "unknown element; ignoring", ilogFields{r: r, m: element, i: id, v: vtype})
+		f.logIntegrationMessage("debug", "unknown element; ignoring", ilogFields{r: event, m: element, i: id, v: vtype})
 		return false, nil
 	}
 	rewrite := true
@@ -240,11 +239,11 @@ func (f *Fetcher) IntegrateResponse(r *kv.Response) (bool, error) {
 // logIntegrationMessage logs a uniform message during integration
 func (f *Fetcher) logIntegrationMessage(level string, message string, fields ilogFields) {
 	logfields := log.Fields{
-		"action":  fields.r.Action,
+		"action":  fields.r.Type,
 		"element": fields.m,
 		"id":      fields.i,
 		"vtype":   fields.v,
-		"key":     fields.r.Node.Key,
+		"key":     fields.r.Key,
 	}
 	if fields.e != nil {
 		logfields["error"] = fields.e
@@ -263,18 +262,18 @@ func (f *Fetcher) logIntegrationMessage(level string, message string, fields ilo
 
 // integrateHypervisorChange updates our hypervisors using an a kv response,
 // then returns whether a refresh should happen
-func (f *Fetcher) integrateHypervisorChange(r *kv.Response, element string, id string, vtype string) error {
+func (f *Fetcher) integrateHypervisorChange(r kv.Event, element string, id string, vtype string) error {
 	ilf := ilogFields{r: r, m: element, i: id, v: vtype}
 
 	// Sanity check
 	if _, ok := f.hypervisors[id]; ok {
-		if r.Action == "create" {
+		if r.Type == kv.Create {
 			msg := "caught response creating an element that already exists"
 			f.logIntegrationMessage("warning", msg, ilf)
 			return errors.New(msg)
 		}
 	} else {
-		if r.Action != "create" {
+		if r.Type != kv.Create {
 			msg := "caught response operating on an element that doesn't exist"
 			f.logIntegrationMessage("warning", msg, ilf)
 			return errors.New(msg)
@@ -282,7 +281,7 @@ func (f *Fetcher) integrateHypervisorChange(r *kv.Response, element string, id s
 	}
 
 	// Delete
-	if r.Action == "delete" {
+	if r.Type == kv.Delete {
 		delete(f.hypervisors, id)
 		f.logIntegrationMessage("info", "deleted hypervisor", ilf)
 		return nil
@@ -290,7 +289,7 @@ func (f *Fetcher) integrateHypervisorChange(r *kv.Response, element string, id s
 
 	// Add/update
 	hv := f.context.NewHypervisor()
-	if err := hv.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+	if err := hv.UnmarshalJSON(r.Data); err != nil {
 		ilf.e = err
 		ilf.f = "hypervisor.UnmarshalJSON"
 		f.logIntegrationMessage("error", "could not unmarshal kv response", ilf)
@@ -303,18 +302,18 @@ func (f *Fetcher) integrateHypervisorChange(r *kv.Response, element string, id s
 }
 
 // integrateGuestChange updates our guests using a kv response
-func (f *Fetcher) integrateGuestChange(r *kv.Response, element string, id string, vtype string) error {
+func (f *Fetcher) integrateGuestChange(r kv.Event, element string, id string, vtype string) error {
 	ilf := ilogFields{r: r, m: element, i: id, v: vtype}
 
 	// Sanity check
 	if _, ok := f.guests[id]; ok {
-		if r.Action == "create" {
+		if r.Type == kv.Create {
 			msg := "caught response creating an element that already exists"
 			f.logIntegrationMessage("warning", msg, ilf)
 			return errors.New(msg)
 		}
 	} else {
-		if r.Action != "create" {
+		if r.Type != kv.Create {
 			msg := "caught response operating on an element that doesn't exist"
 			f.logIntegrationMessage("warning", msg, ilf)
 			return errors.New(msg)
@@ -322,7 +321,7 @@ func (f *Fetcher) integrateGuestChange(r *kv.Response, element string, id string
 	}
 
 	// Delete
-	if r.Action == "delete" {
+	if r.Type == kv.Delete {
 		delete(f.guests, id)
 		f.logIntegrationMessage("info", "deleted guest", ilf)
 		return nil
@@ -330,7 +329,7 @@ func (f *Fetcher) integrateGuestChange(r *kv.Response, element string, id string
 
 	// Add/update
 	g := f.context.NewGuest()
-	if err := g.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+	if err := g.UnmarshalJSON(r.Data); err != nil {
 		ilf.e = err
 		ilf.f = "guest.UnmarshalJSON"
 		f.logIntegrationMessage("error", "could not unmarshal kv response", ilf)
@@ -342,19 +341,19 @@ func (f *Fetcher) integrateGuestChange(r *kv.Response, element string, id string
 	return nil
 }
 
-// integrateSubnetChange updates our subnets using an a kv response
-func (f *Fetcher) integrateSubnetChange(r *kv.Response, element string, id string, vtype string) error {
+// integrateSubnetChange updates our subnets using an kv response
+func (f *Fetcher) integrateSubnetChange(r kv.Event, element string, id string, vtype string) error {
 	ilf := ilogFields{r: r, m: element, i: id, v: vtype}
 
 	// Sanity check
 	if _, ok := f.subnets[id]; ok {
-		if r.Action == "create" {
+		if r.Type == kv.Create {
 			msg := "caught response creating an element that already exists"
 			f.logIntegrationMessage("warning", msg, ilf)
 			return errors.New(msg)
 		}
 	} else {
-		if r.Action != "create" {
+		if r.Type != kv.Create {
 			msg := "caught response operating on an element that doesn't exist"
 			f.logIntegrationMessage("warning", msg, ilf)
 			return errors.New(msg)
@@ -362,7 +361,7 @@ func (f *Fetcher) integrateSubnetChange(r *kv.Response, element string, id strin
 	}
 
 	// Delete
-	if r.Action == "delete" {
+	if r.Type == kv.Delete {
 		delete(f.subnets, id)
 		f.logIntegrationMessage("info", "deleted subnet", ilf)
 		return nil
@@ -370,7 +369,7 @@ func (f *Fetcher) integrateSubnetChange(r *kv.Response, element string, id strin
 
 	// Add/update
 	s := f.context.NewSubnet()
-	if err := s.UnmarshalJSON([]byte(r.Node.Value)); err != nil {
+	if err := s.UnmarshalJSON(r.Data); err != nil {
 		ilf.e = err
 		ilf.f = "subnet.UnmarshalJSON"
 		f.logIntegrationMessage("error", "could not unmarshal kv response", ilf)

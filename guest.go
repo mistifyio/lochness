@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
-	kv "github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
@@ -182,22 +182,17 @@ func (g *Guest) key() string {
 }
 
 // fromResponse is a helper to unmarshal a Guest
-func (g *Guest) fromResponse(resp *kv.Response) error {
-	g.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &g)
+func (g *Guest) fromResponse(value kv.Value) error {
+	g.modifiedIndex = value.Index
+	return json.Unmarshal(value.Data, &g)
 }
 
 // Refresh reloads from the data store
 func (g *Guest) Refresh() error {
-	resp, err := g.context.kv.Get(g.key(), false, false)
+	resp, err := g.context.kv.Get(g.key())
 
 	if err != nil {
 		return err
-	}
-
-	if resp == nil || resp.Node == nil {
-		// should this be an error??
-		return nil
 	}
 
 	return g.fromResponse(resp)
@@ -234,18 +229,11 @@ func (g *Guest) Save() error {
 		return err
 	}
 
-	// if we changed something, don't clobber
-	var resp *kv.Response
-	if g.modifiedIndex != 0 {
-		resp, err = g.context.kv.CompareAndSwap(g.key(), string(v), 0, "", g.modifiedIndex)
-	} else {
-		resp, err = g.context.kv.Create(g.key(), string(v), 0)
-	}
+	index, err := g.context.kv.Update(g.key(), kv.Value{Data: v, Index: g.modifiedIndex})
 	if err != nil {
 		return err
 	}
-
-	g.modifiedIndex = resp.EtcdIndex
+	g.modifiedIndex = index
 	return nil
 }
 
@@ -266,15 +254,10 @@ func (g *Guest) Destroy() error {
 		}
 	}
 
-	// XXX: another instance where transactions would be helpful
-	if _, err := g.context.kv.CompareAndDelete(g.key(), "", g.modifiedIndex); err != nil {
+	if err := g.context.kv.Remove(g.key(), g.modifiedIndex); err != nil {
 		return err
 	}
-
-	if _, err := g.context.kv.Delete(filepath.Join(GuestPath, g.ID), true); err != nil {
-		return err
-	}
-	return nil
+	return g.context.kv.Delete(filepath.Join(GuestPath, g.ID), true)
 }
 
 // Candidates returns a list of Hypervisors that may run this Guest.
@@ -457,12 +440,12 @@ var DefaultCandidateFunctions = []CandidateFunction{
 
 // ForEachGuest will run f on each Guest. It will stop iteration if f returns an error.
 func (c *Context) ForEachGuest(f func(*Guest) error) error {
-	resp, err := c.kv.Get(GuestPath, false, false)
+	keys, err := c.kv.Keys(GuestPath)
 	if err != nil {
 		return err
 	}
-	for _, n := range resp.Node.Nodes {
-		g, err := c.Guest(filepath.Base(n.Key))
+	for _, k := range keys {
+		g, err := c.Guest(filepath.Base(k))
 		if err != nil {
 			return err
 		}
