@@ -66,8 +66,16 @@ $(SBIN_DIR)/nconfigd: cmd/nconfigd/nconfigd
 $(SBIN_DIR)/nfirewalld: cmd/nfirewalld/nfirewalld
 $(SBIN_DIR)/nheartbeatd: cmd/nheartbeatd/nheartbeatd
 
+.PHONY: godocdown
+godocdown:
+	find -type f -name \*.go -execdir bash -c 'diff README.md <(godocdown -template $(CURDIR)/.godocdown.template)' \;
+
+.PHONY: test-godocdown
+godocdown-tests:
+	test -z "$$(find -type f -name \*.go -execdir bash -c 'diff README.md <(godocdown -template $(CURDIR)/.godocdown.template)' \;)"
+
 .PHONY: test
-test: $(addsuffix .run.out,$(tests))
+test: $(addsuffix .run.out,$(tests)) test-godocdown
 
 FORCE:
 
