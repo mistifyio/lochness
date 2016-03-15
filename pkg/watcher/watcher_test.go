@@ -2,14 +2,10 @@ package watcher_test
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
-	"github.com/mistifyio/lochness/pkg/kv"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	"github.com/pborman/uuid"
@@ -21,74 +17,32 @@ func TestWatcherCmd(t *testing.T) {
 }
 
 type WatcherSuite struct {
-	suite.Suite
-	KVDir    string
-	KVPrefix string
-	KV       kv.KV
-	KVCmd    *exec.Cmd
-	Watcher  *watcher.Watcher
+	common.Suite
+	Watcher *watcher.Watcher
 }
 
 func (s *WatcherSuite) SetupSuite() {
-	// Start up a test etcd
-	s.KVDir, _ = ioutil.TempDir("", "watcherTest-"+uuid.New())
-	port := 54444
-	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
-	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
-	s.KVCmd = exec.Command("etcd",
-		"-name", "watcherTest",
-		"-data-dir", s.KVDir,
-		"-initial-cluster-state", "new",
-		"-initial-cluster-token", "watcherTest",
-		"-initial-cluster", "watcherTest="+peerURL,
-		"-initial-advertise-peer-urls", peerURL,
-		"-listen-peer-urls", peerURL,
-		"-listen-client-urls", clientURL,
-		"-advertise-client-urls", clientURL,
-	)
-	s.Require().NoError(s.KVCmd.Start())
-	time.Sleep(10 * time.Millisecond) // Wait for test kv to be ready
-
-	KV, err := kv.New(clientURL)
-	if err != nil {
-		panic(err)
-	}
-
-	s.KV = KV
-	s.KVPrefix = "/lochness"
+	s.KVPort = 54444
+	s.TestPrefix = "watcher-test"
+	s.Suite.SetupSuite()
 }
 
 func (s *WatcherSuite) SetupTest() {
+	s.Suite.SetupTest()
 	s.Watcher, _ = watcher.New(s.KV)
 }
 
 func (s *WatcherSuite) TearDownTest() {
 	s.NoError(s.Watcher.Close())
-	_ = s.KV.Delete(s.KVPrefix, true)
+	s.Suite.TearDownTest()
 }
 
 func (s *WatcherSuite) TearDownSuite() {
-	_ = s.KVCmd.Process.Kill()
-	_ = s.KVCmd.Wait()
-	_ = os.RemoveAll(s.KVDir)
+	s.Suite.TearDownSuite()
 }
 
 func (s *WatcherSuite) prefixKey(key string) string {
 	return filepath.Join(s.KVPrefix, key)
-}
-
-func testMsgFunc(prefix string) func(...interface{}) string {
-	return func(val ...interface{}) string {
-		if len(val) == 0 {
-			return prefix
-		}
-		msgPrefix := prefix + " : "
-		if len(val) == 1 {
-			return msgPrefix + val[0].(string)
-		} else {
-			return msgPrefix + fmt.Sprintf(val[0].(string), val[1:]...)
-		}
-	}
 }
 
 func (s *WatcherSuite) TestNew() {

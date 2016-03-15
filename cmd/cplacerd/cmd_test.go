@@ -86,7 +86,7 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := common.TestMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		if test.description == "valid" {
 			s.NoError(hypervisor.Heartbeat(1 * time.Hour))
 		}

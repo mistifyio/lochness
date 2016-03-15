@@ -38,7 +38,7 @@ func (s *FlavorSuite) TestFlavor() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		f, err := s.Context.Flavor(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -80,7 +80,7 @@ func (s *FlavorSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.flavor.Validate()
 		if test.expectedErr {
 			s.Error(err, msg("should be invalid"))
@@ -109,7 +109,7 @@ func (s *FlavorSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.flavor.Save()
 		if test.expectedErr {
 			s.Error(err, msg("should be invalid"))

@@ -50,7 +50,7 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := common.TestMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		args := []string{
 			"-k", s.KVURL,
 			"-d", test.id,
