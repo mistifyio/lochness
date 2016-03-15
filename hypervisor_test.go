@@ -61,7 +61,7 @@ func (s *HypervisorSuite) TestHypervisor() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		h, err := s.Context.Hypervisor(test.ID)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -123,7 +123,7 @@ func (s *HypervisorSuite) TestGetAndSetHypervisorID() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		_ = os.Setenv("HYPERVISOR_ID", test.env)
 		id, err := lochness.SetHypervisorID(test.id)
 		if test.expectedErr {
@@ -187,7 +187,7 @@ func (s *HypervisorSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		h := &lochness.Hypervisor{ID: test.ID}
 		err := h.Validate()
 		if test.expectedErr {
@@ -215,7 +215,7 @@ func (s *HypervisorSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.hypervisor.Save()
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -239,7 +239,7 @@ func (s *HypervisorSuite) TestAddSubnet() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.Hypervisor.AddSubnet(test.subnet, "mistify0")
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -269,7 +269,7 @@ func (s *HypervisorSuite) TestRemoveSubnet() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		hLen := len(test.h.Subnets())
 
 		err := test.h.RemoveSubnet(test.s)
@@ -321,7 +321,7 @@ func (s *HypervisorSuite) TestAddGuest() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.hypervisor.AddGuest(test.guest)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -460,7 +460,7 @@ func (s *HypervisorSuite) TestDestroy() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.h.Destroy()
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))

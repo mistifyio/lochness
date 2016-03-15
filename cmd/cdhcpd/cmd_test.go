@@ -32,7 +32,7 @@ func (s *CmdSuite) SetupSuite() {
 
 func (s *CmdSuite) SetupTest() {
 	s.Suite.SetupTest()
-	s.ConfDir, _ = ioutil.TempDir("", "cdhcpd-Test")
+	s.ConfDir, _ = ioutil.TempDir("", "cdhcpd-test")
 	s.HypervisorConfig = filepath.Join(s.ConfDir, "hypervisors.conf")
 	s.GuestConfig = filepath.Join(s.ConfDir, "guests.conf")
 }
@@ -74,6 +74,9 @@ func (s *CmdSuite) TestCmd() {
 	_ = cmd.Stop()
 	status, err := cmd.ExitStatus()
 	s.Equal(-1, status, "expected status code to be that of a killed process")
+
+	// so that common.Suite.TearDownTest does not fail
+	s.KV.Set("/lochness", "hi")
 }
 
 func (s *CmdSuite) checkConfFiles(hypervisor *lochness.Hypervisor, guest *lochness.Guest) bool {

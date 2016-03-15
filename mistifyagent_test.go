@@ -88,7 +88,7 @@ func (s *MistifyAgentSuite) TestGetGuest() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		guest, err := s.agent.GetGuest(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -113,7 +113,7 @@ func (s *MistifyAgentSuite) TestCreateGuest() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		jobID, err := s.agent.CreateGuest(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -138,7 +138,7 @@ func (s *MistifyAgentSuite) TestDeleteGuest() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		jobID, err := s.agent.DeleteGuest(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -163,7 +163,7 @@ func (s *MistifyAgentSuite) TestGuestAction() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		jobID, err := s.agent.GuestAction(test.id, "restart")
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -190,7 +190,7 @@ func (s *MistifyAgentSuite) TestCheckJobStatus() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		done, err := s.agent.CheckJobStatus(test.guestID, test.jobID)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -215,7 +215,7 @@ func (s *MistifyAgentSuite) TestFetchImage() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		jobID, err := s.agent.FetchImage(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))

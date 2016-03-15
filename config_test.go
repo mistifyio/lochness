@@ -34,7 +34,7 @@ func (s *ConfigSuite) TestGetConfig() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		val, err := s.Context.GetConfig(test.key)
 		s.Equal(test.value, val, msg("values should match"))
 		if test.expectedErr {

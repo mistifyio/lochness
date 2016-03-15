@@ -40,7 +40,7 @@ func (s *FWGroupSuite) TestFWGroup() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		f, err := s.Context.FWGroup(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -82,7 +82,7 @@ func (s *FWGroupSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		fg := &lochness.FWGroup{ID: test.ID}
 		err := fg.Validate()
 		if test.expectedErr {
@@ -109,7 +109,7 @@ func (s *FWGroupSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.fwgroup.Save()
 		if test.expectedErr {
 			s.Error(err, msg("should be invalid"))
