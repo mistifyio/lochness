@@ -39,7 +39,7 @@ func (s *VLANGroupSuite) TestVLANGroup() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		v, err := s.Context.VLANGroup(test.ID)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -78,7 +78,7 @@ func (s *VLANGroupSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		v := &lochness.VLANGroup{ID: test.ID}
 		err := v.Validate()
 		if test.expectedErr {
@@ -106,7 +106,7 @@ func (s *VLANGroupSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.vlangroup.Save()
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -135,7 +135,7 @@ func (s *VLANGroupSuite) TestDestroy() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.v.Destroy()
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -187,7 +187,7 @@ func (s *VLANGroupSuite) TestAddVLAN() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.vg.AddVLAN(test.v)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -219,7 +219,7 @@ func (s *VLANGroupSuite) TestRemoveVLAN() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		vgLen := len(test.vg.VLANs())
 		vLen := len(test.v.VLANGroups())
 

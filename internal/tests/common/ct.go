@@ -22,30 +22,41 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // Suite sets up a general test suite with setup/teardown.
 type Suite struct {
 	suite.Suite
-	KVDir    string
-	KVPrefix string
-	KVURL    string
-	KV       kv.KV
-	KVCmd    *exec.Cmd
-	Context  *lochness.Context
+	KVDir      string
+	KVPrefix   string
+	KVPort     uint16
+	KVURL      string
+	KV         kv.KV
+	KVCmd      *exec.Cmd
+	TestPrefix string
+	Context    *lochness.Context
 }
 
 // SetupSuite runs a new kv instance.
 func (s *Suite) SetupSuite() {
 	// Start up a test kv
-	s.KVDir, _ = ioutil.TempDir("", "lochnessTest-"+uuid.New())
-	port := 54321
-	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
-	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
+	if s.TestPrefix == "" {
+		s.TestPrefix = "lochness-test"
+	}
+	s.KVDir, _ = ioutil.TempDir("", s.TestPrefix+"-"+uuid.New())
+	if s.KVPort == 0 {
+		s.KVPort = uint16(1 + rand.Uint32())
+	}
+	clientURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort)
+	peerURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort+1)
 	s.KVCmd = exec.Command("etcd",
-		"-name", "lochnessTest",
+		"-name", s.TestPrefix,
 		"-data-dir", s.KVDir,
 		"-initial-cluster-state", "new",
-		"-initial-cluster-token", "lochnessTest",
-		"-initial-cluster", "lochnessTest="+peerURL,
+		"-initial-cluster-token", s.TestPrefix,
+		"-initial-cluster", s.TestPrefix+"="+peerURL,
 		"-initial-advertise-peer-urls", peerURL,
 		"-listen-peer-urls", peerURL,
 		"-listen-client-urls", clientURL,
@@ -83,11 +94,11 @@ func (s *Suite) TearDownTest() {
 // TearDownSuite stops the kv instance and removes all data.
 func (s *Suite) TearDownSuite() {
 	// Stop the test kv process
-	_ = s.KVCmd.Process.Kill()
-	_ = s.KVCmd.Wait()
+	s.Require().NoError(s.KVCmd.Process.Kill())
+	s.Require().Error(s.KVCmd.Wait())
 
 	// Remove the test kv data directory
-	s.Require().NoError(os.RemoveAll(s.KVDir))
+	_ = os.RemoveAll(s.KVDir)
 }
 
 // PrefixKey generates an kv key using the set prefix

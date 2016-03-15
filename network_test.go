@@ -38,7 +38,7 @@ func (s *NetworkSuite) TestNework() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		n, err := s.Context.Network(test.ID)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -76,7 +76,7 @@ func (s *NetworkSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		n := &lochness.Network{ID: test.ID}
 		err := n.Validate()
 		if test.expectedErr {
@@ -104,7 +104,7 @@ func (s *NetworkSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.network.Save()
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -128,7 +128,7 @@ func (s *NetworkSuite) TestAddSubnet() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.network.AddSubnet(test.subnet)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))

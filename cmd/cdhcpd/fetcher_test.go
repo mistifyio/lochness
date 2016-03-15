@@ -174,7 +174,7 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 	}
 
 	for _, test := range tests {
-		msg := common.TestMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		refresh, err := s.Fetcher.IntegrateResponse(test.resp)
 
 		s.Equal(test.refresh, refresh, msg("wrong refresh conclusion"))

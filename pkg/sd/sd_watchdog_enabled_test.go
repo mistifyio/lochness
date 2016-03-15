@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/sd"
 	"github.com/stretchr/testify/suite"
 )
@@ -14,7 +15,16 @@ func TestSDWatchdogEnabled(t *testing.T) {
 }
 
 type SDWatchdogEnabledSuite struct {
-	suite.Suite
+	common.Suite
+}
+
+func (s *SDWatchdogEnabledSuite) SetupSuite() {
+}
+
+func (s *SDWatchdogEnabledSuite) TearDownSuite() {
+}
+
+func (s *SDWatchdogEnabledSuite) TearDownTest() {
 }
 
 func (s *SDWatchdogEnabledSuite) TestWatchdogEnabled() {
@@ -38,7 +48,7 @@ func (s *SDWatchdogEnabledSuite) TestWatchdogEnabled() {
 	for _, test := range tests {
 		_ = os.Setenv("WATCHDOG_PID", test.pid)
 		_ = os.Setenv("WATCHDOG_USEC", test.usec)
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 
 		time, err := sd.WatchdogEnabled()
 		if test.expectedErr {

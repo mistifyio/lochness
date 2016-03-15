@@ -38,7 +38,7 @@ func (s *CmdSuite) SetupSuite() {
 
 	var err error
 	// Fake Ansible
-	s.WorkPath, err = ioutil.TempDir("", "nconfigdTest-")
+	s.WorkPath, err = ioutil.TempDir("", "nconfigd-test-")
 	s.Require().NoError(err, "failed to create work dir")
 	s.Require().NoError(os.Symlink("/bin/echo", filepath.Join(s.WorkPath, "run")),
 		"failed to symlink echo to work dir")
@@ -115,7 +115,7 @@ func (s *CmdSuite) TestCmd() {
 	for _, test := range tests {
 		s.TearDownTest()
 		s.SetupTest()
-		msg := common.TestMsgFunc(test.description)
+		msg := s.Messager(test.description)
 
 		cmd, err := common.Start("./"+s.BinName, args...)
 		if !s.NoError(err, msg("command exec should not error")) {

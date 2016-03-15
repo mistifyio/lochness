@@ -36,7 +36,7 @@ func (s *ClientSuite) TestNewClient() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		c, err := jobqueue.NewClient(test.bstalkAddr, test.kv)
 		if test.expectedErr {
 			s.Error(err, msg("should error"))
@@ -62,7 +62,7 @@ func (s *ClientSuite) TestAddTask() {
 		{"restart job", j2, false},
 	}
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		id, err := s.Client.AddTask(test.job)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -113,7 +113,7 @@ func (s *ClientSuite) TestAddJob() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		job, err := s.Client.AddJob(test.guest, test.action)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))

@@ -1,13 +1,13 @@
 package sd_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/sd"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
@@ -18,8 +18,14 @@ func TestSDNotify(t *testing.T) {
 }
 
 type SDNotifySuite struct {
-	suite.Suite
+	common.Suite
 	SocketDir string
+}
+
+func (s *SDNotifySuite) SetupSuite() {
+}
+
+func (s *SDNotifySuite) TearDownSuite() {
 }
 
 func (s *SDNotifySuite) SetupTest() {
@@ -47,7 +53,7 @@ func (s *SDNotifySuite) TestNotify() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		socket := s.socketPath(test.socket)
 		_ = os.Setenv("NOTIFY_SOCKET", socket)
 
@@ -70,20 +76,6 @@ func (s *SDNotifySuite) TestNotify() {
 		} else {
 			s.NoError(err, msg("should succeed"))
 			s.Contains(string(data), test.state, msg("state should be written to socket"))
-		}
-	}
-}
-
-func testMsgFunc(prefix string) func(...interface{}) string {
-	return func(val ...interface{}) string {
-		if len(val) == 0 {
-			return prefix
-		}
-		msgPrefix := prefix + " : "
-		if len(val) == 1 {
-			return msgPrefix + val[0].(string)
-		} else {
-			return msgPrefix + fmt.Sprintf(val[0].(string), val[1:]...)
 		}
 	}
 }
