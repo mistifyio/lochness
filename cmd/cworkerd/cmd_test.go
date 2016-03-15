@@ -115,7 +115,7 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := common.TestMsgFunc(test.description)
+		msg := s.Messager(test.description)
 
 		job, err := s.JobQueue.AddJob(test.guestID, test.jobAction)
 		s.Require().NoError(err)

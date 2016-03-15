@@ -41,7 +41,7 @@ func (s *SubnetSuite) TestSubnet() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		n, err := s.Context.Subnet(test.ID)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -104,7 +104,7 @@ func (s *SubnetSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		sub := &lochness.Subnet{
 			ID:         test.id,
 			StartRange: net.ParseIP(test.start),
@@ -155,7 +155,7 @@ func (s *SubnetSuite) TestDelete() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.sub.Delete()
 		if test.expectedErr {
 			s.Error(err, msg("should be invalid"))
@@ -179,7 +179,7 @@ func (s *SubnetSuite) TestReserveAddress() {
 	subnet := s.NewSubnet()
 	n := len(subnet.AvailableAddresses())
 	for i := 0; i <= n; i++ {
-		msg := testMsgFunc("attempt " + string(i))
+		msg := s.Messager("attempt " + string(i))
 		ip, err := subnet.ReserveAddress("foo")
 		if i < n {
 			s.NoError(err, msg("should succeed when addresses available"))

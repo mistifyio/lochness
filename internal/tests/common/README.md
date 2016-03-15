@@ -20,13 +20,6 @@ func ExitStatus(err error) int
 ```
 ExitStatus tries to extract an exit status code from an error.
 
-#### func  TestMsgFunc
-
-```go
-func TestMsgFunc(prefix string) func(...interface{}) string
-```
-TestMsgFunc generates a function for creating a string message with a prefix
-
 #### type Cmd
 
 ```go
@@ -89,12 +82,14 @@ Wait waits for a command to finish and returns the exit error.
 ```go
 type Suite struct {
 	suite.Suite
-	KVDir    string
-	KVPrefix string
-	KVURL    string
-	KV       kv.KV
-	KVCmd    *exec.Cmd
-	Context  *lochness.Context
+	KVDir      string
+	KVPrefix   string
+	KVPort     uint16
+	KVURL      string
+	KV         kv.KV
+	KVCmd      *exec.Cmd
+	TestPrefix string
+	Context    *lochness.Context
 }
 ```
 
@@ -107,6 +102,13 @@ func (s *Suite) DoRequest(method, url string, expectedRespCode int, postBodyStru
 ```
 DoRequest is a convenience method for making an http request and doing basic
 handling of the response.
+
+#### func (*Suite) Messager
+
+```go
+func (s *Suite) Messager(prefix string) func(...interface{}) string
+```
+Messager generates a function for creating a string message with a prefix
 
 #### func (*Suite) NewFWGroup
 

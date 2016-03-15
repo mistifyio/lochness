@@ -47,7 +47,7 @@ func (s *APISuite) SetupSuite() {
 	// Metrics context
 	sink := mapsink.New()
 	fanout := metrics.FanoutSink{sink}
-	conf := metrics.DefaultConfig("cguestdTEST")
+	conf := metrics.DefaultConfig("cguestd-test")
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, fanout)
 	s.MetricsContext = &metricsContext{

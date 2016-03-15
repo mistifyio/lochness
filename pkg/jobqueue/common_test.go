@@ -2,60 +2,32 @@ package jobqueue_test
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
-	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/suite"
 )
 
 type JobQCommonSuite struct {
-	suite.Suite
-	KVDir      string
-	KVPrefix   string
-	KV         kv.KV
-	KVCmd      *exec.Cmd
+	common.Suite
 	BStalkAddr string
 	BStalkCmd  *exec.Cmd
 	Client     *jobqueue.Client
 }
 
 func (s *JobQCommonSuite) SetupSuite() {
-	// Start up a test etcd
-	s.KVDir, _ = ioutil.TempDir("", "jobqueueTest-"+uuid.New())
-	port := 54333
-	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
-	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
-	s.KVCmd = exec.Command("etcd",
-		"-name", "jobqueueTest",
-		"-data-dir", s.KVDir,
-		"-initial-cluster-state", "new",
-		"-initial-cluster-token", "jobqueueTest",
-		"-initial-cluster", "jobqueueTest="+peerURL,
-		"-initial-advertise-peer-urls", peerURL,
-		"-listen-peer-urls", peerURL,
-		"-listen-client-urls", clientURL,
-		"-advertise-client-urls", clientURL,
-	)
-	s.Require().NoError(s.KVCmd.Start())
-	time.Sleep(10 * time.Millisecond) // Wait for test kv to be ready
-
-	KV, err := kv.New(clientURL)
-	if err != nil {
-		panic(err)
-	}
-
-	s.KV = KV
-	s.KVPrefix = "/lochness"
+	s.KVPort = 54333
+	s.TestPrefix = "jobqueue-test"
+	s.Suite.SetupSuite()
 }
 
 func (s *JobQCommonSuite) SetupTest() {
+	s.Suite.SetupTest()
+
 	// Start up a test beanstalk
 	bPort := "4321"
 	s.BStalkCmd = exec.Command("beanstalkd", "-p", bPort)
@@ -72,16 +44,14 @@ func (s *JobQCommonSuite) SetupTest() {
 }
 
 func (s *JobQCommonSuite) TearDownTest() {
-	s.Require().NoError(s.KV.Delete(s.KVPrefix, true))
-
 	s.Require().NoError(s.BStalkCmd.Process.Kill())
 	s.Require().Error(s.BStalkCmd.Wait())
+
+	s.Suite.TearDownTest()
 }
 
 func (s *JobQCommonSuite) TearDownSuite() {
-	s.Require().NoError(s.KVCmd.Process.Kill())
-	s.Require().Error(s.KVCmd.Wait())
-	s.Require().NoError(os.RemoveAll(s.KVDir))
+	s.Suite.TearDownSuite()
 }
 
 func (s *JobQCommonSuite) prefixKey(key string) string {
@@ -105,18 +75,4 @@ func (s *JobQCommonSuite) newJob(action string) *jobqueue.Job {
 	s.Require().NoError(j.Save(60 * time.Second))
 	s.Require().NoError(j.Release())
 	return j
-}
-
-func testMsgFunc(prefix string) func(...interface{}) string {
-	return func(val ...interface{}) string {
-		if len(val) == 0 {
-			return prefix
-		}
-		msgPrefix := prefix + " : "
-		if len(val) == 1 {
-			return msgPrefix + val[0].(string)
-		} else {
-			return msgPrefix + fmt.Sprintf(val[0].(string), val[1:]...)
-		}
-	}
 }

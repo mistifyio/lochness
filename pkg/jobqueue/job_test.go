@@ -40,7 +40,7 @@ func (s *JobSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		j := &jobqueue.Job{
 			ID:     test.id,
 			Action: test.action,
@@ -77,7 +77,7 @@ func (s *JobSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.job.Save(60 * time.Second)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -120,7 +120,7 @@ func (s *JobSuite) TestJob() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		j, err := s.Client.Job(test.id)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
