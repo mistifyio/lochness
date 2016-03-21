@@ -66,80 +66,80 @@ func main() {
 	agent := ctx.NewMistifyAgent(int(agentPort))
 
 	// Start consuming
-	consume(jobQueue, agent, m)
+	for {
+		consume(jobQueue, agent, m)
+	}
 }
 
 func consume(jobQueue *jobqueue.Client, agent *lochness.MistifyAgent, m *metrics.Metrics) {
-	for {
-		// Wait for and reserve a job
-		task, err := jobQueue.NextWorkTask()
-		if err != nil {
-			if bCE, ok := err.(beanstalk.ConnError); ok {
-				switch bCE {
-				case beanstalk.ErrTimeout:
-					// Empty queue, continue waiting
-					continue
-				case beanstalk.ErrDeadline:
-					// See docs on beanstalkd deadline
-					// We're just going to sleep to let the deadline'd job expire
-					// and try to get another job
-					m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
-					log.Debug(beanstalk.ErrDeadline)
-					time.Sleep(5 * time.Second)
-					continue
-				default:
-					// You have failed me for the last time
-					log.WithField("error", err).Fatal(err)
-				}
+	// Wait for and reserve a job
+	task, err := jobQueue.NextWorkTask()
+	if err != nil {
+		if bCE, ok := err.(beanstalk.ConnError); ok {
+			switch bCE {
+			case beanstalk.ErrTimeout:
+				// Empty queue
+				return
+			case beanstalk.ErrDeadline:
+				// See docs on beanstalkd deadline
+				// We're just going to sleep to let the deadline'd job expire
+				// and try to get another job
+				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
+				log.Debug(beanstalk.ErrDeadline)
+				time.Sleep(5 * time.Second)
+				return
+			default:
+				// You have failed me for the last time
+				log.WithField("error", err).Fatal(err)
 			}
+		}
 
+		log.WithFields(log.Fields{
+			"task":  task,
+			"error": err,
+		}).Error("invalid task")
+
+		if err := task.Delete(); err != nil {
+			log.WithFields(log.Fields{
+				"task":  task.ID,
+				"error": err,
+			}).Error("unable to delete")
+		}
+	}
+
+	logFields := log.Fields{
+		"task": task,
+	}
+
+	// Handle the task in its current state. Remove task when appropriate.
+	removeTask, err := processTask(task, agent)
+
+	if removeTask {
+		if err != nil {
+			log.WithFields(logFields).WithField("error", err).Error(err)
+			if task.Job != nil {
+				_ = updateJobStatus(task, jobqueue.JobStatusError, err)
+			}
+		} else {
+			_ = updateJobStatus(task, jobqueue.JobStatusDone, nil)
+		}
+		if task.Job != nil {
+			log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
+		}
+
+		updateMetrics(task, m)
+
+		log.WithFields(logFields).Info("removing task")
+		if err := task.Delete(); err != nil {
 			log.WithFields(log.Fields{
 				"task":  task,
 				"error": err,
-			}).Error("invalid task")
-
-			if err := task.Delete(); err != nil {
-				log.WithFields(log.Fields{
-					"task":  task.ID,
-					"error": err,
-				}).Error("unable to delete")
-			}
+			}).Error("unable to delete")
 		}
-
-		logFields := log.Fields{
-			"task": task,
-		}
-
-		// Handle the task in its current state. Remove task when appropriate.
-		removeTask, err := processTask(task, agent)
-
-		if removeTask {
-			if err != nil {
-				log.WithFields(logFields).WithField("error", err).Error(err)
-				if task.Job != nil {
-					_ = updateJobStatus(task, jobqueue.JobStatusError, err)
-				}
-			} else {
-				_ = updateJobStatus(task, jobqueue.JobStatusDone, nil)
-			}
-			if task.Job != nil {
-				log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
-			}
-
-			updateMetrics(task, m)
-
-			log.WithFields(logFields).Info("removing task")
-			if err := task.Delete(); err != nil {
-				log.WithFields(log.Fields{
-					"task":  task,
-					"error": err,
-				}).Error("unable to delete")
-			}
-		} else {
-			log.WithFields(logFields).Info("releasing task")
-			if err := task.Release(); err != nil {
-				log.WithFields(logFields).WithField("error", err).Fatal(err)
-			}
+	} else {
+		log.WithFields(logFields).Info("releasing task")
+		if err := task.Release(); err != nil {
+			log.WithFields(logFields).WithField("error", err).Fatal(err)
 		}
 	}
 }
