@@ -171,7 +171,7 @@ func main() {
 			}
 
 			if rm {
-				if err := task.Delete(); err != nil {
+				if _, err = deleteTask(nil, task); err != nil {
 					log.WithFields(log.Fields{
 						"task":  task.ID,
 						"error": err,
@@ -245,7 +245,6 @@ func addJobToWorker(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
 	return false, nil
 }
 
-// HACK: returning true trigegrs a task deletion in main
 func deleteTask(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
-	return true, nil
+	return false, t.Delete()
 }
