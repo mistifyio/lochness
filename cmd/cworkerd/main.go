@@ -118,10 +118,10 @@ func consume(jobQueue *jobqueue.Client, agent *lochness.MistifyAgent, m *metrics
 		if err != nil {
 			log.WithFields(logFields).WithField("error", err).Error(err)
 			if task.Job != nil {
-				_ = updateJobStatus(task, jobqueue.JobStatusError, err)
+				updateJobStatus(task, jobqueue.JobStatusError, err)
 			}
 		} else {
-			_ = updateJobStatus(task, jobqueue.JobStatusDone, nil)
+			updateJobStatus(task, jobqueue.JobStatusDone, nil)
 		}
 		if task.Job != nil {
 			log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
@@ -229,7 +229,7 @@ func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 		return err
 	}
 	task.Job.RemoteID = jobID
-	_ = updateJobStatus(task, jobqueue.JobStatusWorking, nil)
+	updateJobStatus(task, jobqueue.JobStatusWorking, nil)
 	return nil
 }
 
@@ -254,7 +254,7 @@ func checkWorkingJob(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, e
 	return done, err
 }
 
-func updateJobStatus(task *jobqueue.Task, status string, e error) error {
+func updateJobStatus(task *jobqueue.Task, status string, e error) {
 	task.Job.Status = status
 	if e != nil {
 		task.Job.Error = e.Error()
@@ -272,9 +272,7 @@ func updateJobStatus(task *jobqueue.Task, status string, e error) error {
 			"task":  task,
 			"error": err,
 		}).Error("unable to save")
-		return err
 	}
-	return nil
 }
 
 func postDelete(task *jobqueue.Task) error {
