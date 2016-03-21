@@ -26,7 +26,6 @@ import (
 
 // TaskFunc is a convenience wrapper for function calls on tasks
 type TaskFunc struct {
-	name     string
 	function func(*jobqueue.Client, *jobqueue.Task) (bool, error)
 	label    string // label for metrics
 }
@@ -99,27 +98,21 @@ func main() {
 	// in this pipeline? would have to persist in the job
 	steps := []TaskFunc{
 		{
-			name:     "check job status",
 			function: checkJobStatus,
 		},
 		{
-			name:     "check guest status",
 			function: checkGuestStatus,
 		},
 		{
-			name:     "select hypervisor candidate",
 			function: selectHypervisor,
 		},
 		{
-			name:     "update job action",
 			function: changeJobAction,
 		},
 		{
-			name:     "add task to worker",
 			function: addJobToWorker,
 		},
 		{
-			name:     "make task for deletion",
 			function: deleteTask,
 		},
 	}
