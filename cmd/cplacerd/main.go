@@ -27,6 +27,17 @@ type TaskFunc struct {
 	label    string // label for metrics
 }
 
+// XXX: we want to try to keep track of where a job is
+// in this pipeline? would have to persist in the job
+var steps = []TaskFunc{
+	{function: checkJobStatus, label: "checkJobStatus"},
+	{function: checkGuestStatus, label: "checkGuestStatus"},
+	{function: selectHypervisor, label: "selectHypervisor"},
+	{function: changeJobAction, label: "changeJobAction"},
+	{function: addJobToWorker, label: "addJobToWorker"},
+	{function: deleteTask, label: "deleteTask"},
+}
+
 // TODO: restructure this as all the deletes for tube stuff is clunky.
 // as we almost always delete the tube id, wrap in function and delete it?
 
@@ -89,35 +100,6 @@ func main() {
 			}
 		}()
 
-	}
-
-	// XXX: we want to try to keep track of where a job is
-	// in this pipeline? would have to persist in the job
-	steps := []TaskFunc{
-		{
-			function: checkJobStatus,
-			label:    "checkJobStatus",
-		},
-		{
-			function: checkGuestStatus,
-			label:    "checkGuestStatus",
-		},
-		{
-			function: selectHypervisor,
-			label:    "selectHypervisor",
-		},
-		{
-			function: changeJobAction,
-			label:    "changeJobAction",
-		},
-		{
-			function: addJobToWorker,
-			label:    "addJobToWorker",
-		},
-		{
-			function: deleteTask,
-			label:    "deleteTask",
-		},
 	}
 
 	for {
