@@ -97,7 +97,7 @@ func main() {
 
 	// XXX: we want to try to keep track of where a job is
 	// in this pipeline? would have to persist in the job
-	funcs := []TaskFunc{
+	steps := []TaskFunc{
 		{
 			name:     "check job status",
 			function: checkJobStatus,
@@ -124,8 +124,8 @@ func main() {
 		},
 	}
 
-	for _, f := range funcs {
-		f.label = strings.Split(runtime.FuncForPC(reflect.ValueOf(f.function).Pointer()).Name(), ".")[1]
+	for _, step := range steps {
+		step.label = strings.Split(runtime.FuncForPC(reflect.ValueOf(step.function).Pointer()).Name(), ".")[1]
 	}
 
 	for {
@@ -162,27 +162,27 @@ func main() {
 			}
 		}
 
-		for _, f := range funcs {
+		for _, step := range steps {
 
 			fields := log.Fields{
 				"task": task,
-				"step": f.name,
+				"step": f.label,
 			}
 
 			log.WithFields(fields).Debug("running")
 
 			start := time.Now()
-			rm, err := f.function(jobQueue, task)
+			rm, err := step.function(jobQueue, task)
 
-			m.MeasureSince([]string{f.label, "time"}, start)
-			m.IncrCounter([]string{f.label, "count"}, 1)
+			m.MeasureSince([]string{step.label, "time"}, start)
+			m.IncrCounter([]string{step.label, "count"}, 1)
 
 			duration := int(time.Since(start).Seconds() * 1000)
 			log.WithFields(fields).WithField("duration", duration).Info("done")
 
 			if err != nil {
 
-				m.IncrCounter([]string{f.label, "error"}, 1)
+				m.IncrCounter([]string{step.label, "error"}, 1)
 
 				log.WithFields(fields).WithField("error", err).Error("task error")
 
