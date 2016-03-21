@@ -8,9 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"reflect"
-	"runtime"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -99,26 +96,28 @@ func main() {
 	steps := []TaskFunc{
 		{
 			function: checkJobStatus,
+			label:    "checkJobStatus",
 		},
 		{
 			function: checkGuestStatus,
+			label:    "checkGuestStatus",
 		},
 		{
 			function: selectHypervisor,
+			label:    "selectHypervisor",
 		},
 		{
 			function: changeJobAction,
+			label:    "changeJobAction",
 		},
 		{
 			function: addJobToWorker,
+			label:    "addJobToWorker",
 		},
 		{
 			function: deleteTask,
+			label:    "deleteTask",
 		},
-	}
-
-	for _, step := range steps {
-		step.label = strings.Split(runtime.FuncForPC(reflect.ValueOf(step.function).Pointer()).Name(), ".")[1]
 	}
 
 	for {
