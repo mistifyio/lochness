@@ -8,9 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
-	"reflect"
-	"runtime"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -26,9 +23,19 @@ import (
 
 // TaskFunc is a convenience wrapper for function calls on tasks
 type TaskFunc struct {
-	name     string
 	function func(*jobqueue.Client, *jobqueue.Task) (bool, error)
 	label    string // label for metrics
+}
+
+// XXX: we want to try to keep track of where a job is
+// in this pipeline? would have to persist in the job
+var steps = []TaskFunc{
+	{function: checkJobStatus, label: "checkJobStatus"},
+	{function: checkGuestStatus, label: "checkGuestStatus"},
+	{function: selectHypervisor, label: "selectHypervisor"},
+	{function: changeJobAction, label: "changeJobAction"},
+	{function: addJobToWorker, label: "addJobToWorker"},
+	{function: deleteTask, label: "deleteTask"},
 }
 
 // TODO: restructure this as all the deletes for tube stuff is clunky.
@@ -95,39 +102,6 @@ func main() {
 
 	}
 
-	// XXX: we want to try to keep track of where a job is
-	// in this pipeline? would have to persist in the job
-	funcs := []TaskFunc{
-		{
-			name:     "check job status",
-			function: checkJobStatus,
-		},
-		{
-			name:     "check guest status",
-			function: checkGuestStatus,
-		},
-		{
-			name:     "select hypervisor candidate",
-			function: selectHypervisor,
-		},
-		{
-			name:     "update job action",
-			function: changeJobAction,
-		},
-		{
-			name:     "add task to worker",
-			function: addJobToWorker,
-		},
-		{
-			name:     "make task for deletion",
-			function: deleteTask,
-		},
-	}
-
-	for _, f := range funcs {
-		f.label = strings.Split(runtime.FuncForPC(reflect.ValueOf(f.function).Pointer()).Name(), ".")[1]
-	}
-
 	for {
 		task, err := jobQueue.NextCreateTask()
 		if err != nil {
@@ -162,27 +136,27 @@ func main() {
 			}
 		}
 
-		for _, f := range funcs {
+		for _, step := range steps {
 
 			fields := log.Fields{
 				"task": task,
-				"step": f.name,
+				"step": step.label,
 			}
 
 			log.WithFields(fields).Debug("running")
 
 			start := time.Now()
-			rm, err := f.function(jobQueue, task)
+			rm, err := step.function(jobQueue, task)
 
-			m.MeasureSince([]string{f.label, "time"}, start)
-			m.IncrCounter([]string{f.label, "count"}, 1)
+			m.MeasureSince([]string{step.label, "time"}, start)
+			m.IncrCounter([]string{step.label, "count"}, 1)
 
 			duration := int(time.Since(start).Seconds() * 1000)
 			log.WithFields(fields).WithField("duration", duration).Info("done")
 
 			if err != nil {
 
-				m.IncrCounter([]string{f.label, "error"}, 1)
+				m.IncrCounter([]string{step.label, "error"}, 1)
 
 				log.WithFields(fields).WithField("error", err).Error("task error")
 
@@ -197,7 +171,7 @@ func main() {
 			}
 
 			if rm {
-				if err := task.Delete(); err != nil {
+				if _, err = deleteTask(nil, task); err != nil {
 					log.WithFields(log.Fields{
 						"task":  task.ID,
 						"error": err,
@@ -271,7 +245,6 @@ func addJobToWorker(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
 	return false, nil
 }
 
-// HACK: returning true trigegrs a task deletion in main
 func deleteTask(jobQueue *jobqueue.Client, t *jobqueue.Task) (bool, error) {
-	return true, nil
+	return false, t.Delete()
 }
