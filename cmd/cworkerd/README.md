@@ -15,7 +15,7 @@ The following arguments are understood:
     Usage of cworkerd:
     -a, --agent-port=8080: port on which agents listen
     -b, --beanstalk="127.0.0.1:11300": address of beanstalkd server
-    -e, --etcd="http://127.0.0.1:4001": address of etcd server
+    -k, --kv="http://127.0.0.1:4001": address of kv server
     -p, --http=7544: http port to publish metrics. set to 0 to disable
     -l, --log-level="warn": log level
 

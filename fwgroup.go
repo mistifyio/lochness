@@ -6,13 +6,13 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
 var (
 	// FWGroupPath is the path in the config store
-	FWGroupPath = "lochness/fwgroups/"
+	FWGroupPath = "/lochness/fwgroups/"
 )
 
 // XXX: should individual rules be their own keys??
@@ -156,22 +156,17 @@ func (f *FWGroup) key() string {
 }
 
 // fromResponse is a helper to unmarshal a FWGroup
-func (f *FWGroup) fromResponse(resp *etcd.Response) error {
-	f.modifiedIndex = resp.Node.ModifiedIndex
-	return json.Unmarshal([]byte(resp.Node.Value), &f)
+func (f *FWGroup) fromResponse(value kv.Value) error {
+	f.modifiedIndex = value.Index
+	return json.Unmarshal(value.Data, &f)
 }
 
 // Refresh reloads from the data store
 func (f *FWGroup) Refresh() error {
-	resp, err := f.context.etcd.Get(f.key(), false, false)
+	resp, err := f.context.kv.Get(f.key())
 
 	if err != nil {
 		return err
-	}
-
-	if resp == nil || resp.Node == nil {
-		// should this be an error??
-		return nil
 	}
 
 	return f.fromResponse(resp)
@@ -185,7 +180,8 @@ func (f *FWGroup) Validate() error {
 	return nil
 }
 
-// Save persists a FWGroup.  It will call Validate.
+// Save persists a FWGroup.
+// It will call Validate.
 func (f *FWGroup) Save() error {
 
 	if err := f.Validate(); err != nil {
@@ -199,16 +195,11 @@ func (f *FWGroup) Save() error {
 	}
 
 	// if we changed something, don't clobber
-	var resp *etcd.Response
-	if f.modifiedIndex != 0 {
-		resp, err = f.context.etcd.CompareAndSwap(f.key(), string(v), 0, "", f.modifiedIndex)
-	} else {
-		resp, err = f.context.etcd.Create(f.key(), string(v), 0)
-	}
+	index, err := f.context.kv.Update(f.key(), kv.Value{Data: v, Index: f.modifiedIndex})
 	if err != nil {
 		return err
 	}
 
-	f.modifiedIndex = resp.EtcdIndex
+	f.modifiedIndex = index
 	return nil
 }

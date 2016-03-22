@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strings"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
 var (
 	// NetworkPath is the path in the config store.
-	NetworkPath = "lochness/networks/"
+	NetworkPath = "/lochness/networks/"
 )
 
 type (
@@ -71,30 +72,39 @@ func (n *Network) key() string {
 
 // Refresh reloads the Network from the data store.
 func (n *Network) Refresh() error {
+	prefix := filepath.Join(NetworkPath, n.ID)
 
-	resp, err := n.context.etcd.Get(filepath.Join(NetworkPath, n.ID), false, true)
-
+	nodes, err := n.context.kv.GetAll(prefix)
 	if err != nil {
 		return err
 	}
 
-	for _, node := range resp.Node.Nodes {
-		key := filepath.Base(node.Key)
-		switch key {
-
-		case "metadata":
-			if err := json.Unmarshal([]byte(node.Value), &n); err != nil {
-				return err
-			}
-			n.modifiedIndex = node.ModifiedIndex
-
-		case "subnets":
-			n.subnets = make([]string, len(node.Nodes))
-			for i, x := range node.Nodes {
-				n.subnets[i] = filepath.Base(x.Key)
-			}
-		}
+	// handle metadata
+	key := filepath.Join(prefix, "metadata")
+	value, ok := nodes[key]
+	if !ok {
+		return errors.New("metadata key is missing")
 	}
+
+	if err := json.Unmarshal(value.Data, &n); err != nil {
+		return err
+	}
+	n.modifiedIndex = value.Index
+	delete(nodes, key)
+
+	subnets := []string{}
+	for k := range nodes {
+		elements := strings.Split(k, "/")
+		base := elements[len(elements)-1]
+		dir := elements[len(elements)-2]
+		if dir != "subnets" {
+			continue
+		}
+
+		subnets = append(subnets, base)
+	}
+
+	n.subnets = subnets
 
 	return nil
 
@@ -108,7 +118,8 @@ func (n *Network) Validate() error {
 	return nil
 }
 
-// Save persists a Network.  It will call Validate.
+// Save persists a Network.
+// It will call Validate.
 func (n *Network) Save() error {
 
 	if err := n.Validate(); err != nil {
@@ -121,18 +132,11 @@ func (n *Network) Save() error {
 		return err
 	}
 
-	// if we changed something, don't clobber
-	var resp *etcd.Response
-	if n.modifiedIndex != 0 {
-		resp, err = n.context.etcd.CompareAndSwap(n.key(), string(v), 0, "", n.modifiedIndex)
-	} else {
-		resp, err = n.context.etcd.Create(n.key(), string(v), 0)
-	}
+	index, err := n.context.kv.Update(n.key(), kv.Value{Data: v, Index: n.modifiedIndex})
 	if err != nil {
 		return err
 	}
-
-	n.modifiedIndex = resp.EtcdIndex
+	n.modifiedIndex = index
 	return nil
 }
 
@@ -162,7 +166,7 @@ func (n *Network) AddSubnet(s *Subnet) error {
 		}
 	}
 
-	if _, err := n.context.etcd.Set(n.subnetKey(s), "", 0); err != nil {
+	if err := n.context.kv.Set(n.subnetKey(s), ""); err != nil {
 		return err
 	}
 	n.subnets = append(n.subnets, s.ID)
@@ -178,7 +182,7 @@ func (n *Network) AddSubnet(s *Subnet) error {
 
 // RemoveSubnet removes a subnet from the network
 func (n *Network) RemoveSubnet(s *Subnet) error {
-	if _, err := n.context.etcd.Delete(n.subnetKey(s), false); err != nil {
+	if err := n.context.kv.Delete(n.subnetKey(s), false); err != nil {
 		return err
 	}
 

@@ -9,7 +9,7 @@ The following arguments are understood:
     $ cbootstrapd -h
     Usage of cbootstrapd:
     -b, --base="http://ipxe.mistify.local:8888": base address of bits request
-    -e, --etcd="http://127.0.0.1:4001": address of etcd machine
+    -k, --kv="http://127.0.0.1:4001": address of kv machine
     -i, --images="/var/lib/images": directory containing the images
     -o, --options="": additional options to add to boot kernel
     -p, --port=8888: address to listen

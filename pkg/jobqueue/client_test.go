@@ -4,9 +4,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -23,20 +24,20 @@ func (s *ClientSuite) TestNewClient() {
 	tests := []struct {
 		description string
 		bstalkAddr  string
-		etcdClient  *etcd.Client
+		kv          kv.KV
 		expectedErr bool
 	}{
 		{"missing both", "", nil, true},
-		{"missing etcd", s.BStalkAddr, nil, true},
-		{"missing bstalk", "", s.EtcdClient, true},
-		{"invalid bstalk", "asdf", s.EtcdClient, true},
-		{"not running bstalk", "127.0.0.1:12345", s.EtcdClient, true},
-		{"bstalk and etcd", s.BStalkAddr, s.EtcdClient, false},
+		{"missing kv", s.BStalkAddr, nil, true},
+		{"missing bstalk", "", s.KV, true},
+		{"invalid bstalk", "asdf", s.KV, true},
+		{"not running bstalk", "127.0.0.1:12345", s.KV, true},
+		{"bstalk and kv", s.BStalkAddr, s.KV, false},
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
-		c, err := jobqueue.NewClient(test.bstalkAddr, test.etcdClient)
+		msg := s.Messager(test.description)
+		c, err := jobqueue.NewClient(test.bstalkAddr, test.kv)
 		if test.expectedErr {
 			s.Error(err, msg("should error"))
 			s.Nil(c, msg("fail should not return client"))
@@ -61,7 +62,7 @@ func (s *ClientSuite) TestAddTask() {
 		{"restart job", j2, false},
 	}
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		id, err := s.Client.AddTask(test.job)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -112,7 +113,7 @@ func (s *ClientSuite) TestAddJob() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		job, err := s.Client.AddJob(test.guest, test.action)
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))

@@ -55,7 +55,7 @@ func (s *GuestSuite) TestGuest() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		g, err := s.Context.Guest(test.ID)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -101,7 +101,7 @@ func (s *GuestSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		g := &lochness.Guest{
 			ID:        test.id,
 			FlavorID:  test.flavor,
@@ -140,7 +140,7 @@ func (s *GuestSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.guest.Save()
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))
@@ -167,7 +167,7 @@ func (s *GuestSuite) TestDestroy() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.g.Destroy()
 		if test.expectedErr {
 			s.Error(err, msg("should fail"))

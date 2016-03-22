@@ -20,13 +20,6 @@ func ExitStatus(err error) int
 ```
 ExitStatus tries to extract an exit status code from an error.
 
-#### func  TestMsgFunc
-
-```go
-func TestMsgFunc(prefix string) func(...interface{}) string
-```
-TestMsgFunc generates a function for creating a string message with a prefix
-
 #### type Cmd
 
 ```go
@@ -89,11 +82,13 @@ Wait waits for a command to finish and returns the exit error.
 ```go
 type Suite struct {
 	suite.Suite
-	EtcdDir    string
-	EtcdPrefix string
-	EtcdURL    string
-	EtcdClient *etcd.Client
-	EtcdCmd    *exec.Cmd
+	KVDir      string
+	KVPrefix   string
+	KVPort     uint16
+	KVURL      string
+	KV         kv.KV
+	KVCmd      *exec.Cmd
+	TestPrefix string
 	Context    *lochness.Context
 }
 ```
@@ -107,6 +102,13 @@ func (s *Suite) DoRequest(method, url string, expectedRespCode int, postBodyStru
 ```
 DoRequest is a convenience method for making an http request and doing basic
 handling of the response.
+
+#### func (*Suite) Messager
+
+```go
+func (s *Suite) Messager(prefix string) func(...interface{}) string
+```
+Messager generates a function for creating a string message with a prefix
 
 #### func (*Suite) NewFWGroup
 
@@ -177,14 +179,14 @@ NewVLANGroup creates and saves a new VLANGroup.
 ```go
 func (s *Suite) PrefixKey(key string) string
 ```
-PrefixKey generates an etcd key using the set prefix
+PrefixKey generates an kv key using the set prefix
 
 #### func (*Suite) SetupSuite
 
 ```go
 func (s *Suite) SetupSuite()
 ```
-SetupSuite runs a new etcd insance.
+SetupSuite runs a new kv instance.
 
 #### func (*Suite) SetupTest
 
@@ -198,14 +200,14 @@ SetupTest prepares anything needed per test.
 ```go
 func (s *Suite) TearDownSuite()
 ```
-TearDownSuite stops the etcd instance and removes all data.
+TearDownSuite stops the kv instance and removes all data.
 
 #### func (*Suite) TearDownTest
 
 ```go
 func (s *Suite) TearDownTest()
 ```
-TearDownTest cleans the etcd instance.
+TearDownTest cleans the kv instance.
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*

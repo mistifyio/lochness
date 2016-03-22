@@ -32,7 +32,7 @@ func (s *CmdSuite) SetupSuite() {
 
 func (s *CmdSuite) SetupTest() {
 	s.Suite.SetupTest()
-	s.ConfDir, _ = ioutil.TempDir("", "cdhcpd-Test")
+	s.ConfDir, _ = ioutil.TempDir("", "cdhcpd-test")
 	s.HypervisorConfig = filepath.Join(s.ConfDir, "hypervisors.conf")
 	s.GuestConfig = filepath.Join(s.ConfDir, "guests.conf")
 }
@@ -47,7 +47,7 @@ func (s *CmdSuite) TestCmd() {
 
 	args := []string{
 		"-d", "cdhcpdTest",
-		"-e", s.EtcdURL,
+		"-k", s.KVURL,
 		"-c", s.ConfDir,
 		"-l", "fatal",
 	}
@@ -62,7 +62,7 @@ func (s *CmdSuite) TestCmd() {
 
 	s.checkConfFiles(hypervisor2, guest2)
 
-	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
+	s.Require().NoError(s.KV.Delete(s.KVPrefix, true))
 	time.Sleep(1 * time.Second)
 	hData, _ := ioutil.ReadFile(s.HypervisorConfig)
 	s.NotContains(string(hData), hypervisor.ID, "hypervisor not removed")
@@ -74,6 +74,9 @@ func (s *CmdSuite) TestCmd() {
 	_ = cmd.Stop()
 	status, err := cmd.ExitStatus()
 	s.Equal(-1, status, "expected status code to be that of a killed process")
+
+	// so that common.Suite.TearDownTest does not fail
+	s.KV.Set("/lochness", "hi")
 }
 
 func (s *CmdSuite) checkConfFiles(hypervisor *lochness.Hypervisor, guest *lochness.Guest) bool {

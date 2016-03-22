@@ -2,8 +2,8 @@ package common
 
 import "fmt"
 
-// TestMsgFunc generates a function for creating a string message with a prefix
-func TestMsgFunc(prefix string) func(...interface{}) string {
+// Messager generates a function for creating a string message with a prefix
+func (s *Suite) Messager(prefix string) func(...interface{}) string {
 	return func(val ...interface{}) string {
 		if len(val) == 0 {
 			return prefix

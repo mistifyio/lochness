@@ -1,11 +1,12 @@
-// Package watcher provides etcd prefix watching capabilities.
+// Package watcher provides kv prefix watching capabilities.
 package watcher
 
 import (
 	"errors"
+	"strings"
 	"sync"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 )
 
 // ErrPrefixNotWatched is an error for attempting to remove an unwatched prefix
@@ -14,17 +15,17 @@ var ErrPrefixNotWatched = errors.New("prefix is not being watched")
 // ErrStopped is an error for attempting to add a prefix to a stopped watcher
 var ErrStopped = errors.New("watcher has been stopped")
 
-// Watcher monitors etcd prefixes and notifies on change
+// Watcher monitors kv prefixes and notifies on change
 type Watcher struct {
-	c         *etcd.Client
-	responses chan *etcd.Response
-	errors    chan *Error
-	err       *Error
-	response  *etcd.Response
+	kv     kv.KV
+	events chan kv.Event
+	errors chan *Error
+	err    *Error
+	event  kv.Event
 
 	mu       sync.Mutex // mu protects the following two vars
 	isClosed bool
-	prefixes map[string]chan bool
+	prefixes map[string]chan struct{}
 }
 
 // Error contains both the watched prefix and the error.
@@ -38,21 +39,20 @@ func (e *Error) Error() string {
 }
 
 // New creates a new Watcher
-func New(c *etcd.Client) (*Watcher, error) {
-	if c == nil {
-		return nil, errors.New("missing etcd client")
+func New(KV kv.KV) (*Watcher, error) {
+	if KV == nil {
+		return nil, errors.New("kv instance must be non-nil")
 	}
 	w := &Watcher{
-		responses: make(chan *etcd.Response),
-		errors:    make(chan *Error),
-		c:         c,
-		prefixes:  map[string]chan bool{},
+		events:   make(chan kv.Event),
+		errors:   make(chan *Error),
+		kv:       KV,
+		prefixes: map[string]chan struct{}{},
 	}
 	return w, nil
 }
 
-// Add will add prefix to the watch list, there still may be a short time (<500us)
-// after Add returns when an event on prefix may be missed.
+// Add will add prefix to the watch list, there may still be a short time (<500us) after Add returns when an event on prefix may be missed.
 func (w *Watcher) Add(prefix string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -66,19 +66,19 @@ func (w *Watcher) Add(prefix string) error {
 		return nil
 	}
 
-	ch := make(chan bool)
+	ch := make(chan struct{})
 	w.prefixes[prefix] = ch
 	go w.watch(prefix, ch)
 	return nil
 }
 
-// Next blocks until an event has been received by any of the wathed prefixes.
-// The event it self may be accesed via the Response method. False will be
-// returned upon an error, the error can be retrieved via the Err method.
+// Next blocks until an event has been received by any of the watched prefixes.
+// The event itself may be accessed via the Response method.
+// If an error is encountered false will be returned, the error can be retrieved via the Err method.
 func (w *Watcher) Next() bool {
 	select {
-	case resp := <-w.responses:
-		w.response = resp
+	case event := <-w.events:
+		w.event = event
 		return true
 	case err := <-w.errors:
 		w.err = err
@@ -86,9 +86,9 @@ func (w *Watcher) Next() bool {
 	}
 }
 
-// Response returns the response received that caused Next to return.
-func (w *Watcher) Response() *etcd.Response {
-	return w.response
+// Event returns the event received that caused Next to return.
+func (w *Watcher) Event() kv.Event {
+	return w.event
 }
 
 // Err returns the last error received
@@ -110,7 +110,7 @@ func (w *Watcher) removeLocked(prefix string) *Error {
 		return &Error{Prefix: prefix, Err: ErrPrefixNotWatched}
 	}
 
-	// Stop the etcd prefix watch
+	// Stop the kv prefix watch
 	close(ch)
 
 	// Remove the prefix
@@ -135,30 +135,66 @@ func (w *Watcher) Close() *Error {
 	return nil
 }
 
-func (w *Watcher) watch(prefix string, stop chan bool) {
-	defer func() { _ = w.Remove(prefix) }()
-
-	// Get the index to start watching from.
-	// This minimizes the window between calling etcd.Watch() and the watch
-	// actually starting where changes can be missed.  Since etcd.Watch()
-	// itself blocks, we have no direct way of knowing when the watch actually
-	// starts, so this is the best we can do.
-	waitIndex := uint64(0)
-	resp, err := w.c.Get("/", false, false)
+func getLatestIndex(kv kv.KV, prefix string) uint64 {
+	resp, err := kv.Get(prefix)
 	if err == nil {
-		waitIndex = resp.EtcdIndex
+		return resp.Index
+	} else if !strings.Contains(err.Error(), "directory") {
+		return 0
 	}
 
-	responses := make(chan *etcd.Response)
-	go func() {
-		for resp := range responses {
-			w.responses <- resp
+	keys, err := kv.Keys(prefix)
+	if err != nil || len(keys) == 0 {
+		return 0
+	}
+
+	latest := uint64(0)
+	for _, key := range keys {
+		resp, err := kv.Get(key)
+		if err != nil {
+			continue
 		}
+		if resp.Index > latest {
+			latest = resp.Index
+		}
+	}
+	return latest
+}
+
+func (w *Watcher) watch(prefix string, stop chan struct{}) {
+	defer func() {
+		_ = w.Remove(prefix)
 	}()
 
-	_, err = w.c.Watch(prefix, waitIndex, true, responses, stop)
-	if err == nil || err == etcd.ErrWatchStoppedByUser {
+	// Get the index to start watching from.
+	// This minimizes the window between calling kv.Watch() and the watch actually starting where changes can be missed.
+	// Since kv.Watch() itself blocks, we have no direct way of knowing when the watch actually starts, so this is the best we can do.
+	waitIndex := getLatestIndex(w.kv, prefix)
+
+	events, errors, err := w.kv.Watch(prefix, waitIndex, stop)
+	if err != nil {
+		w.errors <- &Error{Prefix: prefix, Err: err}
 		return
 	}
-	w.errors <- &Error{Prefix: prefix, Err: err}
+
+LOOP:
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				close(stop)
+				break LOOP
+			}
+			w.events <- event
+		case err, ok := <-errors:
+			if !ok {
+				close(stop)
+				break LOOP
+			}
+			w.errors <- &Error{Prefix: prefix, Err: err}
+		case <-stop:
+			break LOOP
+		}
+	}
+
 }

@@ -12,7 +12,7 @@ The following arguments are understood:
 
     $ chypervisord -h
     Usage of chypervisord:
-    -e, --etcd="http://localhost:4001": address of etcd machine
+    -k, --kv="http://localhost:4001": address of kv machine
     -l, --log-level="warn": log level
     -p, --port=17000: listen port
 

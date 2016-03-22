@@ -37,7 +37,7 @@ func (s *VLANSuite) TestVLAN() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		v, err := s.Context.VLAN(test.tag)
 		if test.expectedErr {
 			s.Error(err, msg("lookup should fail"))
@@ -77,7 +77,7 @@ func (s *VLANSuite) TestValidate() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		v := &lochness.VLAN{Tag: test.tag}
 		err := v.Validate()
 		if test.expectedErr {
@@ -105,7 +105,7 @@ func (s *VLANSuite) TestSave() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.vlan.Save()
 		if test.expectedErr {
 			s.Error(err, msg("should be invalid"))
@@ -134,7 +134,7 @@ func (s *VLANSuite) TestDestroy() {
 	}
 
 	for _, test := range tests {
-		msg := testMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		err := test.v.Destroy()
 		if test.expectedErr {
 			s.Error(err, msg("should be invalid"))

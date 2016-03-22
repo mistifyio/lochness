@@ -38,7 +38,7 @@ func (s *CmdSuite) SetupSuite() {
 
 	var err error
 	// Fake Ansible
-	s.WorkPath, err = ioutil.TempDir("", "nconfigdTest-")
+	s.WorkPath, err = ioutil.TempDir("", "nconfigd-test-")
 	s.Require().NoError(err, "failed to create work dir")
 	s.Require().NoError(os.Symlink("/bin/echo", filepath.Join(s.WorkPath, "run")),
 		"failed to symlink echo to work dir")
@@ -56,6 +56,12 @@ func (s *CmdSuite) SetupSuite() {
 	s.BinName = "nconfigd"
 }
 
+func (s *CmdSuite) TearDownSuite() {
+	_ = os.RemoveAll(s.WorkPath)
+
+	s.Suite.TearDownSuite()
+}
+
 func (s *CmdSuite) SetupTest() {
 	s.Suite.SetupTest()
 	s.Hypervisor = s.NewHypervisor()
@@ -68,7 +74,7 @@ func (s *CmdSuite) SetupTest() {
 	configB := &bytes.Buffer{}
 
 	s.Require().NoError(s.ConfigTemplate.Execute(configB, map[string]string{
-		"Prefix":       s.EtcdPrefix,
+		"Prefix":       s.KVPrefix,
 		"HypervisorID": s.Hypervisor.ID,
 	}), "failed to render config")
 
@@ -80,25 +86,23 @@ func (s *CmdSuite) SetupTest() {
 	s.Config = config
 }
 
-func (s *CmdSuite) TearDownSuite() {
-	_ = os.RemoveAll(s.WorkPath)
-
-	s.Suite.TearDownSuite()
-}
-
-type testCase struct {
-	description   string
-	key           string
-	value         string
-	expectedRuns  int
-	expectedRoles []string
+func (s *CmdSuite) TearDownTest() {
+	s.Suite.TearDownTest()
 }
 
 func (s *CmdSuite) TestCmd() {
+	type testCase struct {
+		description   string
+		key           string
+		value         string
+		expectedRuns  int
+		expectedRoles []string
+	}
+
 	args := []string{
 		"-a", s.WorkPath,
 		"-c", s.ConfigPath,
-		"-e", s.EtcdURL,
+		"-k", s.KVURL,
 	}
 
 	tests := []testCase{
@@ -109,14 +113,16 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := common.TestMsgFunc(test.description)
+		s.TearDownTest()
+		s.SetupTest()
+		msg := s.Messager(test.description)
 
 		cmd, err := common.Start("./"+s.BinName, args...)
 		if !s.NoError(err, msg("command exec should not error")) {
 			continue
 		}
 
-		_, err = s.EtcdClient.Set(test.key, test.value, 0)
+		err = s.KV.Set(test.key, test.value)
 		s.NoError(err)
 
 		time.Sleep(1 * time.Second)

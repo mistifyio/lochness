@@ -15,78 +15,95 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // Suite sets up a general test suite with setup/teardown.
 type Suite struct {
 	suite.Suite
-	EtcdDir    string
-	EtcdPrefix string
-	EtcdURL    string
-	EtcdClient *etcd.Client
-	EtcdCmd    *exec.Cmd
+	KVDir      string
+	KVPrefix   string
+	KVPort     uint16
+	KVURL      string
+	KV         kv.KV
+	KVCmd      *exec.Cmd
+	TestPrefix string
 	Context    *lochness.Context
 }
 
-// SetupSuite runs a new etcd insance.
+// SetupSuite runs a new kv instance.
 func (s *Suite) SetupSuite() {
-	// Start up a test etcd
-	s.EtcdDir, _ = ioutil.TempDir("", "lochnessTest-"+uuid.New())
-	port := 54321
-	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
-	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
-	s.EtcdCmd = exec.Command("etcd",
-		"-name", "lochnessTest",
-		"-data-dir", s.EtcdDir,
+	// Start up a test kv
+	if s.TestPrefix == "" {
+		s.TestPrefix = "lochness-test"
+	}
+	s.KVDir, _ = ioutil.TempDir("", s.TestPrefix+"-"+uuid.New())
+	if s.KVPort == 0 {
+		s.KVPort = uint16(1 + rand.Uint32())
+	}
+	clientURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort)
+	peerURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort+1)
+	s.KVCmd = exec.Command("etcd",
+		"-name", s.TestPrefix,
+		"-data-dir", s.KVDir,
 		"-initial-cluster-state", "new",
-		"-initial-cluster-token", "lochnessTest",
-		"-initial-cluster", "lochnessTest="+peerURL,
+		"-initial-cluster-token", s.TestPrefix,
+		"-initial-cluster", s.TestPrefix+"="+peerURL,
 		"-initial-advertise-peer-urls", peerURL,
 		"-listen-peer-urls", peerURL,
 		"-listen-client-urls", clientURL,
 		"-advertise-client-urls", clientURL,
 	)
-	s.Require().NoError(s.EtcdCmd.Start())
-	s.EtcdClient = etcd.NewClient([]string{clientURL})
-	s.EtcdURL = clientURL
+	s.Require().NoError(s.KVCmd.Start())
+	time.Sleep(500 * time.Millisecond) // Wait for test kv to be ready
 
-	// Wait for test etcd to be ready
-	for !s.EtcdClient.SyncCluster() {
-		time.Sleep(10 * time.Millisecond)
+	var err error
+	for i := 0; i < 10; i++ {
+		s.KV, err = kv.New(clientURL)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond) // Wait for test kv to be ready
 	}
-
-	s.Context = lochness.NewContext(s.EtcdClient)
-
-	s.EtcdPrefix = "/lochness"
+	if s.KV == nil {
+		panic(err)
+	}
+	s.Context = lochness.NewContext(s.KV)
+	s.KVPrefix = "/lochness"
+	s.KVURL = clientURL
 }
 
 // SetupTest prepares anything needed per test.
 func (s *Suite) SetupTest() {
 }
 
-// TearDownTest cleans the etcd instance.
+// TearDownTest cleans the kv instance.
 func (s *Suite) TearDownTest() {
-	// Clean out etcd
-	_, _ = s.EtcdClient.Delete(s.EtcdPrefix, true)
+	// Clean out kv
+	_ = s.KV.Delete(s.KVPrefix, true)
 }
 
-// TearDownSuite stops the etcd instance and removes all data.
+// TearDownSuite stops the kv instance and removes all data.
 func (s *Suite) TearDownSuite() {
-	// Stop the test etcd process
-	_ = s.EtcdCmd.Process.Kill()
-	_ = s.EtcdCmd.Wait()
+	// Stop the test kv process
+	s.Require().NoError(s.KVCmd.Process.Kill())
+	s.Require().Error(s.KVCmd.Wait())
 
-	// Remove the test etcd data directory
-	s.Require().NoError(os.RemoveAll(s.EtcdDir))
+	// Remove the test kv data directory
+	_ = os.RemoveAll(s.KVDir)
 }
 
-// PrefixKey generates an etcd key using the set prefix
+// PrefixKey generates an kv key using the set prefix
 func (s *Suite) PrefixKey(key string) string {
-	return filepath.Join(s.EtcdPrefix, key)
+	return filepath.Join(s.KVPrefix, key)
 }
 
 // NewFlavor creates and saves a new Flavor.
@@ -181,10 +198,10 @@ func (s *Suite) NewHypervisorWithGuest() (*lochness.Hypervisor, *lochness.Guest)
 
 	subnet := s.NewSubnet()
 	network, _ := s.Context.Network(guest.NetworkID)
-	_ = network.AddSubnet(subnet)
-	_ = hypervisor.AddSubnet(subnet, "mistify0")
+	s.Require().NoError(network.AddSubnet(subnet))
+	s.Require().NoError(hypervisor.AddSubnet(subnet, "mistify0"))
 
-	_ = hypervisor.AddGuest(guest)
+	s.Require().NoError(hypervisor.AddGuest(guest))
 
 	return hypervisor, guest
 }

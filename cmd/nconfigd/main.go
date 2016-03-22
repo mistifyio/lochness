@@ -14,7 +14,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
@@ -24,11 +25,11 @@ type (
 	// Tags is a list of ansible tags
 	Tags []string
 
-	// Config is a map of etcd prefixes to watch to ansible tags to run
+	// Config is a map of kv watched prefixes to ansible tags to run
 	Config map[string]Tags
 )
 
-const eaddress = "http://127.0.0.1:4001"
+const defaultKVAddr = "http://127.0.0.1:4001"
 
 var ansibleDir = "/var/lib/ansible"
 
@@ -76,7 +77,7 @@ func getTags(config Config, key string) []string {
 }
 
 // runAnsible kicks off an ansible run
-func runAnsible(config Config, etcdaddr string, keys ...string) {
+func runAnsible(config Config, kvaddr string, keys ...string) {
 	tagSet := map[string]struct{}{}
 	for _, key := range keys {
 		tags := getTags(config, key)
@@ -95,7 +96,7 @@ func runAnsible(config Config, etcdaddr string, keys ...string) {
 	sort.Strings(keyTags)
 
 	args := make([]string, 0, 2+len(keyTags)*2)
-	args = append(args, "--etcd", etcdaddr)
+	args = append(args, "--kv", kvaddr)
 	for _, tag := range keyTags {
 		args = append(args, "-t", tag)
 	}
@@ -115,15 +116,15 @@ func runAnsible(config Config, etcdaddr string, keys ...string) {
 	}
 }
 
-// consumeResponses consumes etcd respones from a watcher and kicks off ansible
+// consumeResponses consumes kv respones from a watcher and kicks off ansible
 func consumeResponses(config Config, eaddr string, w *watcher.Watcher, ready chan struct{}) {
 	key := make(chan string, 1)
 	go func() {
 		for w.Next() {
-			resp := w.Response()
-			log.WithField("response", resp).Info("response received")
-			key <- resp.Node.Key
-			log.WithField("response", resp).Info("response processed")
+			event := w.Event()
+			log.WithField("event", event).Info("event received")
+			key <- event.Key
+			log.WithField("event", event).Info("event processed")
 		}
 		if err := w.Err(); err != nil {
 			log.WithField("error", err).Fatal("watcher error")
@@ -170,13 +171,13 @@ func consumeResponses(config Config, eaddr string, w *watcher.Watcher, ready cha
 }
 
 // watchKeys creates a new Watcher and adds all configured keys
-func watchKeys(config Config, etcdClient *etcd.Client) *watcher.Watcher {
-	w, err := watcher.New(etcdClient)
+func watchKeys(config Config, kv kv.KV) *watcher.Watcher {
+	w, err := watcher.New(kv)
 	if err != nil {
 		log.WithField("error", err).Fatal("failed to create watcher")
 	}
 
-	// start watching etcd prefixs
+	// start watching kv prefixs
 	for prefix := range config {
 		if err := w.Add(prefix); err != nil {
 			log.WithFields(log.Fields{
@@ -192,20 +193,23 @@ func watchKeys(config Config, etcdClient *etcd.Client) *watcher.Watcher {
 
 func main() {
 	// environment can only override default address
-	eaddr := os.Getenv("NCONFIGD_ETCD_ADDRESS")
-	if eaddr == "" {
-		eaddr = eaddress
+	kvAddr := os.Getenv("NCONFIGD_KV_ADDRESS")
+	if kvAddr == "" {
+		kvAddr = os.Getenv("NCONFIGD_ETCD_ADDRESS")
+		if kvAddr == "" {
+			kvAddr = defaultKVAddr
+		}
 	}
 
 	logLevel := flag.StringP("log-level", "l", "warn", "log level")
 	flag.StringVarP(&ansibleDir, "ansible", "a", ansibleDir, "directory containing the ansible run command")
-	flag.StringP("etcd", "e", eaddress, "address of etcd server")
+	flag.StringP("kv", "k", defaultKVAddr, "address of kv server")
 	configPath := flag.StringP("config", "c", "", "path to config file with prefixs")
 	once := flag.BoolP("once", "o", false, "run only once and then exit")
 	flag.Parse()
 	flag.Visit(func(f *flag.Flag) {
-		if f.Name == "etcd" {
-			eaddr = f.Value.String()
+		if f.Name == "kv" {
+			kvAddr = f.Value.String()
 		}
 	})
 
@@ -229,32 +233,31 @@ func main() {
 
 	log.WithField("config", config).Info("config loaded")
 
-	// set up etcd connection
-	log.WithField("address", eaddr).Info("connection to etcd")
-	etcdClient := etcd.NewClient([]string{eaddr})
-	// make sure we can actually connect to etcd
-	if !etcdClient.SyncCluster() {
+	// set up kv connection
+	log.WithField("address", kvAddr).Info("connection to kv")
+	e, err := kv.New(kvAddr)
+	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
-			"address": eaddr,
-		}).Fatal("failed to connect to etcd cluster")
+			"address": kvAddr,
+		}).Fatal("failed to connect to kv cluster")
 	}
 
 	// always run initially
-	runAnsible(config, eaddr, "")
+	runAnsible(config, kvAddr, "")
 	if *once {
 		return
 	}
 
 	// set up watcher
-	w := watchKeys(config, etcdClient)
+	w := watchKeys(config, e)
 
 	// to coordinate clean exiting between the consumer and the signal handler
 	ready := make(chan struct{}, 1)
 	ready <- struct{}{}
 
 	// handle events
-	go consumeResponses(config, eaddr, w, ready)
+	go consumeResponses(config, kvAddr, w, ready)
 
 	// handle signals for clean shutdown
 	sigs := make(chan os.Signal)

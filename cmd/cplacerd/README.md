@@ -15,7 +15,7 @@ The following arguments are understood:
     $ cplacerd -h
     Usage of cplacerd:
     -b, --beanstalk="127.0.0.1:11300": address of beanstalkd server
-    -e, --etcd="http://127.0.0.1:4001": address of etcd server
+    -k, --kv="http://127.0.0.1:4001": address of kv server
     -p, --http=7543: address for http interface. set to 0 to disable
     -l, --log-level="warn": log level
 

@@ -47,7 +47,7 @@ func (s *APISuite) SetupSuite() {
 	// Metrics context
 	sink := mapsink.New()
 	fanout := metrics.FanoutSink{sink}
-	conf := metrics.DefaultConfig("cguestdTEST")
+	conf := metrics.DefaultConfig("cguestd-test")
 	conf.EnableHostname = false
 	m, _ := metrics.New(conf, fanout)
 	s.MetricsContext = &metricsContext{
@@ -73,7 +73,7 @@ func (s *APISuite) SetupSuite() {
 	s.Require().True(beanstalkdReady)
 
 	// Jobqueue
-	s.JobQueue, _ = jobqueue.NewClient(s.BeanstalkdPath, s.EtcdClient)
+	s.JobQueue, _ = jobqueue.NewClient(s.BeanstalkdPath, s.KV)
 
 	// Run the server
 	s.APIServer = Run(s.Port, s.Context, s.JobQueue, s.MetricsContext)

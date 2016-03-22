@@ -47,7 +47,7 @@ func (s *CmdSuite) SetupSuite() {
 	}
 	s.Require().True(beanstalkdReady)
 
-	jobQueue, err := jobqueue.NewClient(s.BeanstalkdPath, s.EtcdClient)
+	jobQueue, err := jobqueue.NewClient(s.BeanstalkdPath, s.KV)
 	s.Require().NoError(err)
 	s.JobQueue = jobQueue
 }
@@ -86,7 +86,7 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	for _, test := range tests {
-		msg := common.TestMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		if test.description == "valid" {
 			s.NoError(hypervisor.Heartbeat(1 * time.Hour))
 		}
@@ -99,18 +99,20 @@ func (s *CmdSuite) TestCmd() {
 		_ = guest.Save()
 
 		job, _ := s.JobQueue.AddJob(guest.ID, "select-hypervisor")
+		job.Refresh() // lock the job
 		if test.jobAction != job.Action {
 			job.Action = test.jobAction
 		}
 		if test.jobStatus != jobqueue.JobStatusNew {
 			job.Status = test.jobStatus
 		}
-		_ = job.Save(1 * time.Hour)
+		s.Require().NoError(job.Save(1 * time.Hour))
+		job.Release()
 
 		// Start the daemon
 		args := []string{
 			"-p", s.Port,
-			"-e", s.EtcdURL,
+			"-k", s.KVURL,
 			"-b", s.BeanstalkdPath,
 			"-l", "fatal",
 		}
@@ -120,10 +122,15 @@ func (s *CmdSuite) TestCmd() {
 		// Wait for processing
 		for i := 0; i < 10; i++ {
 			time.Sleep(1 * time.Second)
-			_ = job.Refresh()
+			if err := job.Refresh(); err != nil {
+				continue
+			}
 			if job.Status == jobqueue.JobStatusError || job.Action == "fetch" {
 				break
 			}
+			// job.Refresh acquires job lock, we need to release it
+			// so binary can continue processing
+			s.Require().NoError(job.Release())
 		}
 
 		_ = guest.Refresh()

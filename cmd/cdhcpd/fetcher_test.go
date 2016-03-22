@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/mistifyio/lochness/cmd/cdhcpd"
 	"github.com/mistifyio/lochness/internal/tests/common"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,7 +28,7 @@ func (s *FetcherSuite) SetupSuite() {
 
 func (s *FetcherSuite) SetupTest() {
 	s.Suite.SetupTest()
-	s.Fetcher = main.NewFetcher(s.EtcdURL)
+	s.Fetcher = main.NewFetcher(s.KVURL)
 
 	log.SetLevel(log.FatalLevel)
 }
@@ -91,8 +91,6 @@ func (s *FetcherSuite) TestFetchAll() {
 	s.True(ok)
 }
 
-func getResp(resp *etcd.Response, err error) *etcd.Response { return resp }
-
 func (s *FetcherSuite) TestIntegrateResponse() {
 	hypervisor, guest := s.NewHypervisorWithGuest()
 	subnet, _ := s.Context.Subnet(guest.SubnetID)
@@ -101,73 +99,82 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 	gJSON, _ := json.Marshal(guest)
 	sJSON, _ := json.Marshal(subnet)
 
-	hPath := s.EtcdPrefix + "/hypervisors/%s/metadata"
-	sPath := s.EtcdPrefix + "/subnets/%s/metadata"
-	gPath := s.EtcdPrefix + "/guests/%s/metadata"
+	hPath := s.KVPrefix + "/hypervisors/%s/metadata"
+	sPath := s.KVPrefix + "/subnets/%s/metadata"
+	gPath := s.KVPrefix + "/guests/%s/metadata"
 
 	// Should fail before first fetch
-	resp, err := s.EtcdClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)
-	refresh, err := s.Fetcher.IntegrateResponse(resp)
-	s.False(refresh)
+	refresh, err := s.Fetcher.IntegrateResponse(kv.Event{
+		Type: kv.Create,
+		Key:  fmt.Sprintf(hPath, hypervisor.ID),
+	})
 	s.Error(err)
+	s.False(refresh)
 
 	_ = s.Fetcher.FetchAll()
 
 	tests := []struct {
 		description string
-		resp        *etcd.Response
+		resp        kv.Event
 		refresh     bool
 		expectedErr bool
 	}{
-		{
-			"create wrong key",
-			getResp(s.EtcdClient.Create("/foobar", "baz", 0)),
-			false, true,
+		{"create wrong key",
+			kv.Event{
+				Type: kv.Create,
+				Key:  "/foobar/baz",
+			}, false, true,
 		},
-		{
-			"get hypervisor",
-			getResp(s.EtcdClient.Get(fmt.Sprintf(hPath, hypervisor.ID), false, false)),
-			false, false,
+		{"set hypervisor",
+			kv.Event{
+				Type:  kv.Update,
+				Key:   fmt.Sprintf(hPath, hypervisor.ID),
+				Value: kv.Value{Data: hJSON},
+			}, true, false,
 		},
-		{
-			"set hypervisor",
-			getResp(s.EtcdClient.Set(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
-			true, false,
+		{"set guest",
+			kv.Event{
+				Type:  kv.Update,
+				Key:   fmt.Sprintf(gPath, guest.ID),
+				Value: kv.Value{Data: gJSON},
+			}, true, false,
 		},
-		{
-			"set guest",
-			getResp(s.EtcdClient.Set(fmt.Sprintf(gPath, guest.ID), string(gJSON), 0)),
-			true, false,
+		{"set subnet",
+			kv.Event{
+				Type:  kv.Update,
+				Key:   fmt.Sprintf(sPath, subnet.ID),
+				Value: kv.Value{Data: sJSON},
+			}, true, false,
 		},
-		{
-			"set subnet",
-			getResp(s.EtcdClient.Set(fmt.Sprintf(sPath, subnet.ID), string(sJSON), 0)),
-			true, false,
+		{"delete guest",
+			kv.Event{
+				Type: kv.Delete,
+				Key:  fmt.Sprintf(gPath, guest.ID),
+			}, true, false,
 		},
-		{
-			"delete guest",
-			getResp(s.EtcdClient.Delete(fmt.Sprintf(gPath, guest.ID), false)),
-			true, false,
+		{"delete subnet",
+			kv.Event{
+				Type: kv.Delete,
+				Key:  fmt.Sprintf(sPath, subnet.ID),
+			}, true, false,
 		},
-		{
-			"delete subnet",
-			getResp(s.EtcdClient.Delete(fmt.Sprintf(sPath, subnet.ID), false)),
-			true, false,
+		{"delete hypervisor",
+			kv.Event{
+				Type: kv.Delete,
+				Key:  fmt.Sprintf(hPath, hypervisor.ID),
+			}, true, false,
 		},
-		{
-			"delete hypervisor",
-			getResp(s.EtcdClient.Delete(fmt.Sprintf(hPath, hypervisor.ID), false)),
-			true, false,
-		},
-		{
-			"create hypervisor",
-			getResp(s.EtcdClient.Create(fmt.Sprintf(hPath, hypervisor.ID), string(hJSON), 0)),
-			true, false,
+		{"create hypervisor",
+			kv.Event{
+				Type:  kv.Create,
+				Key:   fmt.Sprintf(hPath, hypervisor.ID),
+				Value: kv.Value{Data: hJSON},
+			}, true, false,
 		},
 	}
 
 	for _, test := range tests {
-		msg := common.TestMsgFunc(test.description)
+		msg := s.Messager(test.description)
 		refresh, err := s.Fetcher.IntegrateResponse(test.resp)
 
 		s.Equal(test.refresh, refresh, msg("wrong refresh conclusion"))

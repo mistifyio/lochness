@@ -13,13 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/mistifyio/lochness/pkg/kv"
 	"github.com/pborman/uuid"
 )
 
 var (
 	// HypervisorPath is the path in the config store
-	HypervisorPath = "lochness/hypervisors/"
+	HypervisorPath = "/lochness/hypervisors/"
 	// id of currently running hypervisor
 	hypervisorID = ""
 )
@@ -40,6 +40,7 @@ type (
 		subnets            map[string]string
 		guests             []string
 		alive              bool
+		lock               kv.Lock
 		// Config is a set of key/values for driving various config options. writes should
 		// only be done using SetConfig
 		Config map[string]string
@@ -173,44 +174,63 @@ func (h *Hypervisor) key() string {
 
 // Refresh reloads a Hypervisor from the data store.
 func (h *Hypervisor) Refresh() error {
-	resp, err := h.context.etcd.Get(filepath.Join(HypervisorPath, h.ID), false, true)
+	prefix := filepath.Join(HypervisorPath, h.ID)
 
+	nodes, err := h.context.kv.GetAll(prefix)
 	if err != nil {
 		return err
 	}
 
-	for _, n := range resp.Node.Nodes {
-		key := filepath.Base(n.Key)
-		switch key {
+	// handle metadata
+	key := filepath.Join(prefix, "metadata")
+	value, ok := nodes[key]
+	if !ok {
+		return errors.New("metadata key is missing")
+	}
 
-		case "metadata":
-			if err := json.Unmarshal([]byte(n.Value), &h); err != nil {
-				return err
-			}
-			h.modifiedIndex = n.ModifiedIndex
-		case "heartbeat":
-			//if exists, then its alive
-			h.alive = true
+	if err := json.Unmarshal(value.Data, &h); err != nil {
+		return err
+	}
+	h.modifiedIndex = value.Index
+	delete(nodes, key)
+
+	// handle heartbeat
+	key = filepath.Join(prefix, "heartbeat")
+	_, ok = nodes[key]
+	if ok {
+		//if exists, then it's alive
+		h.alive = true
+		delete(nodes, key)
+	}
+
+	config := map[string]string{}
+	guests := []string{}
+	subnets := map[string]string{}
+
+	// TODO(needs tests)
+	for k, v := range nodes {
+		elements := strings.Split(k, "/")
+		base := elements[len(elements)-1]
+		dir := elements[len(elements)-2]
+
+		switch dir {
 		case "subnets":
-			for _, n := range n.Nodes {
-				h.subnets[filepath.Base(n.Key)] = n.Value
-			}
+			subnets[base] = string(v.Data)
 		case "guests":
-			h.guests = nil
-			for _, n := range n.Nodes {
-				h.guests = append(h.guests, filepath.Base(n.Key))
-			}
+			guests = append(guests, base)
 		case "config":
-			for _, n := range n.Nodes {
-				h.Config[filepath.Base(n.Key)] = n.Value
-			}
+			config[base] = string(v.Data)
 		}
 	}
+
+	h.Config = config
+	h.guests = guests
+	h.subnets = subnets
 
 	return nil
 }
 
-// TODO: figure out safe amount of memory to report and how to limit it (etcd?)
+// TODO: figure out safe amount of memory to report and how to limit it
 func memory() (uint64, error) {
 	f, err := os.Open("/proc/meminfo")
 	if err != nil {
@@ -264,10 +284,10 @@ func canonicalizeUUID(id string) (string, error) {
 	return strings.ToLower(i.String()), nil
 }
 
-// SetHypervisorID sets the id of the current hypervisor. It should be used by all daemons
-// that are ran on a hypervisor and are expected to interact with the data stores directly.
-// Passing in a blank string will fall back to first checking the environment variable
-// "HYPERVISOR_ID" and then using the hostname.  ID must be a valid UUID.
+// SetHypervisorID sets the id of the current hypervisor.
+// It should be used by all daemons that are ran on a hypervisor and are expected to interact with the data stores directly.
+// Passing in a blank string will fall back to first checking the environment variable "HYPERVISOR_ID" and then using the hostname.
+// ID must be a valid UUID.
 // ID will be lowercased.
 func SetHypervisorID(id string) (string, error) {
 	// the if statement approach is clunky and probably needs refining
@@ -300,8 +320,8 @@ func SetHypervisorID(id string) (string, error) {
 	return hypervisorID, nil
 }
 
-// GetHypervisorID gets the hypervisor id as set with SetHypervisorID. It does not
-// make an attempt to discover the id if not set.
+// GetHypervisorID gets the hypervisor id as set with SetHypervisorID.
+// It does not make an attempt to discover the id if not set.
 func GetHypervisorID() string {
 	return hypervisorID
 }
@@ -314,9 +334,8 @@ func (h *Hypervisor) VerifyOnHV() error {
 	return nil
 }
 
-// calcGuestsUsage calculates total resource usage of managed guests. Note that
-// CPU "usage" is intentionally ignored as cores are not directly allocated to
-// guests.
+// calcGuestsUsage calculates total resource usage of managed guests.
+// Note that CPU "usage" is intentionally ignored as cores are not directly allocated to guests.
 func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	usage := Resources{}
 	err := h.ForEachGuest(func(guest *Guest) error {
@@ -335,8 +354,8 @@ func (h *Hypervisor) calcGuestsUsage() (Resources, error) {
 	return usage, nil
 }
 
-// UpdateResources syncs Hypervisor resource usage to the data store. It should only be ran on
-// the actual hypervisor.
+// UpdateResources syncs Hypervisor resource usage to the data store.
+// It should only be ran on the actual hypervisor.
 func (h *Hypervisor) UpdateResources() error {
 	if err := h.VerifyOnHV(); err != nil {
 		return err
@@ -375,7 +394,8 @@ func (h *Hypervisor) UpdateResources() error {
 	return h.Save()
 }
 
-// Validate ensures a Hypervisor has reasonable data. It currently does nothing.
+// Validate ensures a Hypervisor has reasonable data.
+// It currently does nothing.
 func (h *Hypervisor) Validate() error {
 	// TODO: do validation stuff...
 	if h.ID == "" {
@@ -387,9 +407,9 @@ func (h *Hypervisor) Validate() error {
 	return nil
 }
 
-// Save persists a FWGroup.  It will call Validate.
+// Save persists a FWGroup.
+// It will call Validate.
 func (h *Hypervisor) Save() error {
-
 	if err := h.Validate(); err != nil {
 		return err
 	}
@@ -400,24 +420,15 @@ func (h *Hypervisor) Save() error {
 		return err
 	}
 
-	// if we changed something, don't clobber
-	var resp *etcd.Response
-	if h.modifiedIndex != 0 {
-		resp, err = h.context.etcd.CompareAndSwap(h.key(), string(v), 0, "", h.modifiedIndex)
-	} else {
-		resp, err = h.context.etcd.Create(h.key(), string(v), 0)
-	}
+	index, err := h.context.kv.Update(h.key(), kv.Value{Data: v, Index: h.modifiedIndex})
 	if err != nil {
 		return err
 	}
-
-	h.modifiedIndex = resp.EtcdIndex
-
+	h.modifiedIndex = index
 	return nil
 }
 
 // the many side of many:one relationships is done with nested keys
-
 func (h *Hypervisor) subnetKey(s *Subnet) string {
 	var key string
 	if s != nil {
@@ -442,7 +453,7 @@ func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 		}
 	}
 
-	_, err := h.context.etcd.Set(filepath.Join(h.subnetKey(s)), bridge, 0)
+	err := h.context.kv.Set(filepath.Join(h.subnetKey(s)), bridge)
 	if err == nil {
 		h.subnets[s.ID] = bridge
 	}
@@ -451,7 +462,7 @@ func (h *Hypervisor) AddSubnet(s *Subnet, bridge string) error {
 
 // RemoveSubnet removes a subnet from a Hypervisor.
 func (h *Hypervisor) RemoveSubnet(s *Subnet) error {
-	if _, err := h.context.etcd.Delete(filepath.Join(h.subnetKey(s)), false); err != nil {
+	if err := h.context.kv.Delete(filepath.Join(h.subnetKey(s)), false); err != nil {
 		return err
 	}
 	delete(h.subnets, s.ID)
@@ -468,17 +479,28 @@ func (h *Hypervisor) heartbeatKey() string {
 	return filepath.Join(HypervisorPath, h.ID, "heartbeat")
 }
 
-// Heartbeat announces the avilibility of a hypervisor.  In general, this is useful for
-// service announcement/discovery. Should be ran from the hypervisor, or something monitoring it.
+// Heartbeat announces the availability of a hypervisor.
+// In general, this is useful for service announcement/discovery.
+// Should be ran from the hypervisor, or something monitoring it.
 func (h *Hypervisor) Heartbeat(ttl time.Duration) error {
 	if err := h.VerifyOnHV(); err != nil {
 		return err
 	}
 
+	if h.lock == nil {
+		lock, err := h.context.kv.Lock(h.heartbeatKey(), ttl)
+		if err != nil {
+			return err
+		}
+		h.lock = lock
+	}
+
+	if err := h.lock.Set([]byte(time.Now().String())); err != nil {
+		return err
+	}
+
 	h.alive = true
-	v := time.Now().String()
-	_, err := h.context.etcd.Set(h.heartbeatKey(), v, uint64(ttl.Seconds()))
-	return err
+	return nil
 }
 
 // IsAlive returns true if the heartbeat is present.
@@ -495,8 +517,9 @@ func (h *Hypervisor) guestKey(g *Guest) string {
 	return filepath.Join(HypervisorPath, h.ID, "guests", key)
 }
 
-// AddGuest adds a Guest to the Hypervisor. It reserves an IPaddress for the Guest.
-/// It also updates the Guest.
+// AddGuest adds a Guest to the Hypervisor.
+// It reserves an IPaddress for the Guest.
+// It also updates the Guest.
 func (h *Hypervisor) AddGuest(g *Guest) error {
 
 	// make sure we have subnet guest wants.  we should have this figured out
@@ -544,7 +567,7 @@ LOOP:
 	g.SubnetID = s.ID
 	g.Bridge = bridge
 
-	_, err = h.context.etcd.Set(filepath.Join(h.guestKey(g)), g.ID, 0)
+	err = h.context.kv.Set(filepath.Join(h.guestKey(g)), g.ID)
 
 	if err != nil {
 		return err
@@ -561,7 +584,8 @@ LOOP:
 	return nil
 }
 
-// RemoveGuest removes a guest from the hypervisor. Also releases the IP
+// RemoveGuest removes a guest from the hypervisor.
+// Also releases the IP.
 func (h *Hypervisor) RemoveGuest(g *Guest) error {
 	if g.HypervisorID != h.ID {
 		return errors.New("guest does not belong to hypervisor")
@@ -575,7 +599,7 @@ func (h *Hypervisor) RemoveGuest(g *Guest) error {
 		return err
 	}
 
-	if _, err := h.context.etcd.Delete(filepath.Join(h.guestKey(g)), false); err != nil {
+	if err := h.context.kv.Delete(filepath.Join(h.guestKey(g)), false); err != nil {
 		return err
 	}
 
@@ -604,7 +628,8 @@ func (h *Hypervisor) Guests() []string {
 	return h.guests
 }
 
-// ForEachGuest will run f on each Guest. It will stop iteration if f returns an error.
+// ForEachGuest will run f on each Guest.
+// It will stop iteration if f returns an error.
 func (h *Hypervisor) ForEachGuest(f func(*Guest) error) error {
 	for _, id := range h.guests {
 		guest, err := h.context.Guest(id)
@@ -621,12 +646,12 @@ func (h *Hypervisor) ForEachGuest(f func(*Guest) error) error {
 
 // FirstHypervisor will return the first hypervisor for which the function returns true.
 func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error) {
-	resp, err := c.etcd.Get(HypervisorPath, false, false)
+	keys, err := c.kv.Keys(HypervisorPath)
 	if err != nil {
 		return nil, err
 	}
-	for _, n := range resp.Node.Nodes {
-		h, err := c.Hypervisor(filepath.Base(n.Key))
+	for _, k := range keys {
+		h, err := c.Hypervisor(filepath.Base(k))
 		if err != nil {
 			return nil, err
 		}
@@ -638,16 +663,18 @@ func (c *Context) FirstHypervisor(f func(*Hypervisor) bool) (*Hypervisor, error)
 	return nil, nil
 }
 
-// ForEachHypervisor will run f on each Hypervisor. It will stop iteration if f returns an error.
+// ForEachHypervisor will run f on each Hypervisor.
+// It will stop iteration if f returns an error.
 func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
-	// should we condense this to a single etcd call?
+	// should we condense this to a single kv call?
 	// We would need to rework how we "load" hypervisor a bit
-	resp, err := c.etcd.Get(HypervisorPath, false, false)
+
+	keys, err := c.kv.Keys(HypervisorPath)
 	if err != nil {
 		return err
 	}
-	for _, n := range resp.Node.Nodes {
-		h, err := c.Hypervisor(filepath.Base(n.Key))
+	for _, k := range keys {
+		h, err := c.Hypervisor(filepath.Base(k))
 		if err != nil {
 			return err
 		}
@@ -659,20 +686,22 @@ func (c *Context) ForEachHypervisor(f func(*Hypervisor) error) error {
 	return nil
 }
 
-// SetConfig sets a single Hypervisor Config value. Set value to "" to unset.
+// SetConfig sets a single Hypervisor Config value.
+// Set value to "" to unset.
 func (h *Hypervisor) SetConfig(key, value string) error {
 	if key == "" {
 		return errors.New("empty config key")
 	}
 
 	if value != "" {
-		if _, err := h.context.etcd.Set(filepath.Join(HypervisorPath, h.ID, "config", key), value, 0); err != nil {
+		if err := h.context.kv.Set(filepath.Join(HypervisorPath, h.ID, "config", key), value); err != nil {
 			return err
 		}
 
 		h.Config[key] = value
 	} else {
-		if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID, "config", key), false); err != nil && !IsKeyNotFound(err) {
+		err := h.context.kv.Delete(filepath.Join(HypervisorPath, h.ID, "config", key), false)
+		if err != nil && !h.context.kv.IsKeyNotFound(err) {
 			return err
 		}
 		delete(h.Config, key)
@@ -680,7 +709,8 @@ func (h *Hypervisor) SetConfig(key, value string) error {
 	return nil
 }
 
-// Destroy removes a hypervisor.  The Hypervisor must not have any guests.
+// Destroy removes a hypervisor.
+// The Hypervisor must not have any guests.
 func (h *Hypervisor) Destroy() error {
 	if len(h.guests) != 0 {
 		// XXX: should use an error var?
@@ -692,14 +722,9 @@ func (h *Hypervisor) Destroy() error {
 		return errors.New("not persisted")
 	}
 
-	// XXX: another instance where transactions would be helpful
-	if _, err := h.context.etcd.CompareAndDelete(h.key(), "", h.modifiedIndex); err != nil {
+	if err := h.context.kv.Remove(h.key(), h.modifiedIndex); err != nil {
 		return err
 	}
 
-	if _, err := h.context.etcd.Delete(filepath.Join(HypervisorPath, h.ID), true); err != nil {
-		return err
-	}
-
-	return nil
+	return h.context.kv.Delete(filepath.Join(HypervisorPath, h.ID), true)
 }

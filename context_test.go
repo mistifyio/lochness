@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/internal/tests/common"
 	"github.com/stretchr/testify/suite"
 )
@@ -22,11 +21,11 @@ func (s *ContextSuite) TestNewContext() {
 }
 
 func (s *ContextSuite) TestIsKeyNotFound() {
-	_, err := s.EtcdClient.Get(s.PrefixKey("some-randon-non-existent-key"), false, false)
+	_, err := s.KV.Get(s.PrefixKey("some-randon-non-existent-key"))
 
 	s.Error(err)
-	s.True(lochness.IsKeyNotFound(err))
+	s.True(s.KV.IsKeyNotFound(err))
 
 	err = errors.New("some-random-non-key-not-found-error")
-	s.False(lochness.IsKeyNotFound(err))
+	s.False(s.KV.IsKeyNotFound(err))
 }

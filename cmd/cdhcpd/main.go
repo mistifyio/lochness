@@ -29,7 +29,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "fetcher.Hypervisors",
-		}).Error("Could not fetch hypervisors")
+		}).Error("could not fetch hypervisors")
 		return restart, err
 	}
 
@@ -40,7 +40,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 				"error": err,
 				"func":  "Refresher.genHypervisorsConf",
 				"type":  "hypervisors",
-			}).Error("Could not generate configuration")
+			}).Error("could not generate configuration")
 		}
 		return err
 	})
@@ -55,7 +55,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "fetcher.Guests",
-		}).Error("Could not fetch guests")
+		}).Error("could not fetch guests")
 		return restart, err
 	}
 	subnets, err := f.Subnets()
@@ -63,7 +63,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "fetcher.Subnets",
-		}).Error("Could not fetch subnets")
+		}).Error("could not fetch subnets")
 		return restart, err
 	}
 
@@ -74,7 +74,7 @@ func updateConfigs(f *Fetcher, r *Refresher, hconfPath, gconfPath string) (bool,
 				"error": err,
 				"func":  "Refresher.genGuestsConf",
 				"type":  "guests",
-			}).Error("Could not generate configuration")
+			}).Error("could not generate configuration")
 		}
 		return err
 	})
@@ -106,7 +106,7 @@ func writeConfig(confType, path string, checksum []byte, generator func(io.Write
 			"error": err,
 			"path":  tmp,
 			"type":  confType,
-		}).Error("Could not generate temporary configuration")
+		}).Error("could not generate temporary configuration")
 		return nil, err
 	}
 
@@ -116,7 +116,7 @@ func writeConfig(confType, path string, checksum []byte, generator func(io.Write
 			"func":  "buff.Flush",
 			"path":  tmp,
 			"type":  confType,
-		}).Error("Could not flush buffer to temporary conf file")
+		}).Error("could not flush buffer to temporary conf file")
 		return nil, err
 	}
 
@@ -126,7 +126,7 @@ func writeConfig(confType, path string, checksum []byte, generator func(io.Write
 			"func":  "os.File.Close",
 			"path":  tmp,
 			"type":  confType,
-		}).Error("Could not close temporary conf file")
+		}).Error("could not close temporary conf file")
 		return nil, err
 	}
 
@@ -148,14 +148,14 @@ func writeConfig(confType, path string, checksum []byte, generator func(io.Write
 			"from":  tmp,
 			"to":    path,
 			"type":  confType,
-		}).Error("Could not rename temporary conf file")
+		}).Error("could not rename temporary conf file")
 		return nil, err
 	}
 
 	log.WithFields(log.Fields{
 		"path": path,
 		"type": confType,
-	}).Info("Replaced conf file")
+	}).Info("replaced conf file")
 
 	return hash.Sum(nil), nil
 }
@@ -175,9 +175,9 @@ func restartDhcpd() {
 func main() {
 
 	// Command line options
-	var etcdAddress, domain, confPath, logLevel string
+	var kvAddress, domain, confPath, logLevel string
 	flag.StringVarP(&domain, "domain", "d", "", "domain for lochness; required")
-	flag.StringVarP(&etcdAddress, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	flag.StringVarP(&kvAddress, "kv", "k", "http://127.0.0.1:4001", "address of kv server")
 	flag.StringVarP(&confPath, "conf-dir", "c", "/etc/dhcp/", "dhcpd configuration directory")
 	flag.StringVarP(&logLevel, "log-level", "l", "warning", "log level: debug/info/warning/error/critical/fatal")
 	flag.Parse()
@@ -193,14 +193,14 @@ func main() {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "logx.DefaultSetup",
-		}).Fatal("Could not set up logrus")
+		}).Fatal("could not set up logrus")
 	}
 
 	hconfPath := path.Join(confPath, "hypervisors.conf")
 	gconfPath := path.Join(confPath, "guests.conf")
 
 	// Set up fetcher and refresher
-	f := NewFetcher(etcdAddress)
+	f := NewFetcher(kvAddress)
 	r := NewRefresher(domain)
 	err := f.FetchAll()
 	if err != nil {
@@ -217,23 +217,23 @@ func main() {
 	}
 
 	// Create the watcher
-	w, err := watcher.New(f.etcdClient)
+	w, err := watcher.New(f.kv)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"func":  "watcher.New",
-		}).Fatal("Could not create watcher")
+		}).Fatal("could not create watcher")
 	}
 
-	// Start watching the necessary etcd prefixs
-	prefixes := [...]string{"/lochness/hypervisors", "/lochness/guests", "/lochness/subnets"}
+	// Start watching the necessary kv prefixes
+	prefixes := []string{"/lochness/hypervisors", "/lochness/guests", "/lochness/subnets"}
 	for _, prefix := range prefixes {
 		if err := w.Add(prefix); err != nil {
 			log.WithFields(log.Fields{
 				"error":  err,
 				"func":   "watcher.Add",
 				"prefix": prefix,
-			}).Fatal("Could not add watch prefix")
+			}).Fatal("could not add watch prefix")
 		}
 	}
 
@@ -247,9 +247,9 @@ func main() {
 		done := <-ready
 
 		// Integrate the response and update the configs if necessary
-		refresh, err := f.IntegrateResponse(w.Response())
+		refresh, err := f.IntegrateResponse(w.Event())
 		if err != nil {
-			log.Info("Error on integration; re-fetching")
+			log.Info("error on integration; re-fetching")
 			err := f.FetchAll()
 			if err != nil {
 				os.Exit(1)
@@ -265,7 +265,7 @@ func main() {
 				log.WithFields(log.Fields{
 					"error": err,
 					"func":  "updateConfigs",
-				}).Warn("Could not create watcher")
+				}).Warn("could not create watcher")
 			}
 		}
 
@@ -273,7 +273,7 @@ func main() {
 		ready <- done
 	}
 	if err := w.Err(); err != nil {
-		log.WithField("error", err).Fatal("Watcher encountered an error")
+		log.WithField("error", err).Fatal("watcher encountered an error")
 	}
 
 	// Handle signals for clean shutdown
@@ -281,8 +281,8 @@ func main() {
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	s := <-sigs
-	log.WithField("signal", s).Info("Signal received; waiting for current task to process")
+	log.WithField("signal", s).Info("signal received; waiting for current task to process")
 	<-ready // wait until any current processing is finished
 	_ = w.Close()
-	log.Info("Exiting")
+	log.Info("exiting")
 }

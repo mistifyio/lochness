@@ -10,10 +10,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-metrics"
 	"github.com/bakins/go-metrics-map"
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	"github.com/mistifyio/mistify-agent/config"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
@@ -21,12 +22,12 @@ import (
 
 func main() {
 	var port, agentPort uint
-	var etcdAddr, bstalk, logLevel string
+	var kvAddr, bstalk, logLevel string
 
 	// Command line flags
 	flag.StringVarP(&bstalk, "beanstalk", "b", "127.0.0.1:11300", "address of beanstalkd server")
 	flag.StringVarP(&logLevel, "log-level", "l", "warn", "log level")
-	flag.StringVarP(&etcdAddr, "etcd", "e", "http://127.0.0.1:4001", "address of etcd server")
+	flag.StringVarP(&kvAddr, "kv", "k", "http://127.0.0.1:4001", "address of kv server")
 	flag.UintVarP(&agentPort, "agent-port", "a", uint(lochness.AgentPort), "port on which agents listen")
 	flag.UintVarP(&port, "http", "p", 7544, "http port to publish metrics. set to 0 to disable")
 	flag.Parse()
@@ -39,18 +40,19 @@ func main() {
 		}).Fatal("unable to to set up logrus")
 	}
 
-	etcdClient := etcd.NewClient([]string{etcdAddr})
-
-	if !etcdClient.SyncCluster() {
+	KV, err := kv.New(kvAddr)
+	if err != nil {
 		log.WithFields(log.Fields{
-			"addr": etcdAddr,
-		}).Fatal("unable to sync etcd cluster")
+			"addr":  kvAddr,
+			"error": err,
+			"func":  "kv.New",
+		}).Fatal("unable to connect to kv")
 	}
 
-	ctx := lochness.NewContext(etcdClient)
+	ctx := lochness.NewContext(KV)
 
 	log.WithField("address", bstalk).Info("connection to beanstalk")
-	jobQueue, err := jobqueue.NewClient(bstalk, etcdClient)
+	jobQueue, err := jobqueue.NewClient(bstalk, KV)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
@@ -66,80 +68,84 @@ func main() {
 	agent := ctx.NewMistifyAgent(int(agentPort))
 
 	// Start consuming
-	consume(jobQueue, agent, m)
+	for {
+		consume(jobQueue, agent, m)
+	}
 }
 
 func consume(jobQueue *jobqueue.Client, agent *lochness.MistifyAgent, m *metrics.Metrics) {
-	for {
-		// Wait for and reserve a job
-		task, err := jobQueue.NextWorkTask()
-		if err != nil {
-			if bCE, ok := err.(beanstalk.ConnError); ok {
-				switch bCE {
-				case beanstalk.ErrTimeout:
-					// Empty queue, continue waiting
-					continue
-				case beanstalk.ErrDeadline:
-					// See docs on beanstalkd deadline
-					// We're just going to sleep to let the deadline'd job expire
-					// and try to get another job
-					m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
-					log.Debug(beanstalk.ErrDeadline)
-					time.Sleep(5 * time.Second)
-					continue
-				default:
-					// You have failed me for the last time
-					log.WithField("error", err).Fatal(err)
-				}
+	// Wait for and reserve a job
+	task, err := jobQueue.NextWorkTask()
+	if err != nil {
+		if bCE, ok := err.(beanstalk.ConnError); ok {
+			switch bCE {
+			case beanstalk.ErrTimeout:
+				// Empty queue
+				return
+			case beanstalk.ErrDeadline:
+				// See docs on beanstalkd deadline
+				// We're just going to sleep to let the deadline'd job expire
+				// and try to get another job
+				m.IncrCounter([]string{"beanstalk", "error", "deadline"}, 1)
+				log.Debug(beanstalk.ErrDeadline)
+				time.Sleep(5 * time.Second)
+				return
+			default:
+				// You have failed me for the last time
+				log.WithField("error", err).Fatal(err)
 			}
+		}
 
+		log.WithFields(log.Fields{
+			"task":  task,
+			"error": err,
+		}).Error("invalid task")
+
+		if task.Job != nil {
+			updateJobStatus(task, jobqueue.JobStatusError, err)
+		}
+		if err := task.Delete(); err != nil {
+			log.WithFields(log.Fields{
+				"task":  task.ID,
+				"error": err,
+			}).Error("unable to delete")
+		}
+		return
+	}
+
+	logFields := log.Fields{
+		"task": task,
+	}
+
+	// Handle the task in its current state. Remove task when appropriate.
+	removeTask, err := processTask(task, agent)
+
+	if removeTask {
+		if err != nil {
+			log.WithFields(logFields).WithField("error", err).Error(err)
+			if task.Job != nil {
+				updateJobStatus(task, jobqueue.JobStatusError, err)
+			}
+		} else {
+			updateJobStatus(task, jobqueue.JobStatusDone, nil)
+		}
+		if task.Job != nil {
+			log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
+		}
+
+		updateMetrics(task, m)
+
+		log.WithFields(logFields).Info("removing task")
+		if err := task.Delete(); err != nil {
 			log.WithFields(log.Fields{
 				"task":  task,
 				"error": err,
-			}).Error("invalid task")
-
-			if err := task.Delete(); err != nil {
-				log.WithFields(log.Fields{
-					"task":  task.ID,
-					"error": err,
-				}).Error("unable to delete")
-			}
+			}).Error("unable to delete")
 		}
-
-		logFields := log.Fields{
-			"task": task,
-		}
-
-		// Handle the task in its current state. Remove task when appropriate.
-		removeTask, err := processTask(task, agent)
-
-		if removeTask {
-			if err != nil {
-				log.WithFields(logFields).WithField("error", err).Error(err)
-				if task.Job != nil {
-					_ = updateJobStatus(task, jobqueue.JobStatusError, err)
-				}
-			} else {
-				_ = updateJobStatus(task, jobqueue.JobStatusDone, nil)
-			}
-			if task.Job != nil {
-				log.WithFields(logFields).WithField("status", task.Job.Status).Info("job status info")
-			}
-
-			updateMetrics(task, m)
-
-			log.WithFields(logFields).Info("removing task")
-			if err := task.Delete(); err != nil {
-				log.WithFields(log.Fields{
-					"task":  task,
-					"error": err,
-				}).Error("unable to delete")
-			}
-		} else {
-			log.WithFields(logFields).Info("releasing task")
-			if err := task.Release(); err != nil {
-				log.WithFields(logFields).WithField("error", err).Fatal(err)
-			}
+	} else {
+		log.WithFields(logFields).Info("releasing task")
+		if err := task.Release(); err != nil {
+			log.WithFields(logFields).WithField("error", err).Fatal(err)
 		}
 	}
 }
@@ -229,7 +235,7 @@ func startJob(task *jobqueue.Task, agent *lochness.MistifyAgent) error {
 		return err
 	}
 	task.Job.RemoteID = jobID
-	_ = updateJobStatus(task, jobqueue.JobStatusWorking, nil)
+	updateJobStatus(task, jobqueue.JobStatusWorking, nil)
 	return nil
 }
 
@@ -254,7 +260,7 @@ func checkWorkingJob(task *jobqueue.Task, agent *lochness.MistifyAgent) (bool, e
 	return done, err
 }
 
-func updateJobStatus(task *jobqueue.Task, status string, e error) error {
+func updateJobStatus(task *jobqueue.Task, status string, e error) {
 	task.Job.Status = status
 	if e != nil {
 		task.Job.Error = e.Error()
@@ -272,9 +278,7 @@ func updateJobStatus(task *jobqueue.Task, status string, e error) error {
 			"task":  task,
 			"error": err,
 		}).Error("unable to save")
-		return err
 	}
-	return nil
 }
 
 func postDelete(task *jobqueue.Task) error {

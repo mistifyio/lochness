@@ -48,7 +48,7 @@ func (s *APISuite) SetupSuite() {
 	s.Opts = "--some bootopts"
 
 	// Set up images to serve
-	s.ImageDir, _ = ioutil.TempDir("", "cbootstrapdTest")
+	s.ImageDir, _ = ioutil.TempDir("", "cbootstrapd-test")
 	s.Versions = []string{
 		"0.1.0",
 		"0.2.0",
@@ -84,7 +84,7 @@ func (s *APISuite) SetupSuite() {
 	s.BinName = "cbootstrapd"
 	args := []string{
 		"-b", s.APIURL,
-		"-e", s.EtcdURL,
+		"-k", s.KVURL,
 		"-i", s.ImageDir,
 		"-o", "'" + s.Opts + "'",
 		"-p", strconv.Itoa(int(s.Port)),
@@ -92,6 +92,7 @@ func (s *APISuite) SetupSuite() {
 	}
 
 	var err error
+	// TODO wait is never called so we don't know if its actually running
 	s.Cmd, err = common.Start("./"+s.BinName, args...)
 	s.Require().NoError(err)
 	time.Sleep(1 * time.Second)
@@ -120,13 +121,13 @@ func (s *APISuite) TestIPXEGet() {
 	_ = hypervisor.Save()
 
 	s.checkIPXE("hypervisor defined version", s.Hypervisor, s.Hypervisor.Config["version"])
-	s.checkIPXE("etcd defined default version", hypervisor, defaultVersion)
+	s.checkIPXE("kv defined default version", hypervisor, defaultVersion)
 	_ = s.Context.SetConfig("defaultVersion", "")
 	s.checkIPXE("command flag defined default version", hypervisor, s.DefaultVersion)
 }
 
 func (s *APISuite) checkIPXE(description string, h *lochness.Hypervisor, expectedVersion string) {
-	msg := common.TestMsgFunc(description)
+	msg := s.Messager(description)
 	resp, err := http.Get(fmt.Sprintf("%s/ipxe/%s", s.APIURL, h.IP))
 	s.NoError(err)
 	defer logx.LogReturnedErr(resp.Body.Close, nil, "failed to close resp body")
@@ -169,6 +170,7 @@ func (s *APISuite) TestConfigGet() {
 		bodyB, _ := ioutil.ReadAll(resp.Body)
 		config, err := configRespToMap(string(bodyB))
 		s.NoError(err)
+
 		for key, value := range hypervisor.Config {
 			if strings.ToUpper(key) == key {
 				s.Equal(value, config[key])

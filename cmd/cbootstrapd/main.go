@@ -17,12 +17,13 @@ import (
 	mapsink "github.com/bakins/go-metrics-map"
 	"github.com/bakins/go-metrics-middleware"
 	"github.com/bakins/net-http-recover"
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/gorilla/context"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
+	"github.com/mistifyio/lochness/pkg/kv"
+	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
 	flag "github.com/ogier/pflag"
 )
 
@@ -34,7 +35,7 @@ type server struct {
 	defaultVersion string
 	baseURL        string
 	addOpts        string
-	etcdAddr       string
+	kvAddr         string
 }
 
 const envRegex = "^[_A-Z][_A-Z0-9]*$"
@@ -48,7 +49,7 @@ const configTemplate = `{{range $key, $value := .}}{{ printf "%s=%s\n" $key $val
 
 func main() {
 	port := flag.UintP("port", "p", 8888, "address to listen")
-	eaddr := flag.StringP("etcd", "e", "http://127.0.0.1:4001", "address of etcd machine")
+	kvAddr := flag.StringP("kv", "k", "http://127.0.0.1:4001", "address of kv machine")
 	baseURL := flag.StringP("base", "b", "http://ipxe.mistify.local:8888", "base address of bits request")
 	defaultVersion := flag.StringP("version", "v", "0.1.0", "If all else fails, what version to serve")
 	imageDir := flag.StringP("images", "i", "/var/lib/images", "directory containing the images")
@@ -57,8 +58,11 @@ func main() {
 
 	flag.Parse()
 
-	e := etcd.NewClient([]string{*eaddr})
-	c := lochness.NewContext(e)
+	KV, err := kv.New(*kvAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	c := lochness.NewContext(KV)
 
 	router := mux.NewRouter()
 	router.StrictSlash(true)
@@ -71,7 +75,7 @@ func main() {
 		defaultVersion: *defaultVersion,
 		baseURL:        *baseURL,
 		addOpts:        *addOpts,
-		etcdAddr:       *eaddr,
+		kvAddr:         *kvAddr,
 	}
 
 	chain := alice.New(
@@ -137,7 +141,7 @@ func ipxeHandler(w http.ResponseWriter, r *http.Request) {
 	if version == "" {
 		var err error
 		version, err = s.ctx.GetConfig("defaultVersion")
-		if err != nil && !lochness.IsKeyNotFound(err) {
+		if err != nil && !s.ctx.IsKeyNotFound(err) {
 			// XXX: should be fatal?
 			log.WithFields(log.Fields{
 				"error": err,
@@ -174,7 +178,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	configs := map[string]string{
-		"ETCD_ADDRESS": s.etcdAddr,
+		"ETCD_ADDRESS": s.kvAddr,
 	}
 	err := s.ctx.ForEachConfig(func(key, val string) error {
 		if s.r.MatchString(key) {

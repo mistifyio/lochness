@@ -2,7 +2,7 @@
 
 [![watcher](https://godoc.org/github.com/mistifyio/lochness/pkg/watcher?status.png)](https://godoc.org/github.com/mistifyio/lochness/pkg/watcher)
 
-Package watcher provides etcd prefix watching capabilities.
+Package watcher provides kv prefix watching capabilities.
 
 ## Usage
 
@@ -40,12 +40,12 @@ type Watcher struct {
 }
 ```
 
-Watcher monitors etcd prefixes and notifies on change
+Watcher monitors kv prefixes and notifies on change
 
 #### func  New
 
 ```go
-func New(c *etcd.Client) (*Watcher, error)
+func New(KV kv.KV) (*Watcher, error)
 ```
 New creates a new Watcher
 
@@ -54,7 +54,7 @@ New creates a new Watcher
 ```go
 func (w *Watcher) Add(prefix string) error
 ```
-Add will add prefix to the watch list, there still may be a short time (<500us)
+Add will add prefix to the watch list, there may still be a short time (<500us)
 after Add returns when an event on prefix may be missed.
 
 #### func (*Watcher) Close
@@ -72,14 +72,21 @@ func (w *Watcher) Err() *Error
 ```
 Err returns the last error received
 
+#### func (*Watcher) Event
+
+```go
+func (w *Watcher) Event() kv.Event
+```
+Event returns the event received that caused Next to return.
+
 #### func (*Watcher) Next
 
 ```go
 func (w *Watcher) Next() bool
 ```
-Next blocks until an event has been received by any of the wathed prefixes. The
-event it self may be accesed via the Response method. False will be returned
-upon an error, the error can be retrieved via the Err method.
+Next blocks until an event has been received by any of the watched prefixes. The
+event itself may be accessed via the Response method. If an error is encountered
+false will be returned, the error can be retrieved via the Err method.
 
 #### func (*Watcher) Remove
 
@@ -88,13 +95,6 @@ func (w *Watcher) Remove(prefix string) *Error
 ```
 Remove will remove said prefix from the watch list, it will return an error if
 the prefix is not being watched.
-
-#### func (*Watcher) Response
-
-```go
-func (w *Watcher) Response() *etcd.Response
-```
-Response returns the response received that caused Next to return.
 
 --
 *Generated with [godocdown](https://github.com/robertkrimen/godocdown)*
