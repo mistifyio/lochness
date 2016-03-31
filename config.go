@@ -12,7 +12,7 @@ import (
 
 var (
 	// ConfigPath is the path in the config store.
-	ConfigPath = "/lochness/config/"
+	ConfigPath = "lochness/config/"
 )
 
 // GetConfig gets a single value from the config store. The key can contain slashes ("/")

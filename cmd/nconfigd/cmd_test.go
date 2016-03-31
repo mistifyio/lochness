@@ -106,7 +106,7 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	tests := []testCase{
-		{"unwatched", "/foobar", "true", 1, []string{}},
+		{"unwatched", "foobar", "true", 1, []string{}},
 	}
 	for key, roles := range s.Config {
 		tests = append(tests, testCase{filepath.Base(key), key, "true", 2, roles})

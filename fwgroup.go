@@ -12,7 +12,7 @@ import (
 
 var (
 	// FWGroupPath is the path in the config store
-	FWGroupPath = "/lochness/fwgroups/"
+	FWGroupPath = "lochness/fwgroups/"
 )
 
 // XXX: should individual rules be their own keys??

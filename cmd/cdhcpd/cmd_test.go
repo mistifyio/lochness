@@ -76,7 +76,7 @@ func (s *CmdSuite) TestCmd() {
 	s.Equal(-1, status, "expected status code to be that of a killed process")
 
 	// so that common.Suite.TearDownTest does not fail
-	s.KV.Set("/lochness", "hi")
+	s.KV.Set("lochness", "hi")
 }
 
 func (s *CmdSuite) checkConfFiles(hypervisor *lochness.Hypervisor, guest *lochness.Guest) bool {

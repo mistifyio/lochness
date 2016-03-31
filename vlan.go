@@ -12,7 +12,7 @@ import (
 
 var (
 	// VLANPath is the path in the config store for VLANs
-	VLANPath = "/lochness/vlans/"
+	VLANPath = "lochness/vlans/"
 )
 
 type (

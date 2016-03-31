@@ -122,7 +122,7 @@ func (s *FetcherSuite) TestIntegrateResponse() {
 		{"create wrong key",
 			kv.Event{
 				Type: kv.Create,
-				Key:  "/foobar/baz",
+				Key:  "foobar/baz",
 			}, false, true,
 		},
 		{"set hypervisor",
