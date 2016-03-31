@@ -12,7 +12,7 @@ import (
 
 var (
 	// NetworkPath is the path in the config store.
-	NetworkPath = "/lochness/networks/"
+	NetworkPath = "lochness/networks/"
 )
 
 type (

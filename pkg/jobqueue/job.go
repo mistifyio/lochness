@@ -12,7 +12,7 @@ import (
 
 var (
 	// JobPath is the path in the config store
-	JobPath = "/lochness/jobs/"
+	JobPath = "lochness/jobs/"
 )
 
 // Job Status

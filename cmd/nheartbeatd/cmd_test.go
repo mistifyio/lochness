@@ -76,7 +76,7 @@ func (s *CmdSuite) TestCmd() {
 				break
 			}
 
-			resp, err := s.KV.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id))
+			resp, err := s.KV.Get(fmt.Sprintf("lochness/hypervisors/%s/heartbeat", test.id))
 			if !s.NoError(err, msg("heartbeat key should exist")) {
 				continue
 			}

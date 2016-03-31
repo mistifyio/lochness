@@ -13,7 +13,7 @@ import (
 
 var (
 	// VLANGroupPath is the path in the config store for VLAN groups
-	VLANGroupPath = "/lochness/vlangroups/"
+	VLANGroupPath = "lochness/vlangroups/"
 )
 
 type (

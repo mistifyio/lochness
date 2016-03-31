@@ -16,7 +16,7 @@ import (
 
 var (
 	// SubnetPath is the key prefix for subnets
-	SubnetPath = "/lochness/subnets/"
+	SubnetPath = "lochness/subnets/"
 )
 
 type (

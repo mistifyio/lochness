@@ -32,7 +32,7 @@ type (
 	}
 )
 
-var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
+var matchKeys = regexp.MustCompile(`^lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
 
 // NewFetcher creates a new fetcher
 func NewFetcher(kvAddress string) *Fetcher {

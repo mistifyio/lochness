@@ -19,7 +19,7 @@ import (
 
 var (
 	// HypervisorPath is the path in the config store
-	HypervisorPath = "/lochness/hypervisors/"
+	HypervisorPath = "lochness/hypervisors/"
 	// id of currently running hypervisor
 	hypervisorID = ""
 )

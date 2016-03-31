@@ -82,7 +82,7 @@ func (s *Suite) SetupSuite() {
 		panic(err)
 	}
 	s.Context = lochness.NewContext(s.KV)
-	s.KVPrefix = "/lochness"
+	s.KVPrefix = "lochness"
 	s.KVURL = clientURL
 }
 
