@@ -2,7 +2,6 @@ package main_test
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -56,8 +55,8 @@ func (s *CmdSuite) TestCmd() {
 		args := []string{
 			"-k", s.KVURL,
 			"-d", test.id,
-			"-i", strconv.Itoa(test.interval.Seconds()),
-			"-t", strconv.Itoa(test.ttl.Seconds()),
+			"-i", test.interval.String(),
+			"-t", test.ttl.String(),
 			"-l", test.loglevel,
 		}
 		cmd, err := common.Start("./"+s.BinName, args...)
