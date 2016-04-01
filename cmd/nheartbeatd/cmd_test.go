@@ -35,18 +35,20 @@ func (s *CmdSuite) SetupTest() {
 }
 
 func (s *CmdSuite) TestCmd() {
+	ttl := 2 * time.Second
+	interval := 1 * time.Second
 	tests := []struct {
 		description string
 		id          string
-		ttl         int
-		interval    int
+		ttl         time.Duration
+		interval    time.Duration
 		loglevel    string
 		expectedErr bool
 	}{
-		{"invalid id", "asdf", 2, 1, "error", true},
-		{"no hypervisor for id", uuid.New(), 2, 1, "error", true},
-		{"ttl less than interval", s.Hypervisor.ID, 1, 2, "error", true},
-		{"valid", s.Hypervisor.ID, 2, 1, "error", false},
+		{"invalid id", "asdf", ttl, interval, "error", true},
+		{"no hypervisor for id", uuid.New(), ttl, interval, "error", true},
+		{"ttl less than interval", s.Hypervisor.ID, interval, ttl, "error", true},
+		{"valid", s.Hypervisor.ID, ttl, interval, "error", false},
 	}
 
 	for _, test := range tests {
@@ -54,8 +56,8 @@ func (s *CmdSuite) TestCmd() {
 		args := []string{
 			"-k", s.KVURL,
 			"-d", test.id,
-			"-i", strconv.Itoa(test.interval),
-			"-t", strconv.Itoa(test.ttl),
+			"-i", strconv.Itoa(test.interval.Seconds()),
+			"-t", strconv.Itoa(test.ttl.Seconds()),
 			"-l", test.loglevel,
 		}
 		cmd, err := common.Start("./"+s.BinName, args...)
@@ -70,7 +72,7 @@ func (s *CmdSuite) TestCmd() {
 		}
 
 		for i := 0; i < 2; i++ {
-			time.Sleep(time.Duration(test.interval) * time.Second)
+			time.Sleep(test.interval)
 			if !s.True(cmd.Alive(), msg("daemon should still be running")) {
 				break
 			}
@@ -86,9 +88,8 @@ func (s *CmdSuite) TestCmd() {
 				continue
 			}
 
-			s.WithinDuration(start.Add(time.Duration(i*test.interval)*time.Second), v, 100*time.Millisecond, i,
-				msg("heartbeat value should be time around when it was set"),
-			)
+			start := start.Add(time.Duration(i) * test.interval)
+			s.Require().WithinDuration(start, v, 100*time.Millisecond, msg("heartbeat value should be time around when it was set"))
 		}
 
 		// Stop the daemon
@@ -97,7 +98,7 @@ func (s *CmdSuite) TestCmd() {
 		s.Equal(-1, status, msg("expected status code to be that of a killed process"))
 
 		// Check that the key expires
-		time.Sleep(time.Duration(test.ttl) * time.Second)
+		time.Sleep(2 * test.ttl)
 		_, err = s.KV.Get(fmt.Sprintf("/lochness/hypervisors/%s/heartbeat", test.id))
 		s.Error(err, msg("heartbeat should have expired"))
 	}
