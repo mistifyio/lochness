@@ -125,25 +125,29 @@ func (s *VLANGroupSuite) TestDestroy() {
 	blankVG.ID = ""
 
 	tests := []struct {
-		description string
-		v           *lochness.VLANGroup
-		expectedErr bool
+		description  string
+		v            *lochness.VLANGroup
+		expectError  bool
+		expectChange bool
 	}{
-		{"invalid vlangroup", blankVG, true},
-		{"existing vlangroup", vlangroup, false},
-		{"nonexistant vlangroup", s.Context.NewVLANGroup(), true},
+		{"invalid vlangroup", blankVG, true, false},
+		{"existing vlangroup", vlangroup, false, true},
+		{"nonexistant vlangroup", s.Context.NewVLANGroup(), false, false},
 	}
 
 	for _, test := range tests {
 		msg := s.Messager(test.description)
 		err := test.v.Destroy()
-		if test.expectedErr {
-			s.Error(err, msg("should fail"))
+		if test.expectError {
+			s.Error(err, msg("should error"))
 		} else {
-			s.NoError(err, msg("should succeed"))
-			_ = vlan.Refresh()
-			s.Len(vlan.VLANGroups(), 0, msg("should remove vlan link"))
+			s.NoError(err, msg("should not error"))
 		}
+		if !test.expectChange {
+			continue
+		}
+		_ = vlan.Refresh()
+		s.Len(vlan.VLANGroups(), 0, msg("should remove vlan link"))
 	}
 
 }
@@ -207,15 +211,15 @@ func (s *VLANGroupSuite) TestRemoveVLAN() {
 	_ = vlanGroup.AddVLAN(vlan)
 
 	tests := []struct {
-		description string
-		vg          *lochness.VLANGroup
-		v           *lochness.VLAN
-		expectedErr bool
+		description  string
+		vg           *lochness.VLANGroup
+		v            *lochness.VLAN
+		expectChange bool
 	}{
-		{"nonexisting vlangroup, nonexisting vlan", s.Context.NewVLANGroup(), s.Context.NewVLAN(), true},
-		{"existing vlangroup, nonexisting vlan", vlanGroup, s.Context.NewVLAN(), true},
-		{"nonexisting vlangroup, existing vlan", s.Context.NewVLANGroup(), vlan, true},
-		{"existing vlangroup and vlan", vlanGroup, vlan, false},
+		{"nonexisting vlangroup, nonexisting vlan", s.Context.NewVLANGroup(), s.Context.NewVLAN(), false},
+		{"existing vlangroup, nonexisting vlan", vlanGroup, s.Context.NewVLAN(), false},
+		{"nonexisting vlangroup, existing vlan", s.Context.NewVLANGroup(), vlan, false},
+		{"existing vlangroup and vlan", vlanGroup, vlan, true},
 	}
 
 	for _, test := range tests {
@@ -224,14 +228,13 @@ func (s *VLANGroupSuite) TestRemoveVLAN() {
 		vLen := len(test.v.VLANGroups())
 
 		err := test.vg.RemoveVLAN(test.v)
-		if test.expectedErr {
-			s.Error(err, msg("should fail"))
-			s.Len(test.vg.VLANs(), vgLen, msg("fail should not add vlan to vlangroup"))
-			s.Len(test.v.VLANGroups(), vLen, msg("fail should not add vlangroup to vlan"))
-		} else {
-			s.NoError(err, msg("should succeed"))
+		s.NoError(err)
+		if test.expectChange {
 			s.Len(test.vg.VLANs(), vgLen-1, msg("fail should add vlan to vlangroup"))
 			s.Len(test.v.VLANGroups(), vLen-1, msg("fail should add vlangroup to vlan"))
+		} else {
+			s.Len(test.vg.VLANs(), vgLen, msg("fail should not add vlan to vlangroup"))
+			s.Len(test.v.VLANGroups(), vLen, msg("fail should not add vlangroup to vlan"))
 		}
 	}
 }

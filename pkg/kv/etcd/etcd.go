@@ -44,6 +44,9 @@ func New(addr string) (kv.KV, error) {
 
 func (e *ekv) Delete(key string, recurse bool) error {
 	_, err := e.e.Delete(key, recurse)
+	if err != nil && e.IsKeyNotFound(err) {
+		err = nil
+	}
 	return err
 }
 
