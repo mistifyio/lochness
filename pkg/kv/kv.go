@@ -68,9 +68,15 @@ func Register(name string, fn func(string) (KV, error)) {
 // The special `http` and `https` schemes are deemed generic, the first implementation that supports it will be used.
 // Otherwise the scheme portion of the URL will be used to select the exact implementation to instantiate.
 func New(addr string) (KV, error) {
-	u, err := url.Parse(addr)
-	if err != nil {
-		return nil, err
+	var u *url.URL
+	if addr == "" {
+		u = &url.URL{Scheme: "http"}
+	} else {
+		var err error
+		u, err = url.Parse(addr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	register.RLock()
