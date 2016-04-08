@@ -86,15 +86,7 @@ FORCE:
 .PHONY: %.test.run
 %.test.run: %.test %
 	flock /dev/stdout -c 'echo "RUN   $<"'
-	cid=$(shell docker run -dti -v "$(CURDIR):/lochness:ro" -v /sys/fs/cgroup:/sys/fs/cgroup:ro --name $(notdir $<) mistifyio/mistify-os) && \
-	test -n $(cid) && \
-	sleep .25 && \
-	docker exec $$cid sh -c "cd /lochness; cd $(@D); LOCHNESS_TEST_NO_BUILD=1 ./$(notdir $<) -test.v" &> $@.out; \
-	ret=$$?; \
-	docker kill $$cid  &>/dev/null && \
-	docker rm -v $$cid &>/dev/null && \
-	flock /dev/stdout -c 'echo "+++ $< +++"; cat $@.out'; \
-	exit $$ret
+	./run-test.sh $<
 
 .SECONDARY: $(tests)
 %.test:
