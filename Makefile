@@ -30,6 +30,7 @@ BINS := $(join $(addprefix cmd/,$(CMDS)) ,$(addprefix /,$(CMDS)))
 all: $(BINS)
 
 .SILENT:
+.SUFFIXES:
 
 $(BINS):
 	echo BUILD $@
@@ -81,12 +82,12 @@ FORCE:
 
 .PHONY: %.test.run.out
 %.test.run.out: %.test.run FORCE
-	flock /dev/stdout -c 'cat $@'
 
 .PHONY: %.test.run
 %.test.run: %.test %
 	flock /dev/stdout -c 'echo "RUN   $<"'
 	./run-test.sh $<
+	touch $@
 
 .SECONDARY: $(tests)
 %.test:
