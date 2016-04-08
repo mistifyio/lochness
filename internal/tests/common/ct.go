@@ -195,8 +195,7 @@ func (s *Suite) NewGuest() *lochness.Guest {
 	return guest
 }
 
-// NewHypervisorWithGuest creates and saves a new Hypervisor and Guest, with
-// the Guest added to the Hypervisor.
+// NewHypervisorWithGuest creates and saves a new Hypervisor and Guest, with the Guest added to the Hypervisor.
 func (s *Suite) NewHypervisorWithGuest() (*lochness.Hypervisor, *lochness.Guest) {
 	guest := s.NewGuest()
 	hypervisor := s.NewHypervisor()

@@ -43,9 +43,9 @@ func Start(cmdName string, args ...string) (*Cmd, error) {
 	return c, nil
 }
 
-// Stop kills a running command and waits until it exits. The error returned is
-// from the Kill call, not the error of the exiting command. For the latter,
-// call c.Err() after c.Stop().
+// Stop kills a running command and waits until it exits.
+// The error returned is from the Kill call, not the error of the exiting command.
+// For the latter, call c.Err() after c.Stop().
 func (c *Cmd) Stop() error {
 	if !c.Alive() {
 		return nil
@@ -70,9 +70,8 @@ func (c *Cmd) Alive() bool {
 	return c.t.Alive()
 }
 
-// ExitStatus returns the exit status code and error for a command. If the
-// command is still running or in the process of being shut down, the exit code
-// will be 0 and the returned error will be non-nil.
+// ExitStatus returns the exit status code and error for a command.
+// If the command is still running or in the process of being shut down, the exit code will be 0 and the returned error will be non-nil.
 func (c *Cmd) ExitStatus() (int, error) {
 	err := c.t.Err()
 	return ExitStatus(err), err
