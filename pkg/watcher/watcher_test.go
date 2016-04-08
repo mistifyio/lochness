@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/mistifyio/lochness/internal/tests/common"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"

@@ -23,7 +23,7 @@ import (
 	"github.com/justinas/alice"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/kv"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 	flag "github.com/ogier/pflag"
 )
 

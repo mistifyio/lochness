@@ -34,8 +34,8 @@ func (s *CmdSuite) SetupTest() {
 }
 
 func (s *CmdSuite) TestCmd() {
-	ttl := 2 * time.Second
-	interval := 1 * time.Second
+	ttl := 10 * time.Second
+	interval := 5 * time.Second
 	tests := []struct {
 		description string
 		id          string
@@ -82,13 +82,13 @@ func (s *CmdSuite) TestCmd() {
 			}
 
 			// this is unfortunate but necessary if we actually want to check contents
-			v, err := time.Parse("locked=true:2006-01-02 15:04:05.999999999 -0700 MST", string(resp.Data))
+			v, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", string(resp.Data))
 			if !s.NoError(err, msg("heartbeat lock value should be a go time string")) {
 				continue
 			}
 
 			start := start.Add(time.Duration(i) * test.interval)
-			s.Require().WithinDuration(start, v, 100*time.Millisecond, msg("heartbeat value should be time around when it was set"))
+			s.Require().WithinDuration(start, v, 250*time.Millisecond, msg("heartbeat value should be time around when it was set"))
 		}
 
 		// Stop the daemon

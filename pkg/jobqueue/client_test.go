@@ -7,7 +7,7 @@ import (
 	"github.com/kr/beanstalk"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/mistifyio/lochness/pkg/kv"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
