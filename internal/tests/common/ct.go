@@ -4,7 +4,6 @@ package common
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -13,12 +12,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/kv"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -50,29 +50,24 @@ func (s *Suite) SetupSuite() {
 	if s.KVPort == 0 {
 		s.KVPort = uint16(1 + rand.Uint32())
 	}
-	clientURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort)
-	peerURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort+1)
-	s.KVCmd = exec.Command("etcd",
-		"-name", s.TestPrefix,
+	s.KVCmd = exec.Command("consul",
+		"agent",
+		"-server",
+		"-bootstrap-expect", "1",
 		"-data-dir", s.KVDir,
-		"-initial-cluster-state", "new",
-		"-initial-cluster-token", s.TestPrefix,
-		"-initial-cluster", s.TestPrefix+"="+peerURL,
-		"-initial-advertise-peer-urls", peerURL,
-		"-listen-peer-urls", peerURL,
-		"-listen-client-urls", clientURL,
-		"-advertise-client-urls", clientURL,
+		"-bind", "127.0.0.1",
+		"-http-port", strconv.Itoa(int(s.KVPort)),
 	)
 	if testing.Verbose() {
 		s.KVCmd.Stdout = os.Stdout
 		s.KVCmd.Stderr = os.Stderr
 	}
 	s.Require().NoError(s.KVCmd.Start())
-	time.Sleep(500 * time.Millisecond) // Wait for test kv to be ready
+	time.Sleep(2500 * time.Millisecond) // Wait for test kv to be ready
 
 	var err error
 	for i := 0; i < 10; i++ {
-		s.KV, err = kv.New(clientURL)
+		s.KV, err = kv.New("http://127.0.0.1:" + strconv.Itoa(int(s.KVPort)))
 		if err == nil {
 			break
 		}
@@ -83,7 +78,7 @@ func (s *Suite) SetupSuite() {
 	}
 	s.Context = lochness.NewContext(s.KV)
 	s.KVPrefix = "lochness"
-	s.KVURL = clientURL
+	s.KVURL = "http://127.0.0.1:" + strconv.Itoa(int(s.KVPort))
 }
 
 // SetupTest prepares anything needed per test.

@@ -19,6 +19,8 @@ sleep .25
 if [[ -n $V_ETCD ]]; then
 	docker cp $(which etcd) $cid:/usr/bin/
 fi
+docker cp $(which consul) $cid:/usr/bin/
+
 docker exec $cid sh -c "cd /lochness/$dir; LOCHNESS_TEST_NO_BUILD=1 ./$name -test.v" >&2 || ret=$?;
 
 docker kill  $cid > /dev/null || :

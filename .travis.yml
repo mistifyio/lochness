@@ -19,6 +19,8 @@ before_install:
   - gometalinter --install --update
   - curl -L "https://github.com/coreos/etcd/releases/download/v$V_ETCD/etcd-v$V_ETCD-linux-amd64.tar.gz" | bsdtar -xf- -C/tmp
   - export PATH=/tmp/etcd-v$V_ETCD-linux-amd64:$PATH
+  - mkdir -p $HOME/bin
+  - curl -L "https://releases.hashicorp.com/consul/0.6.4/consul_0.6.4_linux_amd64.zip" | bsdtar -xf- -C$HOME/bin && chmod +x $HOME/bin/consul
 
 install:
   - go get -t -v ./...
