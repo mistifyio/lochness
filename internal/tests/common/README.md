@@ -108,7 +108,7 @@ handling of the response.
 ```go
 func (s *Suite) Messager(prefix string) func(...interface{}) string
 ```
-Messager generates a function for creating a string message with a prefix
+Messager generates a function for creating a string message with a prefix.
 
 #### func (*Suite) NewFWGroup
 
