@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"testing"
 	"time"
 
 	"github.com/mistifyio/lochness"
@@ -62,6 +63,10 @@ func (s *Suite) SetupSuite() {
 		"-listen-client-urls", clientURL,
 		"-advertise-client-urls", clientURL,
 	)
+	if testing.Verbose() {
+		s.KVCmd.Stdout = os.Stdout
+		s.KVCmd.Stderr = os.Stderr
+	}
 	s.Require().NoError(s.KVCmd.Start())
 	time.Sleep(500 * time.Millisecond) // Wait for test kv to be ready
 

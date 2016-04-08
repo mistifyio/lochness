@@ -2,9 +2,11 @@ package common
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"syscall"
+	"testing"
 
 	"gopkg.in/tomb.v2"
 )
@@ -20,8 +22,13 @@ type Cmd struct {
 func Start(cmdName string, args ...string) (*Cmd, error) {
 	cmd := exec.Command(cmdName, args...)
 	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	cmd.Stderr = out
+	if testing.Verbose() {
+		cmd.Stdout = io.MultiWriter(os.Stderr, out)
+		cmd.Stderr = io.MultiWriter(os.Stderr, out)
+	} else {
+		cmd.Stdout = out
+		cmd.Stderr = out
+	}
 
 	c := &Cmd{
 		Cmd: cmd,
