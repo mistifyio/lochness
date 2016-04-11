@@ -3,7 +3,6 @@ package etcd
 import (
 	"errors"
 	"net/url"
-	"strings"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -187,7 +186,6 @@ func (e *ekv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 type lock struct {
 	client *etcd.Client
 	key    string
-	value  string
 	ttl    time.Duration
 	index  uint64
 }
@@ -211,7 +209,7 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 	// lock users can json unmarshal the value without having to `Get`. I
 	// kind of like the accessors for locks though.
 
-	resp, err := e.e.Create(key, "locked=true:", uint64(ttl.Seconds()))
+	resp, err := e.e.Create(key, "locked=true", uint64(ttl.Seconds()))
 	if err == nil {
 		lock.index = resp.Node.ModifiedIndex
 		return lock, nil
@@ -226,17 +224,11 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 	}
 
 	value := string(v.Data)
-	if !(strings.HasPrefix(value, "locked=true:") || strings.HasPrefix(value, "locked=false:")) {
+	if value != "locked=true" || value != "locked=false" {
 		return nil, errors.New("key does not contain a valid Lock value")
 	}
 
-	data := strings.SplitN(value, ":", 2)
-	if len(data) != 2 {
-		return nil, errors.New("key does not contain a valid Lock value")
-	}
-	value = data[1]
-
-	resp, err = e.e.CompareAndSwap(key, "locked=true:"+value, uint64(ttl.Seconds()), "locked=false:"+value, v.Index)
+	resp, err = e.e.CompareAndSwap(key, "locked=true", uint64(ttl.Seconds()), "locked=false", v.Index)
 	if err != nil {
 		return nil, err
 	}
@@ -246,40 +238,23 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 }
 
 func (l *lock) Renew() error {
-	_, err := l.Get()
-	return err
-}
-
-func (l *lock) Get() ([]byte, error) {
-	resp, err := l.client.CompareAndSwap(l.key, "locked=true:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
-	if err != nil {
-		return nil, err
-	}
-
-	l.index = resp.Node.ModifiedIndex
-	return []byte(l.value), nil
-}
-
-func (l *lock) Set(value []byte) error {
-	v := string(value)
-	resp, err := l.client.CompareAndSwap(l.key, "locked=true:"+v, uint64(l.ttl.Seconds()), "", l.index)
+	resp, err := l.client.CompareAndSwap(l.key, "locked=true", uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
 		return err
 	}
 
-	l.value = v
 	l.index = resp.Node.ModifiedIndex
 	return nil
 }
 
 func (l *lock) Unlock() error {
-	_, err := l.Get()
+	err := l.Renew()
 	if err != nil {
 		// trying to unlock a lock we don't hold is a logic error
 		return err
 	}
 
-	_, err = l.client.CompareAndSwap(l.key, "locked=false:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
+	_, err = l.client.CompareAndSwap(l.key, "locked=false", uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
 		return err
 	}
