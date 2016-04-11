@@ -289,3 +289,36 @@ func (e ekv) Ping() error {
 	}
 	return nil
 }
+
+type eKey struct {
+	client *etcd.Client
+	key    string
+	value  string
+	ttl    uint64
+}
+
+func (e *ekv) EphemeralKey(key string, ttl time.Duration) (kv.EphemeralKey, error) {
+	return eKey{client: e.e, key: key, ttl: uint64(ttl.Seconds())}, nil
+}
+
+func (e eKey) Set(value string) error {
+	_, err := e.client.Set(e.key, value, e.ttl)
+	return err
+}
+
+func (e eKey) Renew() error {
+	if e.value == "" {
+		resp, err := e.client.Get(e.key, false, false)
+		if err != nil {
+			return err
+		}
+		e.value = resp.Node.Value
+	}
+	_, err := e.client.Set(e.key, e.value, e.ttl)
+	return err
+}
+
+func (e eKey) Destroy() error {
+	_, err := e.client.Delete(e.key, false)
+	return err
+}
