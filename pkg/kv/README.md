@@ -17,6 +17,20 @@ func Register(name string, fn func(string) (KV, error))
 Register is called by KV implementors to register their scheme to be used with
 New
 
+#### type EphemeralKey
+
+```go
+type EphemeralKey interface {
+	// Set will first renew the tll then set the value of key, it is an error if the ttl has expired since last renewal
+	Set(value string) error
+	// Renew renews the key tll
+	Renew() error
+	// Destroy will delete the key without having to wait for expiration via TTL
+	Destroy() error
+}
+```
+
+
 #### type Event
 
 ```go
@@ -72,6 +86,9 @@ type KV interface {
 	// Watch returns channels for watching prefixes.
 	// stop *must* always be closed by callers
 	Watch(string, uint64, chan struct{}) (chan Event, chan error, error)
+
+	// EphemeralKey creates a key that will be deleted if the ttl expires
+	EphemeralKey(string, time.Duration) (EphemeralKey, error)
 
 	// Lock creates a new lock, it blocks until the lock is acquired.
 	Lock(string, time.Duration) (Lock, error)
