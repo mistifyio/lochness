@@ -14,23 +14,24 @@ matrix:
     - go: tip
 
 before_install:
+  - sudo apt-get install realpath bsdtar
   - go get github.com/alecthomas/gometalinter
   - gometalinter --install --update
-  - curl -L https://github.com/coreos/etcd/releases/download/v$V_ETCD/etcd-v$V_ETCD-linux-amd64.tar.gz | tar vxz -C /tmp
+  - curl -L "https://github.com/coreos/etcd/releases/download/v$V_ETCD/etcd-v$V_ETCD-linux-amd64.tar.gz" | bsdtar -xf- -C/tmp
   - export PATH=/tmp/etcd-v$V_ETCD-linux-amd64:$PATH
 
 install:
-  - sudo apt-get install realpath
   - go get -t -v ./...
+  - docker pull mistifyio/mistify-os:latest
 
 script:
-  - make test
+  - make -j$(($(nproc) + 1)) test
 
 after_success:
   # This first gometalinter call is meant to be required but there are a few linter errors that we dont want to hit.
   # This will later be brought up to the `script` section, once there is a way to pass gometalinter exclude patterns from a file.
-  - gometalinter --disable-all --enable={errcheck,gofmt,goimports,golint,vet,vetshadow} --deadline=30s ./...
-  - gometalinter --disable={errcheck,gofmt,golint,vet,vetshadow} --deadline=30s ./...
+  - gometalinter --disable-all --enable={errcheck,gofmt,goimports,golint,vet,vetshadow} --deadline=30s --concurrency=$(($(nproc) + 1)) ./...
+  - gometalinter --disable={errcheck,gofmt,golint,vet,vetshadow} --deadline=30s --concurrency=$(($(nproc) + 1)) ./...
 
 notifications:
   email: false
