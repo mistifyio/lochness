@@ -245,6 +245,11 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 	return lock, nil
 }
 
+func (l *lock) Renew() error {
+	_, err := l.Get()
+	return err
+}
+
 func (l *lock) Get() ([]byte, error) {
 	resp, err := l.client.CompareAndSwap(l.key, "locked=true:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
