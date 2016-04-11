@@ -115,6 +115,8 @@ exact implementation to instantiate.
 
 ```go
 type Lock interface {
+	// Renew renews the lock, it should be called before attempting any operation on whatever is being protected
+	Renew() error
 	// Get refreshes the lock and returns the currently stored data
 	Get() ([]byte, error)
 	// Set refreshes the lock and updated the data stored

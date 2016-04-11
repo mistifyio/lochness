@@ -113,6 +113,8 @@ func New(addr string) (KV, error) {
 // Lock represents a locked key in the distributed key value store.
 // The value stored in key is managed by lock and may contain private implementation data and should not be fetched out-of-band
 type Lock interface {
+	// Renew renews the lock, it should be called before attempting any operation on whatever is being protected
+	Renew() error
 	// Get refreshes the lock and returns the currently stored data
 	Get() ([]byte, error)
 	// Set refreshes the lock and updated the data stored
