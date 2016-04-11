@@ -117,10 +117,6 @@ exact implementation to instantiate.
 type Lock interface {
 	// Renew renews the lock, it should be called before attempting any operation on whatever is being protected
 	Renew() error
-	// Get refreshes the lock and returns the currently stored data
-	Get() ([]byte, error)
-	// Set refreshes the lock and updated the data stored
-	Set([]byte) error
 	// Unlock unlocks and invalidates the lock
 	Unlock() error
 }
