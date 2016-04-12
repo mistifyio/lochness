@@ -223,8 +223,9 @@ func (s *GuestSuite) TestCandidateIsAlive() {
 		s.NewHypervisor(),
 		s.NewHypervisor(),
 	}
-	_, _ = lochness.SetHypervisorID(hypervisors[1].ID)
-	_ = hypervisors[1].Heartbeat(60 * time.Second)
+	_, err := lochness.SetHypervisorID(hypervisors[1].ID)
+	s.Require().NoError(err)
+	s.Require().NoError(hypervisors[1].Heartbeat(60 * time.Second))
 
 	candidates, err := lochness.CandidateIsAlive(guest, hypervisors)
 	s.NoError(err)

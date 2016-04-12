@@ -93,7 +93,7 @@ func (s *Suite) SetupTest() {
 // TearDownTest cleans the kv instance.
 func (s *Suite) TearDownTest() {
 	// Clean out kv
-	_ = s.KV.Delete(s.KVPrefix, true)
+	s.Require().NoError(s.KV.Delete(s.KVPrefix, true))
 }
 
 // TearDownSuite stops the kv instance and removes all data.
