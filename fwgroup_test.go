@@ -120,7 +120,6 @@ func (s *FWGroupSuite) TestSave() {
 }
 
 func (s *FWGroupSuite) TestJSON() {
-
 	fwgroup := s.Context.NewFWGroup()
 	_, n, _ := net.ParseCIDR("192.168.100.1/16")
 	fwrule := &lochness.FWRule{
