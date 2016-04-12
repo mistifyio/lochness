@@ -182,11 +182,11 @@ func (e *ekv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 }
 
 type lock struct {
-	ekv   *ekv
-	key   string
-	value string
-	ttl   time.Duration
-	index uint64
+	client *etcd.Client
+	key    string
+	value  string
+	ttl    time.Duration
+	index  uint64
 }
 
 func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
@@ -194,7 +194,7 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 		return nil, errors.New("missing key")
 	}
 
-	lock := &lock{ekv: e, key: key, ttl: ttl}
+	lock := &lock{client: e.e, key: key, ttl: ttl}
 
 	// Since etcd doesn't really support a lock we need a way discover if a key/lock is held.
 	// The safest way to do that is to save something in the kv store with the data, atomically.
@@ -243,7 +243,7 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 }
 
 func (l *lock) Get() ([]byte, error) {
-	resp, err := l.ekv.e.CompareAndSwap(l.key, "locked=true:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
+	resp, err := l.client.CompareAndSwap(l.key, "locked=true:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ func (l *lock) Get() ([]byte, error) {
 
 func (l *lock) Set(value []byte) error {
 	v := string(value)
-	resp, err := l.ekv.e.CompareAndSwap(l.key, "locked=true:"+v, uint64(l.ttl.Seconds()), "", l.index)
+	resp, err := l.client.CompareAndSwap(l.key, "locked=true:"+v, uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func (l *lock) Unlock() error {
 		return err
 	}
 
-	_, err = l.ekv.e.CompareAndSwap(l.key, "locked=false:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
+	_, err = l.client.CompareAndSwap(l.key, "locked=false:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
 		return err
 	}
