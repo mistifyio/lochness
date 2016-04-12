@@ -194,6 +194,8 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 		return nil, errors.New("missing key")
 	}
 
+	lock := &lock{ekv: e, key: key, ttl: ttl}
+
 	// Since etcd doesn't really support a lock we need a way discover if a key/lock is held.
 	// The safest way to do that is to save something in the kv store with the data, atomically.
 	// *cough* something something transactions something *cough*
@@ -208,14 +210,9 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 
 	resp, err := e.e.Create(key, "locked=true:", uint64(ttl.Seconds()))
 	if err == nil {
-		return &lock{
-			ekv:   e,
-			key:   key,
-			value: "",
-			ttl:   ttl,
-			index: resp.Node.ModifiedIndex,
-		}, nil
-	} else if e.isKeyExists(err) == false {
+		lock.index = resp.Node.ModifiedIndex
+		return lock, nil
+	} else if !e.isKeyExists(err) {
 		return nil, err
 	}
 
@@ -241,14 +238,8 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 		return nil, err
 	}
 
-	return &lock{
-		ekv:   e,
-		key:   key,
-		value: value,
-		ttl:   ttl,
-		index: resp.Node.ModifiedIndex,
-	}, nil
-
+	lock.index = resp.Node.ModifiedIndex
+	return lock, nil
 }
 
 func (l *lock) Get() ([]byte, error) {
