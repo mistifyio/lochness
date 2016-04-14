@@ -108,6 +108,6 @@ func Build() error {
 	if os.Getenv("LOCHNESS_TEST_NO_BUILD") != "" {
 		return nil
 	}
-	_, err := ExecSync("go", "build")
+	_, err := ExecSync("go", "build", "-i")
 	return err
 }

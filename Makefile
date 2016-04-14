@@ -33,7 +33,7 @@ all: $(BINS)
 
 $(BINS):
 	echo BUILD $@
-	cd $(dir $<) && go build
+	cd $(dir $<) && go build -i
 
 pkgs := $(call rwildcard,pkg,*.go)
 
@@ -99,7 +99,7 @@ FORCE:
 .SECONDARY: $(tests)
 %.test:
 	echo BUILD $@
-	cd $(dir $@) && flock -s /dev/stdout go test -c
+	cd $(dir $@) && flock -s /dev/stdout go test -c -i
 
 .PHONY: lochness
 lochness.test:
