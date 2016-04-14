@@ -4,6 +4,7 @@ package common
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -27,6 +28,55 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+// ConsulMaker will create an exec.Cmd to run consul with the given paramaters
+func ConsulMaker(port uint16, dir, prefix string) *exec.Cmd {
+	b, err := json.Marshal(map[string]interface{}{
+		"ports": map[string]interface{}{
+			"dns":      port + 1,
+			"http":     port + 2,
+			"rpc":      port + 3,
+			"serf_lan": port + 4,
+			"serf_wan": port + 5,
+			"server":   port + 6,
+		},
+		"session_ttl_min": "1s",
+	})
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile(dir+"/config.json", b, 0444)
+	if err != nil {
+		panic(err)
+	}
+
+	return exec.Command("consul",
+		"agent",
+		"-server",
+		"-bootstrap-expect", "1",
+		"-config-file", dir+"/config.json",
+		"-data-dir", dir,
+		"-bind", "127.0.0.1",
+		"-http-port", strconv.Itoa(int(port)),
+	)
+}
+
+// EtcdMaker will create an exec.Cmd to run etcd with the given paramaters
+func EtcdMaker(port uint16, dir, prefix string) *exec.Cmd {
+	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
+	return exec.Command("etcd",
+		"-name", prefix,
+		"-data-dir", dir,
+		"-initial-cluster-state", "new",
+		"-initial-cluster-token", prefix,
+		"-initial-cluster", prefix+"="+peerURL,
+		"-initial-advertise-peer-urls", peerURL,
+		"-listen-peer-urls", peerURL,
+		"-listen-client-urls", clientURL,
+		"-advertise-client-urls", clientURL,
+	)
+}
+
 // Suite sets up a general test suite with setup/teardown.
 type Suite struct {
 	suite.Suite
@@ -36,28 +86,28 @@ type Suite struct {
 	KVURL      string
 	KV         kv.KV
 	KVCmd      *exec.Cmd
+	KVCmdMaker func(uint16, string, string) *exec.Cmd
 	TestPrefix string
 	Context    *lochness.Context
 }
 
 // SetupSuite runs a new kv instance.
 func (s *Suite) SetupSuite() {
-	// Start up a test kv
 	if s.TestPrefix == "" {
 		s.TestPrefix = "lochness-test"
 	}
+
 	s.KVDir, _ = ioutil.TempDir("", s.TestPrefix+"-"+uuid.New())
+
 	if s.KVPort == 0 {
-		s.KVPort = uint16(1 + rand.Uint32())
+		s.KVPort = uint16(1024 + rand.Intn(65535-1024))
 	}
-	s.KVCmd = exec.Command("consul",
-		"agent",
-		"-server",
-		"-bootstrap-expect", "1",
-		"-data-dir", s.KVDir,
-		"-bind", "127.0.0.1",
-		"-http-port", strconv.Itoa(int(s.KVPort)),
-	)
+
+	if s.KVCmdMaker == nil {
+		s.KVCmdMaker = ConsulMaker
+	}
+	s.KVCmd = s.KVCmdMaker(s.KVPort, s.KVDir, s.TestPrefix)
+
 	if testing.Verbose() {
 		s.KVCmd.Stdout = os.Stdout
 		s.KVCmd.Stderr = os.Stderr
@@ -76,6 +126,7 @@ func (s *Suite) SetupSuite() {
 	if s.KV == nil {
 		panic(err)
 	}
+
 	s.Context = lochness.NewContext(s.KV)
 	s.KVPrefix = "lochness"
 	s.KVURL = "http://127.0.0.1:" + strconv.Itoa(int(s.KVPort))
@@ -87,7 +138,6 @@ func (s *Suite) SetupTest() {
 
 // TearDownTest cleans the kv instance.
 func (s *Suite) TearDownTest() {
-	// Clean out kv
 	s.Require().NoError(s.KV.Delete(s.KVPrefix, true))
 }
 
