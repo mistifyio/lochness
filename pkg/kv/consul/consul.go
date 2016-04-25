@@ -200,7 +200,7 @@ func (c *ckv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 		for key, index := range saved {
 			events <- kv.Event{
 				Key:  key,
-				Type: kv.Update,
+				Type: kv.Delete,
 				Value: kv.Value{
 					Index: index,
 				},
