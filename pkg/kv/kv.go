@@ -20,6 +20,8 @@ type Value struct {
 // EventType is used to describe actions on watch events
 type EventType int
 
+//go:generate stringer -type=EventType
+
 const (
 	// None indicates no event, should induce a panic if ever seen
 	None EventType = iota
