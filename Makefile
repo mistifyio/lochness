@@ -102,12 +102,13 @@ lochness.test:
 .PHONY: internal/tests/common internal/tests/common.test
 internal/tests/common internal/tests/common.test:
 
-.PHONY: internal/cli/cli pkg/deferer/deferer pkg/jobqueue/jobqueue pkg/sd/sd pkg/watcher/watcher
+.PHONY: internal/cli/cli pkg/deferer/deferer pkg/kv/kv pkg/jobqueue/jobqueue pkg/sd/sd pkg/watcher/watcher
 internal/cli/cli.test: $(wildcard internal/cli/*.go)
 pkg/deferer/deferer.test pkg/deferer/deferer.test: $(wildcard pkg/deferer/*.go)
 pkg/jobqueue/jobqueue.test: $(wildcard pkg/jobqueue/*.go)
 pkg/sd/sd.test: $(wildcard pkg/sd/*.go)
 pkg/watcher/watcher.test: $(wildcard pkg/watcher/*.go)
+pkg/kv/kv.test: $(call rwildcard,pkg/kv,*.go)
 
 clean:
 	for d in $(dir $(CMDS)); do (cd $$d && go clean); done
