@@ -2,7 +2,10 @@ language: go
 dist: trusty
 
 env:
-  - V_ETCD: 2.1.1
+  global:
+    - VCONSUL=0.6.4
+    - VETCD=2.1.1
+    - KV=consul
 
 go:
   - 1.5
@@ -17,10 +20,9 @@ before_install:
   - sudo apt-get install realpath bsdtar
   - go get github.com/alecthomas/gometalinter
   - gometalinter --install --update
-  - curl -L "https://github.com/coreos/etcd/releases/download/v$V_ETCD/etcd-v$V_ETCD-linux-amd64.tar.gz" | bsdtar -xf- -C/tmp
-  - export PATH=/tmp/etcd-v$V_ETCD-linux-amd64:$PATH
   - mkdir -p $HOME/bin
-  - curl -L "https://releases.hashicorp.com/consul/0.6.4/consul_0.6.4_linux_amd64.zip" | bsdtar -xf- -C$HOME/bin && chmod +x $HOME/bin/consul
+  - curl -L "https://releases.hashicorp.com/consul/$VCONSUL/consul_${VCONSUL}_linux_amd64.zip" | bsdtar -xf- -C$HOME/bin && chmod +x $HOME/bin/consul
+  - curl -L "https://github.com/coreos/etcd/releases/download/v$VETCD/etcd-v$VETCD-linux-amd64.tar.gz" | bsdtar -xf- -C$HOME/bin --strip-components=1 etcd-v$VETCD-linux-amd64/etcd
 
 install:
   - go get -t -v ./...

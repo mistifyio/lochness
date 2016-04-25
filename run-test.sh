@@ -16,12 +16,10 @@ cid=$(docker run -dti -v "$PWD:/lochness:ro" -v /sys/fs/cgroup:/sys/fs/cgroup:ro
 [[ -n $cid ]]
 sleep .25
 
-if [[ -n $V_ETCD ]]; then
-	docker cp $(which etcd) $cid:/usr/bin/
-fi
 docker cp $(which consul) $cid:/usr/bin/
+docker cp $(which etcd) $cid:/usr/bin/
 
-docker exec $cid sh -c "cd /lochness/$dir; LOCHNESS_TEST_NO_BUILD=1 ./$name -test.v" >&2 || ret=$?;
+docker exec $cid sh -c "cd /lochness/$dir; LOCHNESS_TEST_NO_BUILD=1 KV=${KV:-consul} ./$name -test.v" >&2 || ret=$?;
 
 docker kill  $cid > /dev/null || :
 docker rm -v $cid > /dev/null || :
