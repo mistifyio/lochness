@@ -20,6 +20,8 @@ type Value struct {
 // EventType is used to describe actions on watch events
 type EventType int
 
+//go:generate sh -c "stringer -type=EventType && sed -i 's#_EventType_name#eventTypeName#g;s#_EventType_index#eventTypeIndex#g' eventtype_string.go"
+
 const (
 	// None indicates no event, should induce a panic if ever seen
 	None EventType = iota
