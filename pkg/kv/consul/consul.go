@@ -271,7 +271,7 @@ func (c *ckv) EphemeralKey(key string, ttl time.Duration) (kv.EphemeralKey, erro
 		return nil, err
 	}
 
-	l := &ekey{kv: c, lock: lock{sessions: c.client.Session(), session: session, key: key}}
+	l := &ekey{kv: c, lock: lock{kv: c.c, sessions: c.client.Session(), session: session, key: key}}
 	return l, err
 }
 
