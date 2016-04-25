@@ -151,7 +151,7 @@ func (c *ckv) IsKeyNotFound(err error) bool {
 	return err == err404
 }
 
-func (c *ckv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Event, chan error, error) {
+func (c *ckv) Watch(prefix string, lastIndex uint64, stop chan struct{}) (chan kv.Event, chan error, error) {
 	wp, err := watch.Parse(map[string]interface{}{
 		"type":   "keyprefix",
 		"prefix": prefix,
@@ -168,6 +168,12 @@ func (c *ckv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 		newState := map[string]uint64{}
 		for _, kvp := range data.(consul.KVPairs) {
 			newState[kvp.Key] = kvp.ModifyIndex
+
+			// from before time we care about, so not an Event
+			if kvp.ModifyIndex <= lastIndex {
+				delete(lastState, kvp.Key)
+				continue
+			}
 
 			event := kv.Event{
 				Key:  kvp.Key,
@@ -199,6 +205,7 @@ func (c *ckv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 		}
 
 		lastState = newState
+		lastIndex = newIndex
 	}
 
 	go func() {
