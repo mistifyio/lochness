@@ -3,6 +3,7 @@ package consul
 import (
 	"errors"
 	"net/url"
+	"strings"
 	"time"
 
 	consul "github.com/hashicorp/consul/api"
@@ -53,6 +54,9 @@ func New(addr string) (kv.KV, error) {
 func (c *ckv) Delete(key string, recurse bool) error {
 	var err error
 	if recurse {
+		if !strings.HasSuffix(key, "/") {
+			key += "/"
+		}
 		_, err = c.c.DeleteTree(key, nil)
 	} else {
 		_, err = c.c.Delete(key, nil)
@@ -84,6 +88,9 @@ func (c *ckv) GetAll(prefix string) (map[string]kv.Value, error) {
 }
 
 func (c *ckv) Keys(key string) ([]string, error) {
+	if !strings.HasSuffix(key, "/") {
+		key += "/"
+	}
 	keys, _, err := c.c.Keys(key, "/", nil)
 	return keys, err
 }
