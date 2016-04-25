@@ -163,41 +163,32 @@ func (c *ckv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 	events := make(chan kv.Event)
 	errs := make(chan error)
 
-	saved := map[string]uint64{}
-	wp.Handler = func(index uint64, data interface{}) {
-		new := map[string]uint64{}
-
+	lastState := map[string]uint64{}
+	wp.Handler = func(newIndex uint64, data interface{}) {
+		newState := map[string]uint64{}
 		for _, kvp := range data.(consul.KVPairs) {
-			new[kvp.Key] = kvp.ModifyIndex
+			newState[kvp.Key] = kvp.ModifyIndex
 
 			event := kv.Event{
-				Key: kvp.Key,
+				Key:  kvp.Key,
+				Type: kv.Update,
 				Value: kv.Value{
 					Data:  kvp.Value,
 					Index: kvp.ModifyIndex,
 				},
 			}
 
-			old, ok := saved[kvp.Key]
-			switch {
-			case !ok:
-				// doesn't exist in saved so must be created
+			if _, ok := lastState[kvp.Key]; !ok {
 				event.Type = kv.Create
-			case old != kvp.ModifyIndex:
-				// mod indexes differ so must be changed
-				event.Type = kv.Update
+			} else {
+				delete(lastState, kvp.Key)
 			}
 			events <- event
-
-			// saved[kvp.Key] won't exist for "create" events, but
-			// overhead is probably negligible and ignoring it makes
-			// the code easier to read
-			delete(saved, kvp.Key)
 		}
 
-		// anything left over in "saved" has not been found in "new"
-		// so it must have been deleted
-		for key, index := range saved {
+		// anything left over in lastState has not been found in
+		// newState so it must have been deleted
+		for key, index := range lastState {
 			events <- kv.Event{
 				Key:  key,
 				Type: kv.Delete,
@@ -207,7 +198,7 @@ func (c *ckv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 			}
 		}
 
-		saved = new
+		lastState = newState
 	}
 
 	go func() {
