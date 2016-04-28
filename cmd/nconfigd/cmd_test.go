@@ -106,7 +106,7 @@ func (s *CmdSuite) TestCmd() {
 	}
 
 	tests := []testCase{
-		{"unwatched", "/foobar", "true", 1, []string{}},
+		{"unwatched", "foobar", "true", 1, []string{}},
 	}
 	for key, roles := range s.Config {
 		tests = append(tests, testCase{filepath.Base(key), key, "true", 2, roles})
@@ -122,10 +122,13 @@ func (s *CmdSuite) TestCmd() {
 			continue
 		}
 
+		time.Sleep(500 * time.Millisecond)
+
 		err = s.KV.Set(test.key, test.value)
 		s.NoError(err)
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
+
 		s.NoError(cmd.Stop())
 		status, _ := cmd.ExitStatus()
 		s.Equal(-1, status, msg("expected status code to be that of a killed process"))

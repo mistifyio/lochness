@@ -17,7 +17,7 @@ import (
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/jobqueue"
 	"github.com/mistifyio/lochness/pkg/kv"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 	logx "github.com/mistifyio/mistify-logrus-ext"
 	flag "github.com/ogier/pflag"
 )

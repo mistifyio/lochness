@@ -124,11 +124,11 @@ func (s *VLANSuite) TestDestroy() {
 	invalidV.Tag = 0
 
 	tests := []struct {
-		description string
-		v           *lochness.VLAN
-		expectedErr bool
+		description  string
+		v            *lochness.VLAN
+		expectChange bool
 	}{
-		{"invalid vlan", invalidV, true},
+		{"invalid vlan", invalidV, false},
 		{"existing vlan", vlan, false},
 		{"nonexistant vlan", s.Context.NewVLAN(), true},
 	}
@@ -136,13 +136,13 @@ func (s *VLANSuite) TestDestroy() {
 	for _, test := range tests {
 		msg := s.Messager(test.description)
 		err := test.v.Destroy()
-		if test.expectedErr {
-			s.Error(err, msg("should be invalid"))
-		} else {
-			s.NoError(err, msg("should be valid"))
-			_ = vlangroup.Refresh()
-			s.Len(vlangroup.VLANs(), 0, msg("should remove vlan link"))
+
+		s.NoError(err, msg("should not error"))
+		if !test.expectChange {
+			continue
 		}
+		_ = vlangroup.Refresh()
+		s.Len(vlangroup.VLANs(), 0, msg("should remove vlan link"))
 	}
 }
 

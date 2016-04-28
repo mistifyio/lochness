@@ -14,7 +14,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	ln "github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/kv"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 	"github.com/mistifyio/lochness/pkg/watcher"
 	flag "github.com/ogier/pflag"
 )

@@ -11,7 +11,7 @@ import (
 
 var (
 	// FlavorPath is the path in the config store
-	FlavorPath = "/lochness/flavors/"
+	FlavorPath = "lochness/flavors/"
 )
 
 type (

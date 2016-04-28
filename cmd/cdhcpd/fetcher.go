@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/kv"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 )
 
 type (
@@ -32,7 +32,7 @@ type (
 	}
 )
 
-var matchKeys = regexp.MustCompile(`^/lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
+var matchKeys = regexp.MustCompile(`^lochness/(hypervisors|subnets|guests)/([0-9a-f\-]+)(/([^/]+))?(/.*)?`)
 
 // NewFetcher creates a new fetcher
 func NewFetcher(kvAddress string) *Fetcher {

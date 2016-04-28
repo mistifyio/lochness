@@ -13,7 +13,7 @@ import (
 
 var (
 	// VLANGroupPath is the path in the config store for VLAN groups
-	VLANGroupPath = "/lochness/vlangroups/"
+	VLANGroupPath = "lochness/vlangroups/"
 )
 
 type (
@@ -206,7 +206,10 @@ func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 		return err
 	}
 
-	// TODO check if len == 0
+	if len(vg.vlans) == 0 {
+		return nil
+	}
+
 	newVLANs := make([]int, 0, len(vg.vlans)-1)
 	for _, vlanTag := range vg.vlans {
 		if vlanTag != vlan.Tag {
@@ -220,6 +223,9 @@ func (vg *VLANGroup) RemoveVLAN(vlan *VLAN) error {
 		return err
 	}
 
+	if len(vlan.vlanGroups) == 0 {
+		return nil
+	}
 	newVLANGroups := make([]string, 0, len(vlan.vlanGroups)-1)
 	for _, vlanGroup := range vlan.vlanGroups {
 		if vlanGroup != vg.ID {

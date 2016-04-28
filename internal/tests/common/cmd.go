@@ -2,9 +2,11 @@ package common
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"syscall"
+	"testing"
 
 	"gopkg.in/tomb.v2"
 )
@@ -20,8 +22,13 @@ type Cmd struct {
 func Start(cmdName string, args ...string) (*Cmd, error) {
 	cmd := exec.Command(cmdName, args...)
 	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	cmd.Stderr = out
+	if testing.Verbose() {
+		cmd.Stdout = io.MultiWriter(os.Stderr, out)
+		cmd.Stderr = io.MultiWriter(os.Stderr, out)
+	} else {
+		cmd.Stdout = out
+		cmd.Stderr = out
+	}
 
 	c := &Cmd{
 		Cmd: cmd,
@@ -36,9 +43,9 @@ func Start(cmdName string, args ...string) (*Cmd, error) {
 	return c, nil
 }
 
-// Stop kills a running command and waits until it exits. The error returned is
-// from the Kill call, not the error of the exiting command. For the latter,
-// call c.Err() after c.Stop().
+// Stop kills a running command and waits until it exits.
+// The error returned is from the Kill call, not the error of the exiting command.
+// For the latter, call c.Err() after c.Stop().
 func (c *Cmd) Stop() error {
 	if !c.Alive() {
 		return nil
@@ -63,9 +70,8 @@ func (c *Cmd) Alive() bool {
 	return c.t.Alive()
 }
 
-// ExitStatus returns the exit status code and error for a command. If the
-// command is still running or in the process of being shut down, the exit code
-// will be 0 and the returned error will be non-nil.
+// ExitStatus returns the exit status code and error for a command.
+// If the command is still running or in the process of being shut down, the exit code will be 0 and the returned error will be non-nil.
 func (c *Cmd) ExitStatus() (int, error) {
 	err := c.t.Err()
 	return ExitStatus(err), err
@@ -108,6 +114,6 @@ func Build() error {
 	if os.Getenv("LOCHNESS_TEST_NO_BUILD") != "" {
 		return nil
 	}
-	_, err := ExecSync("go", "build")
+	_, err := ExecSync("go", "build", "-i")
 	return err
 }

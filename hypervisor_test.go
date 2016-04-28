@@ -260,26 +260,19 @@ func (s *HypervisorSuite) TestRemoveSubnet() {
 		description string
 		h           *lochness.Hypervisor
 		s           *lochness.Subnet
-		expectedErr bool
+		len         int
 	}{
-		{"nonexisting hypervisor, nonexisting subnet", s.Context.NewHypervisor(), s.Context.NewSubnet(), true},
-		{"existing hypervisor, nonexisting subnet", hypervisor, s.Context.NewSubnet(), true},
-		{"nonexisting hypervisor, existing subnet", s.Context.NewHypervisor(), subnet, true},
-		{"existing hypervisor and subnet", hypervisor, subnet, false},
+		{"nonexisting hypervisor, nonexisting subnet", s.Context.NewHypervisor(), s.Context.NewSubnet(), 0},
+		{"existing hypervisor, nonexisting subnet", hypervisor, s.Context.NewSubnet(), 1},
+		{"nonexisting hypervisor, existing subnet", s.Context.NewHypervisor(), subnet, 0},
+		{"existing hypervisor and subnet", hypervisor, subnet, 0},
 	}
 
 	for _, test := range tests {
 		msg := s.Messager(test.description)
-		hLen := len(test.h.Subnets())
 
-		err := test.h.RemoveSubnet(test.s)
-		if test.expectedErr {
-			s.Error(err, msg("should fail"))
-			s.Len(test.h.Subnets(), hLen, msg("fail should not add subnet to hypervisor"))
-		} else {
-			s.NoError(err, msg("should succeed"))
-			s.Len(test.h.Subnets(), hLen-1, msg("fail should add subnet to hypervisor"))
-		}
+		s.NoError(test.h.RemoveSubnet(test.s))
+		s.Len(test.h.Subnets(), test.len, msg("subnet mismatch: exp: %d got: %d", test.len, len(test.h.Subnets())))
 	}
 }
 

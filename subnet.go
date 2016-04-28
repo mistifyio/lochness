@@ -16,7 +16,7 @@ import (
 
 var (
 	// SubnetPath is the key prefix for subnets
-	SubnetPath = "/lochness/subnets/"
+	SubnetPath = "lochness/subnets/"
 )
 
 type (
@@ -321,9 +321,9 @@ func (s *Subnet) ReserveAddress(id string) (net.IP, error) {
 	return chosen, nil
 }
 
-// ReleaseAddress releases an address. This does not change any thing that may also be referring to this address.
+// ReleaseAddress releases an address.
+// This does not change any thing that may also be referring to this address.
 func (s *Subnet) ReleaseAddress(ip net.IP) error {
-
 	if err := s.context.kv.Delete(s.addressKey(ip.String()), false); err != nil {
 		return err
 	}

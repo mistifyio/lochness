@@ -161,7 +161,7 @@ func (s *APISuite) TestVLANGroupDestroy() {
 }
 
 func (s *APISuite) TestGetGroupsForVLAN() {
-	_ = s.VLANGroup.AddVLAN(s.VLAN)
+	s.Require().NoError(s.VLANGroup.AddVLAN(s.VLAN))
 
 	var vlanGroups []string
 	s.DoRequest("GET", fmt.Sprintf("%s/tags/%d/groups", s.APIURL, s.VLAN.Tag), http.StatusOK, nil, &vlanGroups)

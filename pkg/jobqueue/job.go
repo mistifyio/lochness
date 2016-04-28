@@ -12,7 +12,7 @@ import (
 
 var (
 	// JobPath is the path in the config store
-	JobPath = "/lochness/jobs/"
+	JobPath = "lochness/jobs/"
 )
 
 // Job Status
@@ -88,14 +88,18 @@ func (j *Job) Save(ttl time.Duration) error {
 	}
 
 	if j.lock == nil {
-		lock, err := j.client.kv.Lock(j.key(), ttl)
+		lock, err := j.client.kv.Lock(j.key()+".lock", ttl)
 		if err != nil {
 			return err
 		}
 		j.lock = lock
 	}
 
-	return j.lock.Set(v)
+	err = j.lock.Renew()
+	if err != nil {
+		return err
+	}
+	return j.client.kv.Set(j.key(), string(v))
 }
 
 // Release releases control of the Job so that another component may use it.
@@ -111,19 +115,24 @@ func (j *Job) Release() error {
 // Refresh reloads a Job from the data store.
 func (j *Job) Refresh() error {
 	if j.lock == nil {
-		lock, err := j.client.kv.Lock(j.key(), jobTTL)
+		lock, err := j.client.kv.Lock(j.key()+".lock", jobTTL)
 		if err != nil {
 			return err
 		}
 		j.lock = lock
 	}
 
-	data, err := j.lock.Get()
+	err := j.lock.Renew()
 	if err != nil {
 		return err
 	}
 
-	return json.Unmarshal(data, &j)
+	v, err := j.client.kv.Get(j.key())
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(v.Data, &j)
 }
 
 // Job retrieves a single job from the data store.

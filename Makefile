@@ -30,10 +30,11 @@ BINS := $(join $(addprefix cmd/,$(CMDS)) ,$(addprefix /,$(CMDS)))
 all: $(BINS)
 
 .SILENT:
+.SUFFIXES:
 
 $(BINS):
 	echo BUILD $@
-	cd $(dir $<) && go build
+	cd $(dir $<) && go build -i
 
 pkgs := $(call rwildcard,pkg,*.go)
 
@@ -81,25 +82,17 @@ FORCE:
 
 .PHONY: %.test.run.out
 %.test.run.out: %.test.run FORCE
-	flock /dev/stdout -c 'cat $@'
 
 .PHONY: %.test.run
 %.test.run: %.test %
 	flock /dev/stdout -c 'echo "RUN   $<"'
-	cid=$(shell docker run -dti -v "$(CURDIR):/lochness:ro" -v /sys/fs/cgroup:/sys/fs/cgroup:ro --name $(notdir $<) mistifyio/mistify-os) && \
-	test -n $(cid) && \
-	sleep .25 && \
-	docker exec $$cid sh -c "cd /lochness; cd $(@D); LOCHNESS_TEST_NO_BUILD=1 ./$(notdir $<) -test.v" &> $@.out; \
-	ret=$$?; \
-	docker kill $$cid  &>/dev/null && \
-	docker rm -v $$cid &>/dev/null && \
-	flock /dev/stdout -c 'echo "+++ $< +++"; cat $@.out'; \
-	exit $$ret
+	./run-test.sh $<
+	touch $@
 
 .SECONDARY: $(tests)
 %.test:
 	echo BUILD $@
-	cd $(dir $@) && flock -s /dev/stdout go test -c
+	cd $(dir $@) && flock -s /dev/stdout go test -c -i
 
 .PHONY: lochness
 lochness.test:
@@ -109,12 +102,13 @@ lochness.test:
 .PHONY: internal/tests/common internal/tests/common.test
 internal/tests/common internal/tests/common.test:
 
-.PHONY: internal/cli/cli pkg/deferer/deferer pkg/jobqueue/jobqueue pkg/sd/sd pkg/watcher/watcher
+.PHONY: internal/cli/cli pkg/deferer/deferer pkg/kv/kv pkg/jobqueue/jobqueue pkg/sd/sd pkg/watcher/watcher
 internal/cli/cli.test: $(wildcard internal/cli/*.go)
 pkg/deferer/deferer.test pkg/deferer/deferer.test: $(wildcard pkg/deferer/*.go)
 pkg/jobqueue/jobqueue.test: $(wildcard pkg/jobqueue/*.go)
 pkg/sd/sd.test: $(wildcard pkg/sd/*.go)
 pkg/watcher/watcher.test: $(wildcard pkg/watcher/*.go)
+pkg/kv/kv.test: $(call rwildcard,pkg/kv,*.go)
 
 clean:
 	for d in $(dir $(CMDS)); do (cd $$d && go clean); done

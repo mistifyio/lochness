@@ -3,7 +3,6 @@ package etcd
 import (
 	"errors"
 	"net/url"
-	"strings"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -44,6 +43,9 @@ func New(addr string) (kv.KV, error) {
 
 func (e *ekv) Delete(key string, recurse bool) error {
 	_, err := e.e.Delete(key, recurse)
+	if err != nil && e.IsKeyNotFound(err) {
+		err = nil
+	}
 	return err
 }
 
@@ -182,17 +184,18 @@ func (e *ekv) Watch(prefix string, index uint64, stop chan struct{}) (chan kv.Ev
 }
 
 type lock struct {
-	ekv   *ekv
-	key   string
-	value string
-	ttl   time.Duration
-	index uint64
+	client *etcd.Client
+	key    string
+	ttl    time.Duration
+	index  uint64
 }
 
 func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 	if key == "" {
 		return nil, errors.New("missing key")
 	}
+
+	lock := &lock{client: e.e, key: key, ttl: ttl}
 
 	// Since etcd doesn't really support a lock we need a way discover if a key/lock is held.
 	// The safest way to do that is to save something in the kv store with the data, atomically.
@@ -206,16 +209,11 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 	// lock users can json unmarshal the value without having to `Get`. I
 	// kind of like the accessors for locks though.
 
-	resp, err := e.e.Create(key, "locked=true:", uint64(ttl.Seconds()))
+	resp, err := e.e.Create(key, "locked=true", uint64(ttl.Seconds()))
 	if err == nil {
-		return &lock{
-			ekv:   e,
-			key:   key,
-			value: "",
-			ttl:   ttl,
-			index: resp.Node.ModifiedIndex,
-		}, nil
-	} else if e.isKeyExists(err) == false {
+		lock.index = resp.Node.ModifiedIndex
+		return lock, nil
+	} else if !e.isKeyExists(err) {
 		return nil, err
 	}
 
@@ -226,61 +224,37 @@ func (e *ekv) Lock(key string, ttl time.Duration) (kv.Lock, error) {
 	}
 
 	value := string(v.Data)
-	if !(strings.HasPrefix(value, "locked=true:") || strings.HasPrefix(value, "locked=false:")) {
+	if value != "locked=true" || value != "locked=false" {
 		return nil, errors.New("key does not contain a valid Lock value")
 	}
 
-	data := strings.SplitN(value, ":", 2)
-	if len(data) != 2 {
-		return nil, errors.New("key does not contain a valid Lock value")
-	}
-	value = data[1]
-
-	resp, err = e.e.CompareAndSwap(key, "locked=true:"+value, uint64(ttl.Seconds()), "locked=false:"+value, v.Index)
+	resp, err = e.e.CompareAndSwap(key, "locked=true", uint64(ttl.Seconds()), "locked=false", v.Index)
 	if err != nil {
 		return nil, err
 	}
 
-	return &lock{
-		ekv:   e,
-		key:   key,
-		value: value,
-		ttl:   ttl,
-		index: resp.Node.ModifiedIndex,
-	}, nil
-
+	lock.index = resp.Node.ModifiedIndex
+	return lock, nil
 }
 
-func (l *lock) Get() ([]byte, error) {
-	resp, err := l.ekv.e.CompareAndSwap(l.key, "locked=true:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
-	if err != nil {
-		return nil, err
-	}
-
-	l.index = resp.Node.ModifiedIndex
-	return []byte(l.value), nil
-}
-
-func (l *lock) Set(value []byte) error {
-	v := string(value)
-	resp, err := l.ekv.e.CompareAndSwap(l.key, "locked=true:"+v, uint64(l.ttl.Seconds()), "", l.index)
+func (l *lock) Renew() error {
+	resp, err := l.client.CompareAndSwap(l.key, "locked=true", uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
 		return err
 	}
 
-	l.value = v
 	l.index = resp.Node.ModifiedIndex
 	return nil
 }
 
 func (l *lock) Unlock() error {
-	_, err := l.Get()
+	err := l.Renew()
 	if err != nil {
 		// trying to unlock a lock we don't hold is a logic error
 		return err
 	}
 
-	_, err = l.ekv.e.CompareAndSwap(l.key, "locked=false:"+l.value, uint64(l.ttl.Seconds()), "", l.index)
+	_, err = l.client.CompareAndSwap(l.key, "locked=false", uint64(l.ttl.Seconds()), "", l.index)
 	if err != nil {
 		return err
 	}
@@ -294,4 +268,37 @@ func (e ekv) Ping() error {
 		return errors.New("can not reach cluster")
 	}
 	return nil
+}
+
+type eKey struct {
+	client *etcd.Client
+	key    string
+	value  string
+	ttl    uint64
+}
+
+func (e *ekv) EphemeralKey(key string, ttl time.Duration) (kv.EphemeralKey, error) {
+	return eKey{client: e.e, key: key, ttl: uint64(ttl.Seconds())}, nil
+}
+
+func (e eKey) Set(value string) error {
+	_, err := e.client.Set(e.key, value, e.ttl)
+	return err
+}
+
+func (e eKey) Renew() error {
+	if e.value == "" {
+		resp, err := e.client.Get(e.key, false, false)
+		if err != nil {
+			return err
+		}
+		e.value = resp.Node.Value
+	}
+	_, err := e.client.Set(e.key, e.value, e.ttl)
+	return err
+}
+
+func (e eKey) Destroy() error {
+	_, err := e.client.Delete(e.key, false)
+	return err
 }

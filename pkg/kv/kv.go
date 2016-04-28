@@ -20,6 +20,8 @@ type Value struct {
 // EventType is used to describe actions on watch events
 type EventType int
 
+//go:generate sh -c "stringer -type=EventType && sed -i 's#_EventType_name#eventTypeName#g;s#_EventType_index#eventTypeIndex#g' eventtype_string.go"
+
 const (
 	// None indicates no event, should induce a panic if ever seen
 	None EventType = iota
@@ -68,9 +70,15 @@ func Register(name string, fn func(string) (KV, error)) {
 // The special `http` and `https` schemes are deemed generic, the first implementation that supports it will be used.
 // Otherwise the scheme portion of the URL will be used to select the exact implementation to instantiate.
 func New(addr string) (KV, error) {
-	u, err := url.Parse(addr)
-	if err != nil {
-		return nil, err
+	var u *url.URL
+	if addr == "" {
+		u = &url.URL{Scheme: "http"}
+	} else {
+		var err error
+		u, err = url.Parse(addr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	register.RLock()
@@ -107,12 +115,19 @@ func New(addr string) (KV, error) {
 // Lock represents a locked key in the distributed key value store.
 // The value stored in key is managed by lock and may contain private implementation data and should not be fetched out-of-band
 type Lock interface {
-	// Get refreshes the lock and returns the currently stored data
-	Get() ([]byte, error)
-	// Set refreshes the lock and updated the data stored
-	Set([]byte) error
+	// Renew renews the lock, it should be called before attempting any operation on whatever is being protected
+	Renew() error
 	// Unlock unlocks and invalidates the lock
 	Unlock() error
+}
+
+type EphemeralKey interface {
+	// Set will first renew the tll then set the value of key, it is an error if the ttl has expired since last renewal
+	Set(value string) error
+	// Renew renews the key tll
+	Renew() error
+	// Destroy will delete the key without having to wait for expiration via TTL
+	Destroy() error
 }
 
 // KV is the interface for distributed key value store interaction
@@ -135,6 +150,9 @@ type KV interface {
 	// Watch returns channels for watching prefixes.
 	// stop *must* always be closed by callers
 	Watch(string, uint64, chan struct{}) (chan Event, chan error, error)
+
+	// EphemeralKey creates a key that will be deleted if the ttl expires
+	EphemeralKey(string, time.Duration) (EphemeralKey, error)
 
 	// Lock creates a new lock, it blocks until the lock is acquired.
 	Lock(string, time.Duration) (Lock, error)

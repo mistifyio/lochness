@@ -13,17 +13,68 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"testing"
 	"time"
 
 	"github.com/mistifyio/lochness"
 	"github.com/mistifyio/lochness/pkg/kv"
-	_ "github.com/mistifyio/lochness/pkg/kv/etcd"
+	_ "github.com/mistifyio/lochness/pkg/kv/consul"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+}
+
+// ConsulMaker will create an exec.Cmd to run consul with the given paramaters
+func ConsulMaker(port uint16, dir, prefix string) *exec.Cmd {
+	b, err := json.Marshal(map[string]interface{}{
+		"ports": map[string]interface{}{
+			"dns":      port + 1,
+			"http":     port + 2,
+			"rpc":      port + 3,
+			"serf_lan": port + 4,
+			"serf_wan": port + 5,
+			"server":   port + 6,
+		},
+		"session_ttl_min": "1s",
+	})
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile(dir+"/config.json", b, 0444)
+	if err != nil {
+		panic(err)
+	}
+
+	return exec.Command("consul",
+		"agent",
+		"-server",
+		"-bootstrap-expect", "1",
+		"-config-file", dir+"/config.json",
+		"-data-dir", dir,
+		"-bind", "127.0.0.1",
+		"-http-port", strconv.Itoa(int(port)),
+	)
+}
+
+// EtcdMaker will create an exec.Cmd to run etcd with the given paramaters
+func EtcdMaker(port uint16, dir, prefix string) *exec.Cmd {
+	clientURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+	peerURL := fmt.Sprintf("http://127.0.0.1:%d", port+1)
+	return exec.Command("etcd",
+		"-name", prefix,
+		"-data-dir", dir,
+		"-initial-cluster-state", "new",
+		"-initial-cluster-token", prefix,
+		"-initial-cluster", prefix+"="+peerURL,
+		"-initial-advertise-peer-urls", peerURL,
+		"-listen-peer-urls", peerURL,
+		"-listen-client-urls", clientURL,
+		"-advertise-client-urls", clientURL,
+	)
 }
 
 // Suite sets up a general test suite with setup/teardown.
@@ -35,39 +86,38 @@ type Suite struct {
 	KVURL      string
 	KV         kv.KV
 	KVCmd      *exec.Cmd
+	KVCmdMaker func(uint16, string, string) *exec.Cmd
 	TestPrefix string
 	Context    *lochness.Context
 }
 
 // SetupSuite runs a new kv instance.
 func (s *Suite) SetupSuite() {
-	// Start up a test kv
 	if s.TestPrefix == "" {
 		s.TestPrefix = "lochness-test"
 	}
+
 	s.KVDir, _ = ioutil.TempDir("", s.TestPrefix+"-"+uuid.New())
+
 	if s.KVPort == 0 {
-		s.KVPort = uint16(1 + rand.Uint32())
+		s.KVPort = uint16(1024 + rand.Intn(65535-1024))
 	}
-	clientURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort)
-	peerURL := fmt.Sprintf("http://127.0.0.1:%d", s.KVPort+1)
-	s.KVCmd = exec.Command("etcd",
-		"-name", s.TestPrefix,
-		"-data-dir", s.KVDir,
-		"-initial-cluster-state", "new",
-		"-initial-cluster-token", s.TestPrefix,
-		"-initial-cluster", s.TestPrefix+"="+peerURL,
-		"-initial-advertise-peer-urls", peerURL,
-		"-listen-peer-urls", peerURL,
-		"-listen-client-urls", clientURL,
-		"-advertise-client-urls", clientURL,
-	)
+
+	if s.KVCmdMaker == nil {
+		s.KVCmdMaker = ConsulMaker
+	}
+	s.KVCmd = s.KVCmdMaker(s.KVPort, s.KVDir, s.TestPrefix)
+
+	if testing.Verbose() {
+		s.KVCmd.Stdout = os.Stdout
+		s.KVCmd.Stderr = os.Stderr
+	}
 	s.Require().NoError(s.KVCmd.Start())
-	time.Sleep(500 * time.Millisecond) // Wait for test kv to be ready
+	time.Sleep(2500 * time.Millisecond) // Wait for test kv to be ready
 
 	var err error
 	for i := 0; i < 10; i++ {
-		s.KV, err = kv.New(clientURL)
+		s.KV, err = kv.New("http://127.0.0.1:" + strconv.Itoa(int(s.KVPort)))
 		if err == nil {
 			break
 		}
@@ -76,9 +126,10 @@ func (s *Suite) SetupSuite() {
 	if s.KV == nil {
 		panic(err)
 	}
+
 	s.Context = lochness.NewContext(s.KV)
-	s.KVPrefix = "/lochness"
-	s.KVURL = clientURL
+	s.KVPrefix = "lochness"
+	s.KVURL = "http://127.0.0.1:" + strconv.Itoa(int(s.KVPort))
 }
 
 // SetupTest prepares anything needed per test.
@@ -87,8 +138,7 @@ func (s *Suite) SetupTest() {
 
 // TearDownTest cleans the kv instance.
 func (s *Suite) TearDownTest() {
-	// Clean out kv
-	_ = s.KV.Delete(s.KVPrefix, true)
+	s.Require().NoError(s.KV.Delete(s.KVPrefix, true))
 }
 
 // TearDownSuite stops the kv instance and removes all data.
@@ -190,8 +240,7 @@ func (s *Suite) NewGuest() *lochness.Guest {
 	return guest
 }
 
-// NewHypervisorWithGuest creates and saves a new Hypervisor and Guest, with
-// the Guest added to the Hypervisor.
+// NewHypervisorWithGuest creates and saves a new Hypervisor and Guest, with the Guest added to the Hypervisor.
 func (s *Suite) NewHypervisorWithGuest() (*lochness.Hypervisor, *lochness.Guest) {
 	guest := s.NewGuest()
 	hypervisor := s.NewHypervisor()

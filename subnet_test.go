@@ -145,25 +145,24 @@ func (s *SubnetSuite) TestDelete() {
 	invalidSub.ID = "asdf"
 
 	tests := []struct {
-		description string
-		sub         *lochness.Subnet
-		expectedErr bool
+		description  string
+		sub          *lochness.Subnet
+		expectChange bool
 	}{
-		{"invalid subnet", invalidSub, true},
-		{"existing subnet", subnet, false},
-		{"nonexistant subnet", s.Context.NewSubnet(), true},
+		{"invalid subnet", invalidSub, false},
+		{"nonexistant subnet", s.Context.NewSubnet(), false},
+		{"existing subnet", subnet, true},
 	}
 
 	for _, test := range tests {
 		msg := s.Messager(test.description)
 		err := test.sub.Delete()
-		if test.expectedErr {
-			s.Error(err, msg("should be invalid"))
-		} else {
-			s.NoError(err, msg("should be valid"))
-			_ = network.Refresh()
-			s.Len(network.Subnets(), 0, msg("should remove subnet link"))
+		s.NoError(err)
+		if !test.expectChange {
+			continue
 		}
+		_ = network.Refresh()
+		s.Len(network.Subnets(), 0, msg("should remove subnet link"))
 	}
 }
 
@@ -198,7 +197,7 @@ func (s *SubnetSuite) TestReleaseAddress() {
 	ip, _ := subnet.ReserveAddress("foobar")
 	n := len(subnet.AvailableAddresses())
 
-	s.Error(subnet.ReleaseAddress(net.ParseIP("192.168.0.1")))
+	s.NoError(subnet.ReleaseAddress(net.ParseIP("192.168.0.1")))
 	s.Len(subnet.AvailableAddresses(), n)
 
 	s.NoError(subnet.ReleaseAddress(ip))

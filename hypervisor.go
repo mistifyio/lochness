@@ -19,7 +19,7 @@ import (
 
 var (
 	// HypervisorPath is the path in the config store
-	HypervisorPath = "/lochness/hypervisors/"
+	HypervisorPath = "lochness/hypervisors/"
 	// id of currently running hypervisor
 	hypervisorID = ""
 )
@@ -40,7 +40,7 @@ type (
 		subnets            map[string]string
 		guests             []string
 		alive              bool
-		lock               kv.Lock
+		heart              kv.EphemeralKey
 		// Config is a set of key/values for driving various config options. writes should
 		// only be done using SetConfig
 		Config map[string]string
@@ -487,15 +487,15 @@ func (h *Hypervisor) Heartbeat(ttl time.Duration) error {
 		return err
 	}
 
-	if h.lock == nil {
-		lock, err := h.context.kv.Lock(h.heartbeatKey(), ttl)
+	if h.heart == nil {
+		ekey, err := h.context.kv.EphemeralKey(h.heartbeatKey(), ttl)
 		if err != nil {
 			return err
 		}
-		h.lock = lock
+		h.heart = ekey
 	}
 
-	if err := h.lock.Set([]byte(time.Now().String())); err != nil {
+	if err := h.heart.Set(time.Now().String()); err != nil {
 		return err
 	}
 
